@@ -36,7 +36,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>아이언 케이지</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600;700&family=Rajdhani:wght@600;700&display=swap">
 <style>
 /* Layout: arcade cabinet. Menus are stacked "fight cards" on a steel ground; the fight view is canvas + two-cluster pad. Single dark arena look by choice. */
 :root{
@@ -406,7 +406,7 @@ body.titling{overflow:hidden}
 .wcap:empty{display:none}.wcap em{font-style:normal}.wcap .ok{color:#7dff9a}.wcap .no{color:#ff8b7f}
 .skipr{position:absolute;right:12px;bottom:12px;z-index:4;display:none;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(8,10,14,.7);color:#fff;font-weight:700;font-size:14px}
 .game.replaying .skipr{display:block}
-.skipt{position:absolute;left:150px;top:58px;z-index:4;display:none;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(8,10,14,.7);color:#fff;font-weight:700;font-size:12px}
+.skipt{position:absolute;left:152px;top:132px;z-index:4;display:none;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(8,10,14,.7);color:#fff;font-weight:700;font-size:12px}
 .game.tutorial .skipt{display:block}
 .game.immersive #between.corner3d{left:auto;right:max(12px,env(safe-area-inset-right,0px));transform:translateY(-50%);width:min(460px,54%)}
 .album{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
@@ -418,6 +418,35 @@ body.titling{overflow:hidden}
 .tile.albt .tn{color:#9fe0a8}
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);opacity:0;z-index:70;background:rgba(10,12,16,.94);color:#fff;border:1px solid rgba(232,179,58,.5);padding:10px 16px;border-radius:10px;font-weight:700;font-size:14px;transition:all .35s;pointer-events:none}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+/* ===== 인게임 UI 디자인 시스템: 투명 유리(글래스모피즘) 버튼 · 다크 메탈릭 ===== */
+.pb{position:relative;font-family:var(--display);letter-spacing:.02em;color:#f4f6fa;text-shadow:0 1px 2px rgba(0,0,0,.6);
+  background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.04) 48%,rgba(255,255,255,.02));
+  -webkit-backdrop-filter:blur(12px) saturate(150%);backdrop-filter:blur(12px) saturate(150%);
+  border:1px solid rgba(255,255,255,.2);border-top:1px solid rgba(255,255,255,.34);border-radius:14px;
+  box-shadow:0 6px 18px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.18),inset 0 -2px 0 var(--acc,rgba(77,141,255,.85));transition:transform .08s,filter .08s,box-shadow .12s}
+.pb{--acc:rgba(77,141,255,.9)}.pb.tg{--acc:rgba(76,195,138,.9)}.pb.ts{--acc:rgba(232,179,58,.95)}
+.pb.tg,.pb.ts{border-top-color:rgba(255,255,255,.34)}
+.pb small{font-family:"Rajdhani",var(--body);font-size:10px;letter-spacing:.12em;color:rgba(233,237,243,.55);font-weight:700}
+.pb.on{transform:translateY(1px) scale(.97);filter:brightness(1.25);box-shadow:0 2px 8px rgba(0,0,0,.4),inset 0 0 18px var(--acc),inset 0 -2px 0 var(--acc)}
+.pb.ready{box-shadow:0 0 0 1px rgba(232,179,58,.9),0 0 18px rgba(232,179,58,.55),inset 0 -2px 0 rgba(232,179,58,.95)}
+.pb.mash{background:linear-gradient(180deg,rgba(255,215,94,.35),rgba(255,215,94,.1));--acc:#ffd75e}
+.pb.dim{opacity:.35;filter:saturate(.3)}
+#guardBtn{--acc:rgba(232,179,58,.95);border-top-color:rgba(255,255,255,.34)}
+#stanceBtn{--acc:rgba(127,227,255,.95);border-top-color:rgba(255,255,255,.34)}
+.joyBase{background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.14),rgba(255,255,255,.03) 62%);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2);box-shadow:0 8px 24px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.2)}
+.joyBase::before{border-color:rgba(255,255,255,.14)}
+.joyKnob{background:radial-gradient(circle at 38% 30%,rgba(255,255,255,.55),rgba(160,175,200,.25) 45%,rgba(30,36,48,.75));border:1px solid rgba(255,255,255,.35);box-shadow:0 6px 16px rgba(0,0,0,.45),inset 0 1px 1px rgba(255,255,255,.4)}
+.gbar .btn{font-family:var(--display);letter-spacing:.04em;border-radius:999px;padding:9px 18px;color:#f4f6fa;
+  background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.04));-webkit-backdrop-filter:blur(12px) saturate(150%);backdrop-filter:blur(12px) saturate(150%);
+  border:1px solid rgba(255,255,255,.22);box-shadow:0 6px 18px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.2)}
+.gbar .btn:active{transform:scale(.96)}
+@media (orientation:landscape) and (max-height:540px){
+  .game.immersive .pb,.game.immersive #stanceBtn{background:linear-gradient(180deg,rgba(255,255,255,.15),rgba(255,255,255,.03) 50%,rgba(255,255,255,.02));-webkit-backdrop-filter:blur(12px) saturate(150%);backdrop-filter:blur(12px) saturate(150%);border-radius:14px}
+  .game.immersive .gbar .btn{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.04));-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+  .game.immersive .cl.r{gap:7px}
+}
+.skipw,.skipr,.skipt{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.04))!important;border:1px solid rgba(255,255,255,.25)!important;font-family:var(--display);letter-spacing:.04em}
+#between{background:linear-gradient(180deg,rgba(30,35,45,.82),rgba(12,14,19,.9));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.14);border-radius:16px}
 /* 세로 화면 안내 · 제작사 푸터 */
 #rotateGate{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:rgba(6,7,9,.86);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#f3f4f6;text-align:center;padding:24px}
 #rotateGate[hidden]{display:none}
