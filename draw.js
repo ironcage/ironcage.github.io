@@ -1253,7 +1253,7 @@ function render(S0,c,cssW,cssH,o3d){
     if(!S.demo&&S.mode!=='outro'&&S.mode!=='decision'&&!S.walk){hud(S);comboOverlay(S)}
     if(S.mode==='intro')introOverlay(S);
     if(S.mode==='decision')decisionOverlay(S);
-    if(!S.demo&&(!S.walk||/faceoff|touch/.test(S.walk.k||'')))bannerDraw(S);
+    if(!S.demo&&(!S.walk||/faceoff|touch/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
     if(S.mode==='outro'&&S.winSide){const Wn=S.winSide==='a'?S.a:S.b;ctx.textBaseline='alphabetic';txt('승자',WH/2,HH*.42-46,12,'rgba(233,230,223,.8)','center','700')}
   }
   ctx.restore();
