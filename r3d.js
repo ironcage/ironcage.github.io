@@ -145,19 +145,31 @@ function build(canvas){
   let renderer;
   try{renderer=new T.WebGLRenderer({canvas,antialias:!MOBILE,powerPreference:'high-performance',preserveDrawingBuffer:false})}catch(e){return null}
   if(!renderer.getContext())return null;
-  renderer.setPixelRatio(Q.pr);renderer.shadowMap.enabled=false;   // shadows are baked; fighters get pooled blob shadows
-  renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;
+  renderer.setPixelRatio(Q.pr);renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.physicallyCorrectLights=false;   // arena shadows are baked; only the fighters cast a live shadow from the key light
+  renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
   renderer.info.autoReset=true;
   const scene=new T.Scene();scene.background=new T.Color(0x07080c);scene.fog=new T.Fog(0x07080c,900,2600);
   const camera=new T.PerspectiveCamera(38,16/9,5,5000);camera.position.set(400,160,520);
-  scene.add(new T.HemisphereLight(0xc9d3e6,0x2a2622,.7));
-  const key=new T.DirectionalLight(0xfff1df,1.05);key.position.set(260,700,380);scene.add(key);
-  const rim=new T.DirectionalLight(0x9fc0ff,.35);rim.position.set(-500,300,-600);scene.add(rim);
+  scene.add(new T.HemisphereLight(0xb9c6dc,0x2a2420,.42));
+  /* key: overhead octagon rig, the only shadow caster (tight frustum that follows the action) */
+  const key=new T.DirectionalLight(0xfff0dc,1.0);key.position.set(400+140,720,180);key.target.position.set(400,0,0);scene.add(key);scene.add(key.target);
+  key.castShadow=true;key.shadow.mapSize.set(MOBILE?1024:2048,MOBILE?1024:2048);const sc=key.shadow.camera;sc.left=-260;sc.right=260;sc.top=260;sc.bottom=-260;sc.near=300;sc.far=1200;key.shadow.bias=-.0006;key.shadow.normalBias=1.2;key.shadow.radius=4;
+  /* cool rim + warm fill for a broadcast look, and an overhead spot for the floor sheen */
+  const rim=new T.DirectionalLight(0x8fb4ff,.75);rim.position.set(-520,320,-620);scene.add(rim);
+  const fill=new T.DirectionalLight(0xffc89a,.28);fill.position.set(-300,180,700);scene.add(fill);
+  const spot=new T.SpotLight(0xfff4e2,.55,1600,Math.PI/5.2,.55,1.2);spot.position.set(400,900,0);spot.target.position.set(400,0,0);scene.add(spot);scene.add(spot.target);
+  /* image-based reflections: a tiny lightbox scene baked once into a PMREM environment map */
+  let envMap=null;try{const pm=new T.PMREMGenerator(renderer),es=new T.Scene();es.background=new T.Color(0x0a0c10);
+    const box=new T.Mesh(new T.BoxGeometry(10,10,10),new T.MeshBasicMaterial({color:0x14171d,side:T.BackSide}));es.add(box);
+    for(const [x,y,z,sx,sy,sz,c] of [[0,4.9,0,6,.1,6,0xfff1dc],[-4.9,1,0,.1,3,4,0x9fc0ff],[4.9,1.5,2,.1,2.5,3,0xffd2a0],[0,1,-4.9,5,1.2,.1,0xe8b33a]]){const m=new T.Mesh(new T.BoxGeometry(sx,sy,sz),new T.MeshBasicMaterial({color:c}));m.position.set(x,y,z);es.add(m)}
+    envMap=pm.fromScene(es,.04).texture;pm.dispose()}catch(e){}
+  scene.environment=null;
   const atlas=buildAtlas();
   const cage=new T.Group();scene.add(cage);
   /* floor + apron (baked, unlit) */
   const floorTex=tex(floorCanvas(false));
-  const floor=new T.Mesh(new T.CircleGeometry(CR+12,8,Math.PI/8),new T.MeshBasicMaterial({map:floorTex}));floor.rotation.x=-Math.PI/2;floor.position.y=0;cage.add(floor);
+  const floorN=(()=>{const c=cnv(256,256,(g,w,h)=>{g.fillStyle='#808080';g.fillRect(0,0,w,h);for(let i=0;i<9000;i++){const v=Math.random()*255|0;g.fillStyle=`rgba(${v},${v},${v},.08)`;g.fillRect(Math.random()*w,Math.random()*h,2,2)}for(let y=0;y<h;y+=3){g.fillStyle='rgba(0,0,0,.05)';g.fillRect(0,y,w,1)}});const t=tex(normalFromHeight(c,1.4),false);t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(10,10);return t})();
+  const floor=new T.Mesh(new T.CircleGeometry(CR+12,8,Math.PI/8),new T.MeshStandardMaterial({map:floorTex,roughness:.58,metalness:0,normalMap:floorN,normalScale:new T.Vector2(.35,.35),envMap,envMapIntensity:.35}));floor.rotation.x=-Math.PI/2;floor.position.y=0;floor.receiveShadow=true;cage.add(floor);
   // canvas UVs of CircleGeometry map center→(.5,.5); rotate to align octagon
   const apron=new T.Mesh(new T.CircleGeometry(2200,40),new T.MeshBasicMaterial({map:tex(apronCanvas())}));apron.rotation.x=-Math.PI/2;apron.position.y=-6;cage.add(apron);
   /* cage: posts+rails+post pads merged (atlas) = 1 draw call; ad pads merged = 1 draw call */
@@ -171,10 +183,10 @@ function build(canvas){
     metal.push({g:new T.CylinderGeometry(6,6,246,8),m:M4(a.x,123,a.z),uv:{u0:0,u1:1,...atlas.row(12)}});
     metal.push({g:new T.BoxGeometry(16,100,16),m:M4(a.x,125,a.z),uv:{u0:0,u1:1,...atlas.row(13)}});
     const t=chain.clone();t.needsUpdate=true;t.repeat.set(len/12,210/12);
-    const pm=new T.MeshLambertMaterial({map:t,transparent:true,alphaTest:.25,side:T.DoubleSide,color:0xc8d0dc,depthWrite:false});
+    const pm=new T.MeshStandardMaterial({map:t,transparent:true,alphaTest:.25,side:T.DoubleSide,color:0xd4dbe6,metalness:.85,roughness:.32,envMap,envMapIntensity:1.1,depthWrite:false});
     const p=new T.Mesh(new T.PlaneGeometry(len,210),pm);p.position.set(mid.x,135,mid.z);p.rotation.y=ry;cage.add(p);panels.push({mesh:p,mat:pm,mid});
   }
-  const atlasMat=new T.MeshLambertMaterial({map:atlas.tex});
+  const atlasMat=new T.MeshStandardMaterial({map:atlas.tex,metalness:.55,roughness:.38,envMap,envMapIntensity:.9});
   const metalMesh=new T.LOD();{const hi=new T.Mesh(mergeGeos(metal),atlasMat);const lo=new T.Mesh(mergeGeos(metal.map(x=>({...x,g:x.g.type==='CylinderGeometry'?new T.CylinderGeometry(x.g.parameters.radiusTop,x.g.parameters.radiusBottom,x.g.parameters.height,4):x.g}))),atlasMat);metalMesh.addLevel(hi,0);metalMesh.addLevel(lo,1500);cage.add(metalMesh)}
   const padMesh=new T.Mesh(mergeGeos(pads),new T.MeshBasicMaterial({map:atlas.tex}));cage.add(padMesh);
   const fence=[metalMesh,padMesh,...panels.map(p=>p.mesh)];
@@ -213,16 +225,21 @@ function build(canvas){
   /* pools: stains (instanced), camera flashes (instanced), blob shadows */
   const stainPool=new T.InstancedMesh(new T.CircleGeometry(1,10),new T.MeshBasicMaterial({color:0x6e080e,transparent:true,opacity:.75,depthWrite:false}),220);stainPool.count=0;stainPool.frustumCulled=false;cage.add(stainPool);
   const flashPool=new T.InstancedMesh(sph(2.6,6,4),new T.MeshBasicMaterial({color:0xffffff}),24);flashPool.count=0;flashPool.frustumCulled=false;cage.add(flashPool);
-  const blobT=tex(blobCanvas(),false);const blobs=new T.InstancedMesh(new T.PlaneGeometry(1,1).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:blobT,transparent:true,depthWrite:false}),MAXR);blobs.frustumCulled=false;scene.add(blobs);
+  const blobT=tex(blobCanvas(),false);const blobs=new T.InstancedMesh(new T.PlaneGeometry(1,1).rotateX(-Math.PI/2),new T.MeshBasicMaterial({map:blobT,transparent:true,depthWrite:false}),MAXR);blobs.frustumCulled=false;blobs.material.opacity=.55;scene.add(blobs);
   /* body parts: one InstancedMesh per part type and LOD level */
   const nmap=muscleNormal();
-  const mats={skin:new T.MeshStandardMaterial({roughness:.5,metalness:0,normalMap:nmap,normalScale:new T.Vector2(.55,.55)}),cloth:new T.MeshStandardMaterial({roughness:.8}),glove:new T.MeshStandardMaterial({roughness:.33,metalness:.12}),
-    hair:new T.MeshStandardMaterial({roughness:.9}),eye:new T.MeshStandardMaterial({roughness:.25}),pupil:new T.MeshStandardMaterial({roughness:.2}),blood:new T.MeshStandardMaterial({roughness:.3})};
+  const skin=new T.MeshPhysicalMaterial({roughness:.56,metalness:0,clearcoat:.18,clearcoatRoughness:.55,normalMap:nmap,normalScale:new T.Vector2(.6,.6),envMap,envMapIntensity:.35});
+  /* skin shader: wrapped diffuse (light bleeds past the terminator like flesh), warm subsurface tint and a fresnel rim */
+  skin.onBeforeCompile=sh=>{sh.fragmentShader=sh.fragmentShader.replace('#include <dithering_fragment>',`#include <dithering_fragment>
+    float fr=pow(1.0-clamp(dot(normalize(vViewPosition)*-1.0,normal),0.0,1.0),2.6);
+    gl_FragColor.rgb=gl_FragColor.rgb*vec3(1.0,0.93,0.88)+vec3(0.5,0.62,0.95)*fr*0.22;`)};
+  const mats={skin,cloth:new T.MeshPhysicalMaterial({roughness:.72,sheen:new T.Color(0x666666),envMap,envMapIntensity:.25}),glove:new T.MeshPhysicalMaterial({roughness:.38,metalness:.05,clearcoat:.9,clearcoatRoughness:.22,envMap,envMapIntensity:.9}),
+    hair:new T.MeshStandardMaterial({roughness:.75,envMap,envMapIntensity:.2}),eye:new T.MeshStandardMaterial({roughness:.12,envMap,envMapIntensity:.8}),pupil:new T.MeshStandardMaterial({roughness:.1,envMap}),blood:new T.MeshPhysicalMaterial({roughness:.2,clearcoat:1,envMap})};
   const specs=partSpecs(),parts={hi:{},lo:{}};
   for(const lv of ['hi','lo'])for(const [name,[fac,mk,per]] of Object.entries(specs)){
-    const g=fac(lv==='hi');const im=new T.InstancedMesh(g,mats[mk],MAXR*per);im.frustumCulled=false;im.visible=lv==='hi';
+    const g=fac(lv==='hi');const im=new T.InstancedMesh(g,mats[mk],MAXR*per);im.frustumCulled=false;im.visible=lv==='hi';im.castShadow=lv==='hi';
     for(let i=0;i<MAXR*per;i++){im.setMatrixAt(i,ZERO);im.setColorAt(i,WHITE)}scene.add(im);parts[lv][name]={im,per,dirty:false}}
-  const st={renderer,scene,camera,cage,floor,floorTex,panels,sectors,tiers,stainPool,flashPool,blobs,parts,lvl:'hi',jumboC,jumboT,jumboKey:'',
+  const st={key,spot,renderer,scene,camera,cage,floor,floorTex,panels,sectors,tiers,stainPool,flashPool,blobs,parts,lvl:'hi',jumboC,jumboT,jumboKey:'',
     fence,rigs:new Map(),slots:new Array(MAXR).fill(null),camPos:new T.Vector3(400,260,900),camTgt:new T.Vector3(400,100,0),title:false,frustum:new T.Frustum(),stats:{calls:0,tris:0,fps:60,culled:0},q:0};
   return st;
 }
@@ -435,6 +452,7 @@ function render(S0,w,h){
     if(S.walk&&S.walk.k==='coach')coachTalk(st,S,rig);
     camera(st,S,w/h);
   }
+  {const cx=(S.a.x+S.b.x)/2,cz=((S.a.z||0)+(S.b.z||0))/2;st.key.target.position.set(cx,0,cz);st.key.position.set(cx+140,720,cz+180);st.key.target.updateMatrixWorld()}
   belt(st,S);confetti(st,S);
   freeUnused(st);flush(st);
   fadeFence(st);crowd(st,S);
@@ -531,7 +549,7 @@ function belt(st,S){const P=st.props;if(!P)return;const C=S.cine;const on=C&&C.s
   P.belt.position.copy(mid);P.belt.position.y+=4;const d=h1.clone().sub(h0).normalize(),z=st.camera.position.clone().sub(mid);z.addScaledVector(d,-z.dot(d)).normalize();const y=new T.Vector3().crossVectors(z,d);
   P.belt.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(d,y,z));P.strap.scale.set(L+30,1,1)}
 function confetti(st,S){const P=st.props;if(!P)return;const C=S.cine,on=C&&C.set==='belt'&&(C.t||0)>55;const cf=P.cf;
-  if(!on&&!cf.count)return;let n=0;
+  if(!on){if(cf.count){cf.count=0;for(const p of P.cfp)p.y=-999}return}let n=0;
   for(const p of P.cfp){if(on&&p.y<-5&&Math.random()<.06){p.x=400+(Math.random()-.5)*500;p.z=(Math.random()-.5)*500;p.y=560+Math.random()*80;p.vx=(Math.random()-.5)*.8;p.vy=-(1.2+Math.random()*1.4)}
     if(p.y>-5){p.x+=p.vx+Math.sin(p.y*.05+p.r)*.6;p.y+=p.vy;p.r+=.08*p.s;_e.set(p.r,p.r*.7,p.r*.3);_q.setFromEuler(_e);_m.compose(_v.set(p.x,p.y,p.z),_q,_one);cf.setMatrixAt(n++,_m)}}
   cf.count=n;cf.instanceMatrix.needsUpdate=true}

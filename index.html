@@ -406,7 +406,7 @@ body.titling{overflow:hidden}
 .wcap:empty{display:none}.wcap em{font-style:normal}.wcap .ok{color:#7dff9a}.wcap .no{color:#ff8b7f}
 .skipr{position:absolute;right:12px;bottom:12px;z-index:4;display:none;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(8,10,14,.7);color:#fff;font-weight:700;font-size:14px}
 .game.replaying .skipr{display:block}
-.skipt{position:absolute;left:152px;top:132px;z-index:4;display:none;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(8,10,14,.7);color:#fff;font-weight:700;font-size:12px}
+.skipt{position:absolute;left:152px;top:98px;z-index:4;display:none;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(8,10,14,.7);color:#fff;font-weight:700;font-size:12px}
 .game.tutorial .skipt{display:block}
 .game.immersive #between.corner3d{left:auto;right:max(12px,env(safe-area-inset-right,0px));transform:translateY(-50%);width:min(460px,54%)}
 .album{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
@@ -447,6 +447,19 @@ body.titling{overflow:hidden}
 }
 .skipw,.skipr,.skipt{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.04))!important;border:1px solid rgba(255,255,255,.25)!important;font-family:var(--display);letter-spacing:.04em}
 #between{background:linear-gradient(180deg,rgba(30,35,45,.82),rgba(12,14,19,.9));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.14);border-radius:16px}
+/* ===== v2: 금속 테두리(크롬) + 유리 버튼 ===== */
+.pb,.gbar .btn,.skipw,.skipr,.skipt{
+  background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.035) 46%,rgba(255,255,255,.015) 54%,rgba(255,255,255,.05)) padding-box,
+             linear-gradient(150deg,rgba(240,244,250,.85),rgba(130,138,152,.45) 32%,rgba(30,34,42,.55) 58%,rgba(200,208,220,.7)) border-box!important;
+  border:1.5px solid transparent!important;-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%)}
+.pb{border-radius:16px;font-size:clamp(13px,2.4vh,17px);letter-spacing:.03em;box-shadow:0 8px 22px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -3px 0 -1px var(--acc)}
+.pb::after{content:"";position:absolute;left:22%;right:22%;bottom:5px;height:2px;border-radius:2px;background:var(--acc);opacity:.85;box-shadow:0 0 10px var(--acc)}
+.pb.empty::after,.pb.mash::after{display:none}
+.pb.on{box-shadow:0 2px 10px rgba(0,0,0,.45),inset 0 0 22px var(--acc)}
+.gbar .btn{border-radius:999px;font-size:15px;padding:9px 20px}
+.skipw,.skipr{border-radius:999px!important;font-size:12.5px!important;padding:7px 14px!important}
+.skipt{border-radius:999px!important;font-size:10.5px!important;padding:4px 10px!important}
+.joyBase{background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.13),rgba(255,255,255,.025) 64%) padding-box,linear-gradient(150deg,rgba(240,244,250,.8),rgba(60,66,78,.5) 50%,rgba(200,208,220,.65)) border-box;border:1.5px solid transparent}
 /* 세로 화면 안내 · 제작사 푸터 */
 #rotateGate{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:rgba(6,7,9,.86);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#f3f4f6;text-align:center;padding:24px}
 #rotateGate[hidden]{display:none}
