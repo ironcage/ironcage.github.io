@@ -1,4 +1,4 @@
-# 아이언 케이지 (IRON CAGE) — 3D 앱 버전
+# 아이언 케이지 (IRON CAGE) — 앱 버전 (2D)
 
 제작사: 박시후
 
@@ -12,9 +12,7 @@ Claude 아티팩트 **Iron Cage v48**을 바탕으로 만든 독립 실행 PWA�
 | data.js | 선수·기술·입장곡 데이터 (6체급) |
 | engine.js | 전투 시스템, AI, 판정 |
 | draw.js | 2D 그래픽·HUD (3D 위에 겹쳐 그림, WebGL이 안 되는 기기에서는 2D로 자동 전환) |
-| r3d.js | **3D 렌더러** (경기장, 선수, 관중, 시네마틱) |
-| bodymesh.js | **조각된 인체 모델** (근육이 표현된 하나의 매끈한 몸 + 뼈대 스키닝, 머리·글러브 고해상도 메시) |
-| three.min.js / THREE-LICENSE.txt | 3D 엔진 three.js r128 (MIT 라이선스) |
+| title.jpg | 타이틀 화면 이미지 |
 | gif.js | **KO 명장면 픽셀 GIF 녹화기 + 앨범 저장소** |
 | ui.js | 메뉴·모드·사운드·저장 |
 | manifest.json, sw.js | 앱 설정 (가로 모드, #0a0a0a), 오프라인 실행 |
@@ -54,5 +52,9 @@ Claude 아티팩트 **Iron Cage v48**을 바탕으로 만든 독립 실행 PWA�
 - 모바일: 왼쪽 아무 곳이나 엄지를 대면 생기는 조이스틱 + 오른쪽 버튼
 
 ## 업데이트 방법
-게임 파일을 바꿔 올릴 때는 `sw.js`의 `VERSION` 숫자를 하나 올려야 폰에 있는 옛 버전이 바뀝니다. (현재 v6)
+게임 파일을 바꿔 올릴 때는 `sw.js`의 `VERSION` 숫자를 하나 올려야 폰에 있는 옛 버전이 바뀝니다. (현재 v7)
 index.html 4번째 줄의 `google-site-verification` 태그는 구글 서치 콘솔 인증용이라 지우면 안 됩니다.
+
+
+## 그래픽 모드
+현재는 **2D 그래픽**으로 실행됩니다 (3D 렌더러는 꺼 둠). 3D 3종 파일(r3d.js, bodymesh.js, three.min.js)은 앱에서 빠졌고, 필요하면 다시 붙일 수 있습니다.

@@ -386,7 +386,10 @@ body{padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(28px,
 #titleScr.out{opacity:0;pointer-events:none}
 #titleScr .tHost{position:absolute;inset:0}
 #titleScr .tHost canvas{position:absolute;inset:0;width:100%;height:100%}
-#titleScr.flat{background:radial-gradient(ellipse at 50% 30%,#2a2f3a,#050608 70%)}
+#titleScr.flat{background:#050608 url(title.jpg) center/cover no-repeat}
+#titleScr.flat .tLogo,#titleScr.flat .tSub{display:none}
+#titleScr.flat .tShade{background:linear-gradient(180deg,rgba(0,0,0,0) 60%,rgba(0,0,0,.55))}
+#titleScr.flat .tTap{bottom:4%;left:50%;right:auto;transform:translateX(-50%);padding:8px 22px;border-radius:999px;background:rgba(5,6,9,.72);border:1px solid rgba(232,179,58,.6);color:#ffe3a0;font-size:clamp(15px,3.6vh,22px);letter-spacing:.25em;white-space:nowrap}
 #titleScr .tShade{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 30%,rgba(0,0,0,.55) 100%);pointer-events:none}
 #titleScr .tLogo{position:absolute;left:0;right:0;top:20%;display:flex;justify-content:center;gap:.28em;font-family:var(--display);font-size:clamp(46px,13vh,120px);letter-spacing:.04em;line-height:1;pointer-events:none;transition:transform .8s,opacity .8s,top .8s}
 #titleScr .tLogo span{background:linear-gradient(180deg,#f7f9fc 0%,#b9c2cf 38%,#5d6676 52%,#cfd6e0 64%,#8a93a2 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 #1b1f27) drop-shadow(0 10px 24px rgba(0,0,0,.8))}
@@ -494,12 +497,9 @@ body.titling{overflow:hidden}
   </footer>
 </div>
 <div id="rotateGate" hidden role="dialog" aria-modal="true" aria-labelledby="rotT"><div class="ph" aria-hidden="true"></div><b id="rotT">가로로 플레이하면 재미있습니다</b><span>휴대폰을 옆으로 돌려 주세요</span></div>
-<script src="three.min.js"></script>
 <script src="data.js"></script>
 <script src="engine.js"></script>
 <script src="draw.js"></script>
-<script src="bodymesh.js"></script>
-<script src="r3d.js"></script>
 <script src="gif.js"></script>
 <script src="ui.js"></script>
 <script>
