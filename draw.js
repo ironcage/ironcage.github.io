@@ -343,6 +343,9 @@ function poseStand(F,O,S){
   if(st==='stroll'){near={x:hip.x+f*8+Math.sin(wk)*12,y:hip.y-4};far={x:hip.x-f*6-Math.sin(wk)*12,y:hip.y-2};elbN='fwd';elbF='fwd'}
   if(st==='dejected'){near={x:hip.x+f*13,y:hip.y-10};far={x:hip.x-f*13,y:hip.y-10};elbN='fwd';elbF='back'}
   if(st==='ko'){near={x:x+f*22,y:276};far={x:x-f*8,y:282}}
+  /* stamina_exhaustion_idle: hunched over, hands on the thighs, chest heaving */
+  if(F.exh&&(st==='idle'||st==='walk'||st==='block')){const br=Math.sin(t*.17+(F.side==='a'?0:1))*3.4;chest.x+=f*9;chest.y+=16+br;hip.y+=3;tilt+=.38;
+    near={x:x+f*20,y:266+br};far={x:x+f*12,y:272+br};elbN='down';elbF='down';mood=mood||'hurt'}
   /* athletic stance: sink the hips so the knees bend */
   const cr=(st==='ko'||an==='shoot')?0:st==='celebrate'?4:9;
   hip.y+=cr;chest.y+=cr;near.y+=cr;far.y+=cr;
@@ -404,12 +407,15 @@ function groundJ(S){
   }else if(pos===3){
     B={f:-hd,hip:P(-6,-16),chest:P(56,-18),nearFoot:P(-92,-8),farFoot:P(-96,-6),kneeN:'up',kneeF:'up',nearHand:P(64,-44),farHand:P(56,-36),elbN:'up',elbF:'up',footN:-hd,footF:-hd};
     T={f:hd,hip:P(22,-40),chest:P(32,-104),nearFoot:P(-12,-6),farFoot:P(-18,-4),kneeN:'down',kneeF:'down',nearHand:P(54,-30),farHand:P(46,-26),tilt:.4};
+  }else if(pos===5){
+    B={f:-hd,hip:P(46,-50),chest:P(8,-46),nearFoot:P(82,-4),farFoot:P(88,-4),kneeN:'down',kneeF:'down',nearHand:P(-6,-4),farHand:P(2,-6),elbN:'down',elbF:'down',footN:hd,footF:hd,tilt:.9};
+    T={f:hd,hip:P(-62,-34),chest:P(-18,-70),nearFoot:P(-118,-4),farFoot:P(-108,-6),kneeN:'down',kneeF:'down',nearHand:P(10,-40),farHand:P(4,-50),elbN:'down',elbF:'down',tilt:.75};
   }else{
     B={f:hd,hip:P(12,-22),chest:P(34,-86),nearFoot:P(98,-6),farFoot:P(102,-4),kneeN:'up',kneeF:'up',nearHand:P(48,-92),farHand:P(44,-84),tilt:.2};
     T={f:hd,hip:P(-14,-24),chest:P(6,-90),nearFoot:P(42,-30),farFoot:P(46,-38),kneeN:'up',kneeF:'up',nearHand:P(46,-96),farHand:P(42,-90),tilt:.25};
   }
   // bottom defensive cover
-  if(bot.blockHeld&&pos<4){const h=vadd(B.chest,{x:hd*24,y:-2});B.nearHand={x:h.x,y:h.y-16};B.farHand={x:h.x-hd*6,y:h.y-10}}
+  if(bot.blockHeld&&pos<4&&pos!==5){const h=vadd(B.chest,{x:hd*24,y:-2});B.nearHand={x:h.x,y:h.y-16};B.farHand={x:h.x-hd*6,y:h.y-10}}
   // top strikes
   const ga=top.g&&top.g.act,gA=top.g&&top.g.A,gt=top.g?top.g.t:0;
   if(ga&&gA&&gA.dmg){
@@ -768,8 +774,14 @@ function plate(F,side,S){
   const sx=left?x+pw+14:x-14,sy=y+6,c=v=>v>70?'#5fbf72':v>40?'#e8b33a':'#e2553f';
   ctx.fillStyle='#0b0d12';ctx.beginPath();ctx.roundRect(sx-11,sy-4,22,52,5);ctx.fill();
   ell(sx,sy+5,5,5,c(F.head));ctx.fillStyle=c(F.body);ctx.beginPath();ctx.roundRect(sx-5,sy+12,10,15,2);ctx.fill();
-  ctx.strokeStyle=c(F.legs);ctx.lineWidth=3.4;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(sx-2.6,sy+29);ctx.lineTo(sx-3,sy+42);ctx.moveTo(sx+2.6,sy+29);ctx.lineTo(sx+3,sy+42);ctx.stroke();
+  legGauges(F,sx,sy+28,c);
+  txt(F.stance==='south'?'사우스포':'오소독스',sx,sy+57,8.5,F.stance==='south'?'#7fe3ff':'#9fb4d6','center','700');
+  if(F.exh)txt('탈진',left?bx+bw-2:bx+2,by+44,10.5,'#c0c6d0',left?'right':'left','800');
 }
+/* left / right leg health as two small vertical bars (the figure faces us, so its left leg sits on our right) */
+function legGauges(F,sx,top,c){const h=15;for(const [k,dx] of [['R',-3.2],['L',3.2]]){const v=clamp((F['lg'+k]??F.legs)/100,0,1);
+    ctx.fillStyle='#262b33';ctx.fillRect(sx+dx-1.9,top,3.8,h);ctx.fillStyle=v<.3?'#e2553f':c(v*100);ctx.fillRect(sx+dx-1.9,top+h*(1-v),3.8,h*v);
+    if(v<.3&&Math.floor(Date.now()/250)%2){ctx.strokeStyle='#ff6b5e';ctx.lineWidth=1;ctx.strokeRect(sx+dx-2.4,top-.5,4.8,h+1)}}}
 function comboOverlay(S){
   const c=S.comboFx;if(!c)return;const k=c.t/60,sc=1+Math.max(0,(c.t-50)/10)*.35;
   ctx.save();ctx.globalAlpha=Math.min(1,c.t/15);ctx.translate(WH*.24,HH*.36);ctx.scale(sc,sc);ctx.rotate(-.06);ctx.textAlign='center';ctx.textBaseline='middle';
@@ -796,7 +808,9 @@ function hudBottom(S){
     ctx.fillStyle=hc;ctx.fillRect(left?bx+bw-vw:bx,y+19,vw,11);ctx.fillStyle='rgba(0,0,0,.35)';for(let i=1;i<10;i++)ctx.fillRect(bx+bw*i/10,y+19,1,11);
     ctx.fillStyle='#262b33';ctx.fillRect(bx,y+33,bw,4);const sw=bw*clamp(F.st/100,0,1);ctx.fillStyle=F.st<25?'#c0c6d0':'#f2c043';ctx.fillRect(left?bx+bw-sw:bx,y+33,sw,4);
     for(let i=0;i<5;i++){const fill=clamp(F.meter/20-i,0,1),px=left?bx+i*9:bx+bw-i*9-6;ctx.fillStyle='#2a2f3a';ctx.fillRect(px,y+41,6,4);ctx.globalAlpha=fill;ctx.fillStyle=F.meter>=100?'#ffd75e':'#b98cff';ctx.fillRect(px,y+41,6,4);ctx.globalAlpha=1}
-    if(F.heart>0)txt('투혼',left?bx+bw:bx,y+46,9,'#ff6a55',left?'right':'left','700');
+    {const lx=left?bx+50:bx+bw-50-30;for(const [k,i] of [['L',0],['R',1]]){const v=clamp((F['lg'+k]??F.legs)/100,0,1),xx=lx+i*16;ctx.fillStyle='#2a2f3a';ctx.fillRect(xx,y+41,13,4);ctx.fillStyle=v<.3?'#e2553f':v<.6?'#e8b33a':'#5fbf72';ctx.fillRect(xx,y+41,13*v,4)}}
+    if(F.exh)txt('탈진',left?bx+bw:bx,y+46,9,'#c0c6d0',left?'right':'left','800');
+    else if(F.heart>0)txt('투혼',left?bx+bw:bx,y+46,9,'#ff6a55',left?'right':'left','700');
   }
   ctx.fillStyle=S.title?'#e8b33a':'#2a2f3a';ctx.fillRect(cx-cw/2,y+4,cw,13);ctx.textBaseline='middle';txt(S.inf?'연습':`R${S.round}`,cx,y+11,9.5,S.title?'#101318':'#e9e6df','center','700');
   const s=Math.ceil(S.timer/60);disp(S.inf?'∞':`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`,cx,y+33,16,S.timer<600&&S.mode==='fight'&&!S.inf?'#ff6b5e':'#f2efe8','center');
@@ -931,7 +945,7 @@ function walkOverlay(S){
     const lines=[];let cur='';for(const ch of shown){if(ctx.measureText(cur+ch).width>fw-28){lines.push(cur);cur=ch}else cur+=ch}lines.push(cur);
     const bh=lines.length*18+30,bx=WH/2-fw/2,by=k==='faceoff'||k==='touch'?HH-bh-16:8;
     ctx.fillStyle='rgba(10,12,16,.82)';ctx.beginPath();ctx.roundRect(bx,by,fw,bh,6);ctx.fill();
-    txt('장내 아나운서',bx+14,by+16,10,'#e8b33a','left','700');
+    txt(last.kind==='coach'?'코너 코치':'장내 아나운서',bx+14,by+16,10,last.kind==='coach'?'#5fbf72':'#e8b33a','left','700');
     lines.forEach((l,i)=>txt(l,bx+14,by+34+i*18,13,'#f3f1ea','left','700'));
   }
   if(k==='touch'){const p=clamp(t/20,0,1);ctx.globalAlpha=p;ctx.textBaseline='middle';disp('터치 글러브',WH/2,HH*.3,Math.min(30,WH*.06),'#ffffff','center');ctx.globalAlpha=1}

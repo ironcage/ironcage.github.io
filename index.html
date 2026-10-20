@@ -2,25 +2,29 @@
 <html lang="ko">
 <head>
 <meta name="google-site-verification" content="vj00vRPLtIMEfV1T8ssvNeys5cdKPDKwToFJEl3xcgM" /><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
-  >
-  <!-- Google tag (gtag.js) -->
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LGPBWCFQ8S"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
 
-  // PWA (standalone) 실행 여부 확인
-  const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  var isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                     || window.navigator.standalone 
+                     || document.referrer.includes('android-app://');
+  var displayModeVal = isStandalone ? 'pwa' : 'browser';
 
   gtag('config', 'G-LGPBWCFQ8S', {
     'custom_map': {'dimension1': 'display_mode'},
-    'display_mode': isPWA ? 'pwa' : 'browser'
+    'display_mode': displayModeVal
+  });
+
+  gtag('event', 'app_launch', {
+    'display_mode': displayModeVal
   });
 </script>
-
-<meta name="theme-color" content="#101318">
+<meta name="theme-color" content="#0a0a0a">
 <meta name="description" content="종합격투기 커리어 게임 — 아이언 케이지">
 <!-- PWA / iPhone home screen -->
 <link rel="manifest" href="manifest.json">
@@ -367,6 +371,64 @@ button.hcell{cursor:pointer}.hcell span{font-size:11px;letter-spacing:.1em;color
 .offbox{display:flex;gap:14px;align-items:flex-start;border-color:rgba(232,179,58,.45)!important}.offbox .offic{font-size:30px;line-height:1}.offbox p{font-size:14px;color:var(--muted);margin:8px 0 0}
 html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 body{padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(28px,env(safe-area-inset-bottom,0px))}
+/* 스탠스 버튼 · 배당률 · 야생 매치 */
+.lrow{display:grid;grid-template-columns:1.35fr 1fr;gap:5px}
+#stanceBtn{border-top-color:#7fe3ff;min-height:50px;font-size:clamp(11px,2.9vw,15px)}
+.game.immersive #stanceBtn{height:min(44px,10.5vh);min-height:0;background:rgba(20,24,32,.58)}
+.pb.dim{opacity:.4}
+.odds{display:grid;grid-template-columns:1fr 1.4fr 1fr;align-items:center;gap:8px;margin:12px 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(90deg,rgba(61,127,240,.14),rgba(0,0,0,0) 35%,rgba(0,0,0,0) 65%,rgba(224,74,58,.14))}
+.odds b{font-family:var(--display);font-size:24px;font-variant-numeric:tabular-nums}.odds .oa{text-align:left}.odds .ob{text-align:right}
+.odds .oa b{color:var(--blue-t)}.odds .ob b{color:var(--red-t)}.odds span{display:block;font-size:11px;color:var(--muted);font-weight:700}
+.odds .om{text-align:center}.odds .om span{letter-spacing:.12em}.odds .om em{font-style:normal;font-size:13px;color:var(--gold);font-weight:700}
+.tile.wildt{border-color:rgba(255,107,94,.45)}.tile.wildt .tn{color:#ff8b7f}
+/* 타이틀 인트로 · 3D 시네마틱 */
+#titleScr{position:fixed;inset:0;z-index:60;background:#050608;overflow:hidden;cursor:pointer;-webkit-user-select:none;user-select:none;touch-action:manipulation;transition:opacity .45s}
+#titleScr.out{opacity:0;pointer-events:none}
+#titleScr .tHost{position:absolute;inset:0}
+#titleScr .tHost canvas{position:absolute;inset:0;width:100%;height:100%}
+#titleScr.flat{background:radial-gradient(ellipse at 50% 30%,#2a2f3a,#050608 70%)}
+#titleScr .tShade{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 30%,rgba(0,0,0,.55) 100%);pointer-events:none}
+#titleScr .tLogo{position:absolute;left:0;right:0;top:20%;display:flex;justify-content:center;gap:.28em;font-family:var(--display);font-size:clamp(46px,13vh,120px);letter-spacing:.04em;line-height:1;pointer-events:none;transition:transform .8s,opacity .8s,top .8s}
+#titleScr .tLogo span{background:linear-gradient(180deg,#f7f9fc 0%,#b9c2cf 38%,#5d6676 52%,#cfd6e0 64%,#8a93a2 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 #1b1f27) drop-shadow(0 10px 24px rgba(0,0,0,.8))}
+#titleScr .tLogo span+span{background:linear-gradient(180deg,#ffe9a8 0%,#e8b33a 45%,#8a5d0f 55%,#f3c95a 70%,#b07d18 100%);-webkit-background-clip:text;background-clip:text}
+#titleScr .tTap{position:absolute;left:0;right:0;bottom:16%;text-align:center;font-family:var(--display);font-size:clamp(18px,4.4vh,30px);letter-spacing:.3em;color:#f3f1ea;text-shadow:0 2px 12px rgba(0,0,0,.9);animation:tapBlink 1.4s ease-in-out infinite;pointer-events:none}
+#titleScr .tSub{position:absolute;left:0;right:0;top:calc(20% + clamp(46px,13vh,120px) + 10px);text-align:center;color:#c9ccd3;font-weight:700;letter-spacing:.5em;font-size:13px;pointer-events:none}
+#titleScr.belt .tLogo{top:5%;transform:scale(.55);opacity:.9}#titleScr.belt .tSub{opacity:0}
+#titleScr.belt .tTap{animation:none;color:#e8b33a;letter-spacing:.12em}
+#titleScr .tSkip{position:absolute;right:max(14px,env(safe-area-inset-right,0px));bottom:max(14px,env(safe-area-inset-bottom,0px));padding:9px 16px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:rgba(8,10,14,.7);color:#fff;font-weight:700;font-size:14px}
+@keyframes tapBlink{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){#titleScr .tTap{animation:none}}
+body.titling{overflow:hidden}
+.cine3d{position:relative;width:100%;aspect-ratio:16/8;max-height:46vh;border-radius:8px;overflow:hidden;background:#050608;border:1px solid var(--line);margin:4px 0 12px}
+.cine3d canvas,.stage canvas.cinegl{position:absolute;inset:0;width:100%;height:100%;display:block}
+.cine3d .cTag{position:absolute;left:10px;top:8px;z-index:2;font-size:11px;font-weight:800;letter-spacing:.14em;color:#fff;background:#c0182a;padding:3px 8px;border-radius:4px}
+.wcap{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:2;max-width:92%;padding:6px 12px;border-radius:6px;background:rgba(8,10,14,.82);color:#f3f1ea;font-size:14px;font-weight:700;text-align:center;pointer-events:none}
+.wcap:empty{display:none}.wcap em{font-style:normal}.wcap .ok{color:#7dff9a}.wcap .no{color:#ff8b7f}
+.skipr{position:absolute;right:12px;bottom:12px;z-index:4;display:none;padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(8,10,14,.7);color:#fff;font-weight:700;font-size:14px}
+.game.replaying .skipr{display:block}
+.skipt{position:absolute;left:150px;top:58px;z-index:4;display:none;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:rgba(8,10,14,.7);color:#fff;font-weight:700;font-size:12px}
+.game.tutorial .skipt{display:block}
+.game.immersive #between.corner3d{left:auto;right:max(12px,env(safe-area-inset-right,0px));transform:translateY(-50%);width:min(460px,54%)}
+.album{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.aslot{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0b0d11;display:flex;flex-direction:column}
+.aslot img{width:100%;aspect-ratio:16/9;image-rendering:pixelated;image-rendering:crisp-edges;display:block;background:#000}
+.aslot .ai{display:flex;flex-direction:column;gap:2px;padding:8px 10px}.aslot .ai b{font-size:14px}.aslot .ai span{font-size:12px;color:var(--muted)}
+.aslot .btn{margin:0 10px 10px;align-self:flex-start}
+.aslot.empty{aspect-ratio:16/12;align-items:center;justify-content:center;border-style:dashed;color:var(--muted)}.aslot.empty span{font-family:var(--display);font-size:28px;opacity:.4}
+.tile.albt .tn{color:#9fe0a8}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);opacity:0;z-index:70;background:rgba(10,12,16,.94);color:#fff;border:1px solid rgba(232,179,58,.5);padding:10px 16px;border-radius:10px;font-weight:700;font-size:14px;transition:all .35s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+/* 세로 화면 안내 · 제작사 푸터 */
+#rotateGate{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:rgba(6,7,9,.86);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#f3f4f6;text-align:center;padding:24px}
+#rotateGate[hidden]{display:none}
+#rotateGate .ph{width:58px;height:100px;border:4px solid #e8b33a;border-radius:12px;position:relative;animation:rotPhone 2.2s ease-in-out infinite}
+#rotateGate .ph::after{content:"";position:absolute;left:50%;bottom:6px;width:14px;height:4px;margin-left:-7px;border-radius:2px;background:#e8b33a}
+#rotateGate b{font-family:var(--display);font-size:clamp(20px,6vw,26px);letter-spacing:.02em;word-break:keep-all}
+#rotateGate span{font-size:13px;color:#9aa3b2}
+@keyframes rotPhone{0%,15%{transform:rotate(0)}45%,70%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+@media (prefers-reduced-motion:reduce){#rotateGate .ph{animation:none;transform:rotate(-90deg)}}
+.credit{margin:22px auto 4px;text-align:center}.credit p{margin:0 auto;font-size:12px;color:var(--muted);letter-spacing:.06em}
+.app:has(#game:not([hidden])) .credit{display:none}
 </style>
 
 <div class="app">
@@ -385,10 +447,17 @@ body{padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(28px,
     </div>
     <p class="hint" id="hint"></p>
   </div>
+  <footer class="credit">
+    <p>제작사: 박시후</p>
+  </footer>
 </div>
+<div id="rotateGate" hidden role="dialog" aria-modal="true" aria-labelledby="rotT"><div class="ph" aria-hidden="true"></div><b id="rotT">가로로 플레이하면 재미있습니다</b><span>휴대폰을 옆으로 돌려 주세요</span></div>
+<script src="three.min.js"></script>
 <script src="data.js"></script>
 <script src="engine.js"></script>
 <script src="draw.js"></script>
+<script src="r3d.js"></script>
+<script src="gif.js"></script>
 <script src="ui.js"></script>
 <script>
 /* PWA: offline cache (service worker). Relative path so it works on GitHub Pages sub-folders. */

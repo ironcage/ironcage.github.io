@@ -11,7 +11,7 @@ const STAT_GROUP = {
   피지컬:['car','chin']
 };
 
-const CLASSES = [
+const CLASSES8 = [
   {id:'fly', name:'플라이급', kg:57, lb:125, h:[160,170], reach:[163,175]},
   {id:'bw', name:'밴텀급', kg:61, lb:135, h:[165,173], reach:[168,180]},
   {id:'fw', name:'페더급', kg:66, lb:145, h:[168,176], reach:[173,183]},
@@ -21,6 +21,9 @@ const CLASSES = [
   {id:'lhw', name:'라이트헤비급', kg:93, lb:205, h:[185,193], reach:[190,203]},
   {id:'hw', name:'헤비급', kg:120, lb:265, h:[188,198], reach:[193,208]}
 ];
+/* six weight classes in play: bantam merges into feather, light-heavy into heavy (fighter ids stay the same so saves keep working) */
+const CLSMAP={bw:'fw',lhw:'hw'};
+const CLASSES = CLASSES8.filter(c=>!CLSMAP[c.id]);
 
 const STYLES = {
   kickboxer:{name:'킥복서', off:{pow:0,spd:3,kick:8,sdef:4,td:-15,tdd:-2,clinch:-5,gnp:-10,subO:-18,subD:-8,car:2,chin:0},
@@ -191,7 +194,7 @@ function genDivision(cls,have){
   return out;
 }
 const RAW_ALL=RAW.slice();
-for(const C of CLASSES){const have=RAW.filter(x=>x[0]===C.id);for(const g of genDivision(C.id,have))RAW_ALL.push(g)}
+for(const C of CLASSES8){const have=RAW.filter(x=>x[0]===C.id);for(const g of genDivision(C.id,have))RAW_ALL.push(g)}
 /* second wave: 12 more prospects and veterans per division (separate seed so earlier saves keep their opponents) */
 Object.assign(NAMES,{'캐나다':{g:['조던','라일리','브레이든','오웬','네이선','케빈'],f:['트렘블레이','맥도널드','고티에','캠벨','로이','부샤르']},'호주':{g:['미첼','쿠퍼','브로디','제이든','타일','해리슨'],f:['스미스','오브라이언','켈리','테일러','윌리엄스','존스']},
   '네덜란드':{g:['다안','셈','루카','팀','바스','니엘스'],f:['데 용','반 다이크','바커','비세르','스미트','데 브리스']},'스페인':{g:['파블로','하비에르','알바로','다니엘','이케르','세르히오'],f:['가르시아','마르티네스','산체스','로메로','나바로','토레스']},
@@ -200,7 +203,7 @@ NAMES['조지아'].f=['베리제','카파나제','젤라우리','로르키파니
 NAMES['대한민국'].g.push('은호','도현','시훈','예준','주원','하람');NAMES['미국'].g.push('브라이스','조시','네이트','트레이','카일');NAMES['브라질'].g.push('카이우','이고르','헤낭','다비');
 Object.assign(SKIN,{'스페인':SKIN['스페인']||['#d3a27a'],'조지아':['#e3bc9a']});
 const NAT_W2=NAT_W.concat([['캐나다',1],['호주',1],['네덜란드',1],['스페인',1],['조지아',1]]);
-for(const C of CLASSES){const r=seeded(hash('div2_'+C.id));
+for(const C of CLASSES8){const r=seeded(hash('div2_'+C.id));
   for(let i=0;i<12;i++){let nat,name,nick,tries=0;
     do{nat=wpickR(NAT_W2,r);const N=NAMES[nat];const g=N.g[Math.floor(r()*N.g.length)],f=N.f[Math.floor(r()*N.f.length)];name=N.kr?f+g:g+' '+f;tries++}while(USED.has(name)&&tries<40);
     if(USED.has(name))continue;USED.add(name);
@@ -210,7 +213,7 @@ for(const C of CLASSES){const r=seeded(hash('div2_'+C.id));
 const ROSTER = RAW_ALL.map(([cls,name,nick,from,style,ovr],i)=>{
   const id = i<RAW.length?cls+'_'+i:'g_'+cls+'_'+hash(name).toString(36);
   const rand = seeded(hash(name));
-  const C = CLASSES.find(c=>c.id===cls);
+  const C = CLASSES8.find(c=>c.id===cls);
   const s = makeStats(style, ovr, rand);
   const sp = STYLES[style].sp;
   const wins = 10+Math.floor(rand()*14)+Math.round((ovr-73)/2);
@@ -224,7 +227,7 @@ const ROSTER = RAW_ALL.map(([cls,name,nick,from,style,ovr],i)=>{
     rec: [wins, Math.floor(rand()*6)+(ovr<80?2:0), rand()<.15?1:0]
   };
 });
-ROSTER.forEach(f=>{f.ovr=ovrOf(f.s,f.style)});
+ROSTER.forEach(f=>{f.ovr=ovrOf(f.s,f.style);if(CLSMAP[f.cls])f.cls=CLSMAP[f.cls]});
 
 const CUSTOM=[];
 function byClass(cls){return ROSTER.concat(CUSTOM).filter(f=>f.cls===cls)}
@@ -246,5 +249,5 @@ const SONGS=[
  {n:'Neon Riot',g:'edm',gn:'일렉트로닉',bpm:128,key:1,d:'관중을 뛰게 만드는 클럽 비트'},
  {n:'Blackout',g:'edm',gn:'일렉트로닉',bpm:134,key:.89,d:'어두운 신스와 강한 킥'},
  {n:'심장박동',g:'edm',gn:'일렉트로닉',bpm:122,key:1.19,d:'밝고 경쾌한 신스 아르페지오'}];
-Object.assign(IC,{SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
+Object.assign(IC,{SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
 })(window.IC);

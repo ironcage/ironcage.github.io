@@ -6,14 +6,18 @@ const wpick=opts=>{const t=opts.reduce((s,o)=>s+Math.max(0,o[1]),0);if(t<=0)retu
 const {MV,SPM,TD,SUBS,STYLES}=IC;
 
 const DMG=.5,GDMG=.3;
+/* wild match only: hold guard + jab = eye poke, hold guard + kick = low blow */
+const XM={calf:{id:'calf',name:'카프킥',anim:'lowkick',target:'leg',kick:true,w:8,a:5,r:13,range:98,dmg:6,st:7,kb:2}};
+const WILDM={eyepoke:{...MV.jab,id:'eyepoke',name:'눈 찌르기',anim:'jab',dmg:1.5,st:5,foulK:'poke'},lowblow:{...MV.lowkick,id:'lowblow',name:'로블로',anim:'lowkick',target:'body',dmg:3,st:9,foulK:'groin'}};
 const DIFF={
   easy:{label:'루키',think:22,react:.16,mash:.058,mul:.9},
   normal:{label:'프로',think:15,react:.36,mash:.085,mul:1.06},
   hard:{label:'챔피언',think:9,react:.56,mash:.11,mul:1.13},
-  legend:{label:'레전드',think:6,react:.74,mash:.135,mul:1.2}
+  legend:{label:'레전드',think:6,react:.74,mash:.135,mul:1.2},
+  hof:{label:'명예의 전당',think:3,react:.93,mash:.165,mul:1.26,sprawl:.62,parry:.5}
 };
-const POSN=['풀 가드','하프 가드','사이드 컨트롤','마운트','백 마운트'];
-const GNP=[.8,1,1.15,1.5,1.35];
+const POSN=['풀 가드','하프 가드','사이드 컨트롤','마운트','백 마운트','프론트 헤드락'];
+const GNP=[.8,1,1.15,1.5,1.35,1.05];
 const GA={
   g_pound:{name:'파운딩',w:7,r:9,st:3,dmg:5,target:'head'},
   g_elbow:{name:'엘보',w:12,r:15,st:6,dmg:8,target:'head'},
@@ -24,6 +28,7 @@ const GA={
   g_sub:{name:'서브미션',w:12,r:10,st:10},
   g_stand:{name:'일어서기',w:16,r:6,st:4},
   g_power:{name:'파워 파운딩',w:14,r:16,st:0,dmg:15,target:'head',special:true},
+  g_soccer:{name:'사커킥',w:15,r:16,st:9,dmg:12,target:'head',wild:true},
   b_punch:{name:'펀치',w:6,r:10,st:2,dmg:2.6,target:'head'},
   b_elbow:{name:'엘보',w:9,r:12,st:4,dmg:4,target:'head'},
   b_sweep:{name:'스윕',w:14,r:14,st:9},
@@ -40,10 +45,11 @@ const CA={
   c_cage:{name:'케이지 압박',w:14,r:10,st:6},
   c_rev:{name:'포지션 역전',w:14,r:12,st:8},
   c_trip:{name:'클린치 TD',w:14,r:12,st:10},
-  c_brk:{name:'브레이크',w:10,r:8,st:4}
+  c_brk:{name:'브레이크',w:10,r:8,st:4},
+  c_hbutt:{name:'헤드버트',w:9,r:13,st:7,dmg:10,target:'head',wild:true}
 };
-const TOP_SUBS=[['아킬레스 홀드','힐 훅'],['기무라','다스 초크','아나콘다 초크'],['아메리카나','암 트라이앵글','기무라','본 플루 초크'],['암바','암 트라이앵글','에제키엘 초크','아메리카나'],['리어 네이키드 초크','숏 초크','넥 크랭크']];
-const BOT_SUBS=[['트라이앵글 초크','암바','길로틴 초크','오모플라타','기무라'],['니바','힐 훅','카프 슬라이서'],[],[],[]];
+const TOP_SUBS=[['아킬레스 홀드','힐 훅'],['기무라','다스 초크','아나콘다 초크'],['아메리카나','암 트라이앵글','기무라','본 플루 초크'],['암바','암 트라이앵글','에제키엘 초크','아메리카나'],['리어 네이키드 초크','숏 초크','넥 크랭크'],['길로틴 초크','다스 초크','아나콘다 초크']];
+const BOT_SUBS=[['트라이앵글 초크','암바','길로틴 초크','오모플라타','기무라'],['니바','힐 훅','카프 슬라이서'],[],[],[],[]];
 /* which family each hold belongs to: drives the pose and which styles favour it */
 const SUBK={'리어 네이키드 초크':'back','숏 초크':'back','넥 크랭크':'back','암바':'arm','기무라':'arm','아메리카나':'arm','오모플라타':'arm','암 트라이앵글':'front','다스 초크':'front','아나콘다 초크':'front','길로틴 초크':'front','본 플루 초크':'front','에제키엘 초크':'neck','트라이앵글 초크':'tri','힐 훅':'leg','니바':'leg','카프 슬라이서':'leg','아킬레스 홀드':'leg'};
 function subPick(F,list){const st=F.d.style;return wpick(list.map(n=>{const k=SUBK[n];let w=1;if(st==='sambo'&&k==='leg')w=3;if(st==='bjj'&&(k==='back'||k==='tri'||k==='arm'))w=2;if(st==='wrestler'&&(k==='front'||k==='neck'))w=2;if(k==='leg'&&st!=='sambo'&&st!=='bjj')w=.5;return[n,w]}))}
@@ -54,6 +60,21 @@ const add=(F,k,v)=>{F.r[k]+=v;F.tot[k]+=v};
 const sv=(F,k)=>F.s[k];
 const stMax=F=>100-(100-F.body)*.4;
 const legF=F=>.5+.5*F.legs/100;
+/* weight-class physics: light classes are quick and cheap on gas but hit softer; heavy classes are slower but every shot can end it */
+const CPHYS={fly:{spd:1.25,pow:.84,st:.8,ko:.82},fw:{spd:1.25,pow:.88,st:.82,ko:.86},lw:{spd:1,pow:1,st:1,ko:1},ww:{spd:1,pow:1.03,st:1,ko:1.05},mw:{spd:.8,pow:1.2,st:1.06,ko:1.25},hw:{spd:.8,pow:1.28,st:1.1,ko:1.38}};
+const CLSMAP={bw:'fw',lhw:'hw'};
+const cpOf=d=>CPHYS[CLSMAP[d.cls]||d.cls]||CPHYS.lw;
+/* separate left/right leg health: legs (the old single value) always mirrors the worse leg */
+const leadLeg=F=>F.stance==='south'?'R':'L',rearLeg=F=>F.stance==='south'?'L':'R';
+function syncLegs(F){F.legs=Math.min(F.lgL,F.lgR)}
+function setLegs(F,v){F.lgL=F.lgR=v;F.legs=v}
+const weakLeg=F=>Math.min(F.lgL??100,F.lgR??100)<30;
+/* haptics: only for the person holding the phone (navigator.vibrate is not available on iPhone Safari; Android vibrates) */
+function buzz(p){if(!S||S.demo||S.spec)return;try{if(navigator.vibrate)navigator.vibrate(p)}catch(e){}}
+const STRONG=new Set(['cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','lowblow','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub','b_getup']);
+function exhausted(F,id){if(!F.exh||!STRONG.has(id))return false;if(F===S.p)floatText(F.x,166,'탈진! 강공격·그랩 불가','#8e97a6');return true}
+function upExh(F){if(!F.exh&&F.st<=1&&S.mode==='fight'){F.exh=true;floatText(F.x,150+zy(F),'탈진','#c0c6d0');if(Math.random()<.6)say(`${F.nick}, 완전히 지쳤습니다! 숨을 헐떡입니다`);sweat(F.x,200,10)}
+  else if(F.exh&&F.st>=22){F.exh=false;if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
 const ZY=.35,LANE=28,zy=F=>(F.z||0)*ZY,CAGE_R=282;
 /* keep fighters inside the octagon's flat walls (apothem 294) with room for the body, not inside a circle that pokes past the fence */
 const CAGE_APO=318*Math.cos(Math.PI/8)-30;
@@ -79,7 +100,7 @@ const other=F=>F===S.a?S.b:S.a;
 
 function mkRun(d,side){
   return{d,s:d.s,name:d.name,nick:d.nick,side,look:d.look,ai:STYLES[d.style].ai,corner:side==='a'?'#3d7ff0':'#e04a3a',
-    x:side==='a'?250:550,z:0,moveZ:0,f:side==='a'?1:-1,head:100,body:100,legs:100,st:100,meter:0,
+    x:side==='a'?250:550,z:0,moveZ:0,f:side==='a'?1:-1,head:100,body:100,legs:100,lgL:100,lgR:100,stance:d.stance||(IC.hash&&IC.hash(String(d.id||d.name))%6===0?'south':'orth'),swT:0,exh:false,cp:cpOf(d),st:100,meter:0,
     state:'idle',t:0,A:null,hitDone:false,stun:0,vx:0,walk:0,blockHeld:false,moveDir:0,slot:null,bufT:0,stMul:1,
     koT:0,flash:0,rocked:0,ctrW:0,think:30,blockT:0,queue:[],g:{act:null,t:0,A:null},mul:1,
     reach:d.reach||185,r:newR(),tot:newR(),cuts:0}
@@ -117,11 +138,11 @@ function deal(F,O,dmg,target,o){
   dmg=Math.max(0,dmg);if(F===S.p&&S.coach)coachHit(o,target);
   if(target==='head'){O.head-=dmg;add(F,'dH',dmg);O.lastHit=S.frame;if(dmg>5&&Math.random()<.35){O.cuts++;if(O.cuts===3&&!o.blocked)say(`${O.nick}, 눈두덩이 찢어졌습니다! 출혈이 심해요`);if(O.cuts>=5&&!O.docChecked&&S.mode==='fight'&&!S.practice&&!S.demo&&O.head>0){O.docChecked=true;S.docF=O;S.docT=170;S.mode='doc';if(S.gr)exitGround();if(S.cl)exitClinch();S.sub=null;banner('닥터 체크','#ff8b7f',90,`${O.nick}의 컷 상태를 확인합니다`);sfx('bell');say('레퍼리가 경기를 멈추고 닥터를 부릅니다!')}}}
   else if(target==='body'){O.body-=dmg;O.st-=dmg*.6;add(F,'dB',dmg)}
-  else{O.legs-=dmg;add(F,'dL',dmg)}
+  else{const k='lg'+(o.leg||leadLeg(O));O[k]=Math.max(0,O[k]-dmg);syncLegs(O);add(F,'dL',dmg)}
   O.st=clamp(O.st,0,stMax(O));
   if(!o.blocked){add(F,'sigL',1);add(F,target==='head'?'headL':target==='body'?'bodyL':'legL',1)}
   F.meter=Math.min(100,F.meter+dmg*(o.blocked?1:3.2));O.meter=Math.min(100,O.meter+dmg*1.3);
-  O.flash=5;
+  O.flash=5;S.heat=Math.min(2,(S.heat||0)+(o.blocked?dmg*.012:dmg*.045+(dmg>7?.2:0)));
   const hx=o.x,hy=o.y;
   if(o.blocked){burst(hx,hy,5,'#c9d1dc');floatText(hx,hy-40,'막음','#c9d1dc');sfxHit('block',dmg);S.shake=Math.max(S.shake,2)}
   else{burst(hx,hy,7+Math.round(dmg*1.4),o.counter?'#ffd75e':'#fff2d8');
@@ -132,7 +153,8 @@ function deal(F,O,dmg,target,o){
     S.rings.push({x:hx,y:hy,r:4,l:14,big:dmg>6});NL('r',hx|0,hy|0,dmg>6?1:0);if(target==='head')sweat(hx,hy,4+Math.round(dmg));
     S.hitstop=Math.max(S.hitstop,dmg>8?7:dmg>5?4:2);if(dmg>7)S.flashScr=7;
     S.shake=Math.max(S.shake,dmg*1.1);sfxHit(o.src==='ground'?'ground':o.knee?'knee':target==='body'?'body':o.kick?'kick':'punch',dmg)}
-  if(S.practice&&S.practice.inf){for(const k of ['head','body','legs'])if(O[k]<15)O[k]=100;if(F.st<10)F.st=100;return false}
+  if(!o.blocked&&(F===S.p||O===S.p))buzz(dmg>8?45:dmg>4?25:12);
+  if(S.practice&&S.practice.inf){for(const k of ['head','body'])if(O[k]<15)O[k]=100;if(O.legs<15)setLegs(O,100);if(F.st<10)F.st=100;return false}
   if(!O.heartUsed&&O.head>0&&O.head<26&&O.body>0&&O.legs>0&&S.mode==='fight'){O.heartUsed=true;O.heart=480;O.meter=100;O.st=Math.min(stMax(O),O.st+40);O.rocked=0;
     banner('투혼!','#ff5a4a',70,`${O.nick} 마지막 힘을 끌어올립니다`);sfx('crowd');say(`${O.nick}, 쓰러지지 않습니다! 투혼 발동!`)}
   if(O.head<=0){O.head=0;finish(F,o.src==='ground'?'TKO':'KO',o.src==='ground'?'그라운드 앤 파운드':o.name);return true}
@@ -149,25 +171,34 @@ function rockCheck(F,O,dmg,counter){
   if(dmg<5||S.mode!=='fight')return;
   const chin=sv(O,'chin');
   if(O.rocked>0){
-    const kd=.12+(dmg-5)*.05+(100-chin)*.004+(O.head<35?.15:0)+(counter?.08:0);
+    const kd=(.12+(dmg-5)*.05+(100-chin)*.004+(O.head<35?.15:0)+(counter?.08:0))*F.cp.ko;
     if(Math.random()<kd)knockdown(F,O);
   }else{
-    const r=(dmg-4)*.04*(1.6-chin/100)+(O.head<45?.1:0)+(counter?.08:0);
+    const r=((dmg-4)*.04*(1.6-chin/100)+(O.head<45?.1:0)+(counter?.08:0))*F.cp.ko;
     if(Math.random()<r){O.rocked=240;floatText(O.x,150,'휘청!','#ffd75e');say(pick([`${O.nick} 다리가 흔들립니다!`,`${O.nick}, 크게 흔들렸어요!`,`${F.nick}, 기회를 잡았습니다!`]));sfx('crowd')}
   }
 }
 const FOUL={groin:['낭심 킥','#ff6b5e'],poke:['아이 포크','#ff6b5e'],fence:['케이지 잡기','#ffb02e']};
-function foul(F,O,k){if(S.mode!=='fight'||S.practice||S.demo)return;F.fouls=(F.fouls||0)+1;const ded=F.fouls>=2;if(ded){S.ded=S.ded||{a:0,b:0};S.ded[F.side]++}
+function foul(F,O,k){if(S.mode!=='fight'||S.practice||S.demo)return;
+  if(S.wild){wildHit(F,O,k);return}F.fouls=(F.fouls||0)+1;const ded=F.fouls>=2;if(ded){S.ded=S.ded||{a:0,b:0};S.ded[F.side]++}
   S.mode='foul';S.foulT=k==='fence'?90:200;S.foulV=O;S.foulK=k;S.foulDed=ded;if(S.gr)exitGround();if(S.cl)exitClinch();S.sub=null;
   if(k!=='fence'){O.state='hit';O.stun=0}
   banner(FOUL[k][0]+'!','#ff6b5e',90,ded?`${F.nick} 감점 1점!`:`${F.nick}에게 경고`);sfx('bell');
   say(k==='groin'?`아, 로킥이 낭심에 들어갔습니다! 경기 중단!`:k==='poke'?`손가락이 ${O.nick}의 눈을 찔렀어요! 레퍼리가 경기를 멈춥니다!`:`${F.nick}, 케이지를 잡고 테이크다운을 버팁니다! 반칙이에요!`);
   setTimeout(()=>{if(S)say(ded?`두 번째 반칙이라 감점입니다. 채점에 큰 영향을 줄 수 있어요.`:`이번엔 경고로 끝났네요. 다음엔 감점입니다.`,'color')},1500)}
+/* wild match: no stoppage, no warning, no point deduction */
+function wildHit(F,O,k){
+  const W={groin:['로블로!',60,6,'body'],poke:['눈 찌르기!',46,2,'head'],head:['헤드버트!',30,0,'head'],soccer:['사커킥!',36,0,'head'],fence:['케이지 잡기',0,0,null]}[k]||['반칙!',30,2,'body'];
+  floatText(O.x,150+zy(O),W[0],'#ff6b5e');if(W[1]){O.stun=Math.max(O.stun||0,W[1]);if(!S.gr&&!S.cl){O.state='hit';O.A=null;O.queue=[]}}
+  if(W[2])deal(F,O,W[2],W[3],{name:W[0],src:'stand',blocked:false,x:O.x,y:W[3]==='head'?212:300});
+  if(k==='poke'&&Math.random()<.35)injure(O,'eye');
+  S.wildN=(S.wildN||0)+1;sfx('crowd');
+  say(pick([`${F.nick}, ${W[0].replace('!','')}! 야생 매치에선 레퍼리가 말리지 않습니다!`,`관중석이 들끓습니다! ${W[0]}`,`${O.nick}, 고통스러워합니다! 반칙이 허용된 경기예요`]))}
 function knockdown(F,O){
   add(F,'kd',1);ev(F,'kd');
   if(O.head<25&&Math.random()<.5&&!(S.practice&&S.practice.inf)){O.head=0;finish(F,'KO',F.A?F.A.name:'타격');return}
   hlMark(60,`${F.nick}의 녹다운`);
-  banner('녹다운!','#ffd75e',60);O.rocked=360;blood(O.x,190+zy(O),10+O.cuts*2,F.f);S.slow=24;sfx('crowd');
+  S.heat=(S.heat||0)+.8;banner('녹다운!','#ffd75e',60);O.rocked=360;blood(O.x,190+zy(O),10+O.cuts*2,F.f);S.slow=24;sfx('crowd');
   say(`${O.nick} 다운! ${F.nick}가 덮칩니다!`);
   if(S.cl)S.cl=null;
   enterGround(F,O,1);
@@ -179,7 +210,7 @@ function finish(Wn,method,detail){
   const L=other(Wn);
   S.mode='ko';S.phaseT=200;S.sub=null;S.koRefIn=0;
   const el=S.roundFrames-S.timer;
-  S.result={winner:Wn.side,method,detail,round:S.round,time:fmt(el)};
+  S.result={winner:Wn.side,method,detail,round:S.round,time:fmt(el)};if(Wn===S.p||L===S.p)buzz(method==='서브미션'?[60,40,60]:[90,60,180,60,90]);
   if(!S.gr){L.state='ko';L.koT=0;S.slow=90;S.cl=null}
   S.camFocus=L.side;S.winSide=Wn.side;
   banner(method==='서브미션'?'탭 아웃!':method==='TKO'?'TKO!':'K.O.!','#ffd75e',170);sfx('ko');
@@ -189,9 +220,10 @@ const fmt=f=>{const s=Math.floor(f/60);return `${Math.floor(s/60)}:${String(s%60
 
 /* ---------- standing ---------- */
 function startStrike(F,A0){
-  const sm=(1.15-sv(F,'spd')*.003)*(F.st<25?1.2:1)*(F.rocked?1.15:1);
-  const cost=(A0.st||0)*(1.3-sv(F,'car')*.005)*(F.plan==='press'?1.12:F.plan==='safe'?.9:1);
-  if(F.st<cost*.35){if(F===S.p)floatText(F.x,166,'지침','#8e97a6');return false}
+  const sm=(1.15-sv(F,'spd')*.003)*(F.st<25?1.2:1)*(F.rocked?1.15:1)*(F.exh?1.3:1)/F.cp.spd;
+  const cost=(A0.st||0)*(1.3-sv(F,'car')*.005)*(F.plan==='press'?1.12:F.plan==='safe'?.9:1)*F.cp.st;
+  if(F.st<cost*.35&&!F.exh){if(F===S.p)floatText(F.x,166,'지침','#8e97a6');return false}
+  if(F.swT>0)return false;
   F.A={...A0,w:Math.max(3,Math.round(A0.w*sm)),r:Math.round(A0.r*sm),range:A0.range+(F.reach-185)*.5};
   F.stMul=.55+.45*F.st/100;F.st=Math.max(0,F.st-cost);
   F.state='attack';F.t=0;F.hitDone=false;
@@ -200,6 +232,7 @@ function startStrike(F,A0){
   sfx('whoosh');return true;
 }
 function doStand(F,O,id){
+  if(exhausted(F,id))return false;
   if(id==='feint'){if(F.st<3)return false;F.st-=2;F.A={...MV.cross,id:'feint',name:'페인트',feint:true,w:Math.max(5,Math.round(MV.cross.w*.9)),r:6};F.state='attack';F.t=0;F.hitDone=true;return true}
   if(F===S.p&&!S.demo){const k=MV[id]&&MV[id].kick?'kick':id==='td'?'shoot':MV[id]&&MV[id].target==='head'?'head':null;if(k){for(const q in S.pat)S.pat[q]*=.9;S.pat[k]=(S.pat[k]||0)+1}}
   if(MV[id])return startStrike(F,MV[id]);
@@ -208,6 +241,8 @@ function doStand(F,O,id){
     return startStrike(F,SPM[F.d.special]);
   }
   if(id==='td')return startStrike(F,TD);
+  if(XM[id])return startStrike(F,XM[id]);
+  if(WILDM[id])return S.wild?startStrike(F,WILDM[id]):false;
   if(id==='slip'){if(F.st<5)return false;F.st-=5;F.state='slip';F.t=0;return true}
   if(id==='clinch'){
     const dist=Math.abs(O.x-F.x);
@@ -228,32 +263,36 @@ function doStand(F,O,id){
 function tryHit(F,O){
   const A=F.A,dist=Math.abs(O.x-F.x),dz=Math.abs((O.z||0)-(F.z||0)),lane=A.kick?LANE+8:LANE;
   if(dist>A.range)return;
-  if(A.id==='lowkick'&&dist<64&&Math.random()<.035){F.hitDone=true;foul(F,O,'groin');return}
-  if(A.id==='jab'&&O.state==='attack'&&Math.random()<.012){F.hitDone=true;foul(F,O,'poke');return}
+  if(A.id==='lowkick'&&dist<64&&Math.random()<.035&&!S.wild){F.hitDone=true;foul(F,O,'groin');return}
+  if(A.id==='jab'&&O.state==='attack'&&Math.random()<.012&&!S.wild){F.hitDone=true;foul(F,O,'poke');return}
   if(dz>lane){if(F.t===A.w+A.a){F.hitDone=true;floatText(O.x,150+zy(O),'사이드 스텝','#9fe0a8');ev(O,'sidestep');if(O===S.e&&Math.random()<.4)say(`${O.nick}, 옆으로 빠지며 피합니다`)}return}
   F.hitDone=true;
   const hy=(A.target==='head'?212:A.target==='body'?262:352)+zy(O),hx=O.x-F.f*14;
   if(A.target==='head'&&O.state==='slip'&&O.t>=2&&O.t<=13){O.ctrW=26;F.st=Math.max(0,F.st-3);floatText(O.x,160,'회피','#9fe0a8');ev(O,'slip');if(O===S.e&&Math.random()<.5)say(`${O.nick}, 고개만 살짝 빼서 피합니다`);return}
   if(A.target==='head'&&!A.special&&O.state!=='attack'&&O.state!=='hit'&&!O.rocked&&!(O.inj&&O.inj.eye)&&Math.random()<Math.max(0,sv(O,'sdef')-62)*.004){floatText(O.x,160,'헤드 무브','#9fe0a8');return}
   /* perfect guard: guard raised just before impact parries and staggers the attacker */
-  if(O.state==='block'&&A.target!=='leg'&&S.frame-(O.blockStart||-99)<=9&&!A.special&&(O===S.p&&!S.demo||Math.random()<S.D.react*.25)){
+  if(O.state==='block'&&A.target!=='leg'&&S.frame-(O.blockStart||-99)<=9&&!A.special&&(O===S.p&&!S.demo||Math.random()<(S.D.parry||S.D.react*.25))){
     F.stun=34;F.state='hit';F.vx=-F.f*2.5;F.A=null;F.queue=[];O.meter=Math.min(100,O.meter+18);O.ctrW=45;O.perfects=(O.perfects||0)+1;
     floatText(O.x,150+zy(O),'퍼펙트 가드!','#7fe3ff');S.rings.push({x:hx,y:hy,r:6,l:16,big:true});S.hitstop=Math.max(S.hitstop,6);sfx('block');
     if(O===S.p)S.comboFx={n:0,t:50,txt:'퍼펙트 가드! 지금 반격!',col:'#7fe3ff'};
     if(Math.random()<.5)say(`${O.nick}, 타이밍 완벽한 블로킹! ${F.nick} 중심이 무너집니다`);return}
   let mul=1,blocked=false;
   if(A.target==='leg'&&O!==S.p&&O.state!=='attack'&&O.state!=='hit'&&Math.random()<S.D.react*(.25+(S.pat.kick||0)*.08)){
-    O.react={k:'check',t:0};F.legs=Math.max(1,F.legs-3.5);floatText(O.x,320+zy(O),'체크!','#9fe0a8');sfx('block');if(Math.random()<.5)say(`${O.nick}, 정강이로 로킥을 체크합니다`);return}
+    O.react={k:'check',t:0};{const k='lg'+rearLeg(F);F[k]=Math.max(1,F[k]-3.5);syncLegs(F)}floatText(O.x,320+zy(O),'체크!','#9fe0a8');sfx('block');if(Math.random()<.5)say(`${O.nick}, 정강이로 로킥을 체크합니다`);return}
   if(O.state==='block'&&A.target!=='leg'){blocked=true;mul=A.target==='head'?(O.rocked?.35:.15):.4;if(A.special)mul=Math.max(mul,.45);O.st=Math.max(0,O.st-A.st*.6)}
   const counter=O.state==='attack'&&O.A&&O.t<=O.A.w;
   const pw=A.kick?sv(F,'kick'):sv(F,'pow');
   const inj=F.inj||{},oinj=O.inj||{};
-  const dmg=DMG*A.dmg*(.55+pw*.0075)*F.stMul*(A.kick?legF(F)*(inj.knee?.7:1):(inj.hand?.68:1))*(A.target==='body'&&oinj.rib?1.15:1)*(A.target==='head'&&oinj.eye?1.12:1)*(counter?1.35:1)*(F.ctrW>0?1.3:1)*F.mul*(F.heart>0?1.18:1)*(F.plan==='press'?1.06:1)*(O.plan==='safe'?.92:1)*rnd(.88,1.12)*mul;
+  const dmg=DMG*A.dmg*(.55+pw*.0075)*F.stMul*(A.kick?legF(F)*(inj.knee?.7:1):(inj.hand?.68:1))*(A.target==='body'&&oinj.rib?1.15:1)*(A.target==='head'&&oinj.eye?1.12:1)*(counter?1.35:1)*(F.ctrW>0?1.3:1)*F.mul*(F.heart>0?1.18:1)*(F.plan==='press'?1.06:1)*(O.plan==='safe'?.92:1)*F.cp.pow*(A.kick&&A.target==='body'&&F.stance!==O.stance?1.1:1)*(F.exh?.7:1)*rnd(.88,1.12)*mul;
   if(F.ctrW>0&&!blocked){floatText(F.x,140,'슬립 카운터','#ffd75e');F.ctrW=0}
   if(!blocked){O.stun=4+Math.round(dmg*1.6);O.state='hit';O.vx=F.f*A.kb*.7;O.A=null;O.queue=[];O.react={k:A.target==='head'?(dmg>7?'big':'head'):A.target,t:0,d:dmg,up:A.anim==='upper'};
     if(counter&&dmg>6&&!S.demo){S.slow=Math.max(S.slow,20);S.zoomKick=.07}else if(dmg>8)S.zoomKick=.045}else O.x+=F.f*A.kb*.6;
   ev(F,'land:'+A.id);
-  if(deal(F,O,dmg,A.target,{name:A.name,src:'stand',blocked,counter,kick:!!A.kick,knee:A.anim==='flyknee',x:hx,y:hy}))return;
+  const legHit=A.target==='leg'?(Math.random()<(A.id==='calf'?.85:.7)?leadLeg(O):rearLeg(O)):null;
+  if(A.foulK&&!blocked){wildHit(F,O,A.foulK);if(S.mode!=='fight')return}
+  if(deal(F,O,dmg,A.target,{name:A.name,src:'stand',blocked,counter,kick:!!A.kick,knee:A.anim==='flyknee',x:hx,y:hy,leg:legHit}))return;
+  if(A.id==='highkick'&&!blocked&&(F===S.p||O===S.p))buzz([30,25,70]);
+  if(!blocked&&weakLeg(O)&&S.mode==='fight'&&!S.gr&&Math.random()<.16){O.stun=Math.max(O.stun,30);floatText(O.x,320+zy(O),'중심 흔들림','#ffcf99')}
   if(blocked)return;
   if(dmg>=8&&!blocked)hlMark(dmg*4+(counter?15:0),`${F.nick}의 ${A.name}${counter?' 카운터':''}`);
   if(dmg>=7.5)color('big',F,O);else if(A.target==='leg'&&O.legs<60)color('leg',F,O);else if(A.target==='body'&&O.body<65)color('body',F,O);
@@ -266,13 +305,19 @@ function tryHit(F,O){
     if(A.target==='head'&&O.head<45&&O.cuts>=3&&Math.random()<.08)injure(O,'eye')}
   if(S.mode!=='fight'||S.gr)return;
   if(A.target==='body'&&O.body<32&&dmg>=4.5&&Math.random()<.28){O.stun=60;O.rocked=Math.max(O.rocked,120);floatText(O.x,150,'바디에 무너짐','#ffd75e');say(`${O.nick}, 바디샷에 몸이 접힙니다!`)}
-  if(A.target==='leg'&&O.legs<38&&Math.random()<.25){O.stun=40;floatText(O.x,330,'다리 풀림','#ffcf99');say(`${O.nick} 다리가 무너집니다! 로킥이 쌓였어요`)}
+  if(A.target==='leg'&&O.legs<38&&Math.random()<.25){O.stun=40;floatText(O.x,330,(legHit==='L'?'왼':'오른')+'다리 풀림','#ffcf99');say(`${O.nick} ${legHit==='L'?'왼':'오른'}다리가 무너집니다! 로킥이 쌓였어요`)}
 }
 function resolveShoot(F,O){
   const A=F.A;F.hitDone=true;
   if(Math.abs(O.x-F.x)>A.range||Math.abs((O.z||0)-(F.z||0))>LANE+8){say(`${F.nick}의 태클이 허공을 가릅니다`);return}
   add(F,'tdA',1);
-  let ch=.4+(sv(F,'td')-sv(O,'tdd')*.85)*.014;
+  const dist0=Math.abs(O.x-F.x),kickCatch=O.state==='attack'&&O.A&&O.A.kick;
+  const type=kickCatch?'single':dist0<=92?'high':sv(F,'td')>=78||F.st>60?'double':'single';
+  const TDN={single:'싱글렉',double:'더블렉',high:'하이크로치'};
+  let ch=.4+(sv(F,'td')-sv(O,'tdd')*.85)*.014+(type==='single'?.06:type==='high'?.03:0);
+  /* timed sprawl: guard + down held as the shot comes in (player), or a sharp read (AI, best on Hall of Fame) */
+  const sprawlTimed=O===S.p&&!S.demo?(O.blockHeld&&(O.moveZ||0)>.4&&S.frame-(O.sprawlAt||-99)<=14):(O.state==='block'&&Math.random()<(S.D.sprawl||S.D.react*.28));
+  if(sprawlTimed)ch-=.55;
   if(O.state==='attack'){ch+=.3;if(O.A&&O.A.kick)ch+=.15}
   if(O.state==='block')ch-=.3+sv(O,'tdd')*.002;
   if(O.state==='hit')ch+=.2;
@@ -287,11 +332,15 @@ function resolveShoot(F,O){
       const d=7*(.6+sv(F,'pow')*.006);O.body=Math.max(1,O.body-d);O.head=Math.max(1,O.head-d*.4);add(F,'dB',d);floatText(O.x,180,String(Math.round(d)),'#fff',true);
       enterGround(F,O,A.id==='slam'?2:1);return;
     }
-    say(O.state==='attack'?`${F.nick}, 타격 아래로 파고드는 테이크다운!`:pick([`${F.nick}의 더블렉 테이크다운 성공!`,`${F.nick}, 싱글렉으로 넘깁니다!`]));
-    enterGround(F,O,sv(F,'td')>=88?1:0);color('td',F,O);
+    floatText(O.x,170+zy(O),TDN[type]+'!','#9fe0a8');
+    say(kickCatch?`${F.nick}, 킥을 잡아 싱글렉으로 넘깁니다!`:type==='high'?`${F.nick}, 하이크로치로 들어 올려 눕힙니다!`:type==='double'?`${F.nick}의 더블렉 테이크다운 성공!`:`${F.nick}, 싱글렉으로 넘깁니다!`);
+    if(F===S.p||O===S.p)buzz([50,40,50]);
+    enterGround(F,O,type==='high'||sv(F,'td')>=88?1:0);color('td',F,O);
   }else{
     F.stun=34;F.state='hit';F.vx=-F.f*1.5;F.A=null;
     {const C=S.cage,dO=Math.hypot(O.x-C.x,(O.z||0)-C.z);if(dO>220&&Math.random()<.18){foul(O,F,'fence');return}}
+    if(sprawlTimed&&!S.gr){floatText(O.x,150+zy(O),'스프롤 → 프론트 헤드락!','#9fe0a8');say(`${O.nick}, 엉덩이로 눌러 뭉갭니다! 프론트 헤드락, ${F.nick}는 터틀!`);sfx('slam');ev(O,'sprawl');
+      if(F===S.p||O===S.p)buzz([30,30,30]);F.stun=0;F.state='idle';F.A=null;enterGround(O,F,5);return}
     floatText(O.x,166,'스프롤!','#9fe0a8');say(`${O.nick}, 깔끔한 스프롤로 막아냅니다`);sfx('block');ev(O,'sprawl');
   }
 }
@@ -299,6 +348,7 @@ function upStand(F,O){
   if(F.react){F.react.t++;if(F.react.t>30)F.react=null}
   if(F.flash>0)F.flash--;if(F.rocked>0)F.rocked--;if(F.ctrW>0)F.ctrW--;
   if(F.state==='ko'){F.koT++;return}
+  if(F.swT>0)F.swT--;upExh(F);
   if(F.state!=='attack'&&F.state!=='slip'&&Math.abs(O.x-F.x)>6)F.f=O.x>F.x?1:-1;
   if(F.stun>0){F.stun--;F.state='hit';F.x+=F.vx;F.vx*=.82;F.st=Math.min(stMax(F),F.st+.1);if(F.stun===0)F.state='idle';return}
   if(F.state==='slip'){F.t++;F.x-=F.f*.6;if(F.t>=16)F.state='idle';return}
@@ -313,8 +363,9 @@ function upStand(F,O){
   if(!F.slot&&F.queue.length&&F!==S.p)F.slot=F.queue.shift();
   if(F.slot){const id=F.slot;F.slot=null;if(doStand(F,O,id)&&(F.state!=='idle'))return;if(S.gr||S.cl)return}
   const blocking=F.blockHeld;if(blocking&&!F.wasBlock)F.blockStart=S.frame;F.wasBlock=blocking;
+  if(blocking&&(F.moveZ||0)>.4&&!F.sprawlArm){F.sprawlArm=true;F.sprawlAt=S.frame}else if(!(blocking&&(F.moveZ||0)>.4))F.sprawlArm=false;
   const mz=F.moveZ||0;F.state=blocking?'block':(F.moveDir||mz?'walk':'idle');
-  const spd=(2.1+sv(F,'spd')*.012)*legF(F)*(F.rocked?.6:1)*(blocking?.5:1)*(F.inj&&F.inj.knee?.8:1);
+  const spd=(2.1+sv(F,'spd')*.012)*legF(F)*(F.rocked?.6:1)*(blocking?.5:1)*(F.inj&&F.inj.knee?.8:1)*(weakLeg(F)?.65:1)*(F.exh?.6:1)*F.cp.spd;
   F.x+=F.moveDir*spd;
   if(mz){/* lateral input circles around the opponent at the current distance */
     const O=other(F);let vx=F.x-O.x,vz=(F.z||0)-(O.z||0);const d0=Math.hypot(vx,vz)||1;let tx=-vz/d0,tz=vx/d0;if(tz*mz<0){tx=-tx;tz=-tz}
@@ -354,6 +405,7 @@ function aiStand(E,P){
   if(E.slot)return;
   if(--E.think>0)return;
   E.think=Math.round((D.think*1.7+Math.random()*14)*(1.25-T.agg*.4));
+  if(Math.random()<.012&&E.swT<=0&&E.state==='idle'){E.stance=E.stance==='south'?'orth':'south';E.swT=16}
   if(Math.random()<.12*T.counter&&Math.abs(dzA)<20){E.sideT=16+Math.floor(Math.random()*14);E.sideDir=(E.z||0)>20?-1:(E.z||0)<-20?1:(Math.random()<.5?-1:1)}
   if(E.blockT>0)return;
   if(pr&&pr.ai==='defend'){E.moveDir=dist>110?toward:0;return}
@@ -381,6 +433,7 @@ function aiStand(E,P){
     if(dist<=80)o.push(['hook',2],['upper',1.4],['bodyshot',1.5],['cross',1]);
     if(dist<=90)o.push(['jab',3],['cross',2],['bodyshot',.8]);
     if(dist<=106)o.push(['lowkick',2*T.kick*(1+pb)]);
+    if(dist<=98)o.push(['calf',1.1*T.kick*(1+pb)]);
     if(dist<=114)o.push(['midkick',1.6*T.kick]);
     if(dist<=122)o.push(['highkick',1.1*T.kick]);
     const m=o.length?wpick(o):null;
@@ -409,12 +462,12 @@ function clinchPos(){const c=S.cl;c.ctrl.z=c.other.z=c.cz||0;c.ctrl.x=c.cx-c.dir
 function upClinch(F){
   const c=S.cl,O=F===c.ctrl?c.other:c.ctrl,isCtrl=F===c.ctrl;
   if(F.flash>0)F.flash--;if(F.rocked>0)F.rocked--;
-  F.st=clamp(F.st+.06*(.55+sv(F,'car')*.006)-(c.cage&&!isCtrl?.06:0),0,stMax(F));
+  F.st=clamp(F.st+.06*(.55+sv(F,'car')*.006)-(c.cage&&!isCtrl?.06:0),0,stMax(F));upExh(F);
   if(isCtrl)add(F,'ctrl',.5);
   if(F.g.act){F.g.t++;if(F.g.t===F.g.A.w){resolveC(F,O,F.g.act);if(!S.cl||S.mode!=='fight')return}
     if(F.g.t>=F.g.A.w+F.g.A.r)F.g={act:null,t:0,A:null};return}
   if(F.slot){const id=F.slot;F.slot=null;
-    const A=CA[id];if(!A)return;
+    const A=CA[id];if(!A)return;if(exhausted(F,id))return;if(A.wild&&!S.wild)return;
     if(id==='c_cage'&&(!isCtrl||c.cage))return;
     if(id==='c_rev'&&isCtrl)return;
     const cost=A.st*(1.3-sv(F,'car')*.005);if(F.st<cost*.4){if(F===S.p)floatText(F.x,166,'지침','#8e97a6');return}
@@ -427,7 +480,8 @@ function resolveC(F,O,id){
   if(A.dmg){
     const pw=A.kick?sv(F,'kick'):sv(F,'pow');
     const blocked=O.blockHeld;
-    const dmg=DMG*A.dmg*(.55+pw*.0075)*F.stMul*F.mul*(isCtrl?1:.75)*(blocked?.5:1)*(1+sv(F,'clinch')*.002)*rnd(.88,1.12);
+    const dmg=DMG*A.dmg*(.55+pw*.0075)*F.stMul*F.mul*F.cp.pow*(isCtrl?1:.75)*(blocked?.5:1)*(1+sv(F,'clinch')*.002)*rnd(.88,1.12);
+    if(id==='c_hbutt'&&!blocked)wildHit(F,O,'head');
     ev(F,'land:'+id);
     if(deal(F,O,dmg,A.target,{name:A.name,src:'clinch',blocked:false,knee:!!A.kick,x:O.x-O.f*-10,y:(A.target==='head'?212:262)+zy(O)}))return;
     if(dmg>=6)say(`${F.nick}, 클린치에서 ${A.name}!`);
@@ -438,7 +492,10 @@ function resolveC(F,O,id){
   if(id==='c_trip'){
     add(F,'tdA',1);
     const ch=.33+((sv(F,'td')+sv(F,'clinch'))-(sv(O,'tdd')+sv(O,'clinch')))*.004+(c.cage&&isCtrl?.1:0)+(O.st<25?.1:0)-(isCtrl?0:.12);
-    if(Math.random()<ch){add(F,'td',1);ev(F,'td');say(`${F.nick}, 클린치에서 다리를 걸어 넘깁니다!`);S.cl=null;enterGround(F,O,sv(F,'td')>=85?1:0)}
+    if(Math.random()<ch){add(F,'td',1);ev(F,'td');const throwIt=sv(F,'clinch')>=72||c.cage&&isCtrl&&Math.random()<.4;
+      if(throwIt){floatText(O.x,170,'유도 메치기!','#9fe0a8');say(`${F.nick}, 허리를 넣어 유도식 메치기! ${O.nick}가 매트에 꽂힙니다!`);const d=5*(.6+sv(F,'pow')*.006)*F.cp.pow;O.body=Math.max(1,O.body-d);add(F,'dB',d);S.shake=12;sfx('slam')}
+      else{floatText(O.x,170,'다리 걸기','#9fe0a8');say(`${F.nick}, 클린치에서 다리를 걸어 넘깁니다!`)}
+      if(F===S.p||O===S.p)buzz([50,40,50]);S.cl=null;enterGround(F,O,throwIt?2:sv(F,'td')>=85?1:0)}
     else say(`${O.nick}, 중심을 잡고 버팁니다`);
   }else if(id==='c_cage'){
     if(Math.random()<.5+d*.01){c.cage=true;say(`${F.nick}, ${O.nick}를 케이지로 밀어붙입니다`)}
@@ -480,16 +537,18 @@ function exitGround(msg){
 }
 function gHead(F){
   const gr=S.gr,{cx,hd,pos}=gr;
-  if(F===gr.bot)return pos===4?{x:cx+hd*40,y:GY-104}:{x:cx+hd*78,y:GY-14};
-  return [{x:cx-hd*4,y:GY-112},{x:cx+hd*24,y:GY-110},{x:cx+hd*66,y:GY-58},{x:cx+hd*38,y:GY-128},{x:cx+hd*14,y:GY-112}][pos];
+  if(F===gr.bot)return pos===4?{x:cx+hd*40,y:GY-104}:pos===5?{x:cx+hd*6,y:GY-50}:{x:cx+hd*78,y:GY-14};
+  return [{x:cx-hd*4,y:GY-112},{x:cx+hd*24,y:GY-110},{x:cx+hd*66,y:GY-58},{x:cx+hd*38,y:GY-128},{x:cx+hd*14,y:GY-112},{x:cx-hd*22,y:GY-118}][pos];
 }
 function startG(F,id){
   const gr=S.gr,A=GA[id];if(!A)return;
   const top=F===gr.top;
   if(top!==id.startsWith('g_'))return;
   const msg=t=>{if(F===S.p)floatText(gr.cx,170,t,'#8e97a6')};
-  if(id==='g_pass'&&gr.pos>=3)return msg('더 갈 곳이 없어요');
-  if(id==='g_back'&&gr.pos!==2&&gr.pos!==3)return msg('사이드나 마운트에서');
+  if(exhausted(F,id))return;
+  if(A.wild&&!S.wild)return;
+  if(id==='g_pass'&&gr.pos>=3)return msg(gr.pos===5?'백 테이크로 돌아가세요':'더 갈 곳이 없어요');
+  if(id==='g_back'&&gr.pos!==2&&gr.pos!==3&&gr.pos!==5)return msg('사이드·마운트·프론트 헤드락에서');
   if(id==='g_sub'&&!TOP_SUBS[gr.pos].length)return msg('여기선 서브미션 불가');
   if(id==='b_sub'&&!BOT_SUBS[gr.pos].length)return msg('가드·하프 가드에서만');
   if(id==='b_sweep'&&gr.pos===4)return msg('백에서는 스윕 불가');
@@ -505,7 +564,8 @@ function startG(F,id){
 function gStrike(F,O,A,top){
   const gr=S.gr;
   const blocked=O.blockHeld;
-  const dmg=GDMG*A.dmg*(top?GNP[gr.pos]:1)*(.55+sv(F,top?'gnp':'pow')*.0075)*F.mul*(blocked?(top?.4:.5):1)*(O.rocked?1.4:1)*(.6+.4*F.stMul)*rnd(.88,1.12);
+  if(A.wild&&!blocked)wildHit(F,O,'soccer');
+  const dmg=GDMG*A.dmg*(top?GNP[gr.pos]:1)*(.55+sv(F,top?'gnp':'pow')*.0075)*F.mul*F.cp.pow*(blocked?(top?.4:.5):1)*(O.rocked?1.4:1)*(.6+.4*F.stMul)*rnd(.88,1.12);
   gr.idle=0;
   const h=gHead(O);h.y+=(gr.cz||0)*ZY;ev(F,'land:'+F.g.act);
   if(deal(F,O,dmg,A.target,{name:A.name,src:'ground',blocked:false,x:h.x,y:A.target==='body'?GY-30:h.y}))return;
@@ -525,7 +585,7 @@ function resolveG(F,O){
       if(Math.random()<ch){gr.prevPos=gr.pos;gr.trans=16;gr.pos++;gr.idle=0;ev(F,'pass');floatText(gr.cx,190,POSN[gr.pos],'#9fe0a8');say(`${F.nick}, ${POSN[gr.pos]}로 패스!`)}
       else say(`${O.nick}, 패스를 막고 버팁니다`);break}
     case 'g_back':{
-      const ch=(gr.pos===3?.35:.22)+(sv(F,'subO')-sv(O,'subD'))*.008+(O.st<25?.12:0);
+      const ch=(gr.pos===3?.35:gr.pos===5?.3:.22)+(sv(F,'subO')-sv(O,'subD'))*.008+(O.st<25?.12:0);
       if(Math.random()<ch){gr.prevPos=gr.pos;gr.trans=16;gr.pos=4;gr.idle=0;floatText(gr.cx,190,'백 마운트','#9fe0a8');say(`${F.nick}, 등을 잡습니다! 훅까지 걸었어요`)}
       else say(`${O.nick}, 등을 내주지 않습니다`);break}
     case 'g_sub':{
@@ -537,15 +597,15 @@ function resolveG(F,O){
       break}
     case 'g_stand':exitGround(`${F.nick}가 일어서며 스탠딩을 택합니다`);break;
     case 'b_sweep':{
-      const ch=([.32,.24,.1,.07,0][gr.pos]+(sv(F,'subO')-sv(O,'gnp'))*.005)*(1-post);
+      const ch=([.32,.24,.1,.07,0,.18][gr.pos]+(sv(F,'subO')-sv(O,'gnp'))*.005)*(1-post);
       if(Math.random()<ch){gr.top=F;gr.bot=O;gr.pos=0;gr.hd=-gr.hd;gr.idle=0;floatText(gr.cx,190,'스윕!','#9fe0a8');say(`${F.nick}, 스윕으로 포지션 역전!`);sfx('slam');ev(F,'sweep')}
       else say(`${F.nick}의 스윕 시도, ${O.nick}가 중심을 지킵니다`);break}
     case 'b_regard':{
-      const ch=([0,.32,.32,.2,.2][gr.pos]+(sv(F,'subD')-sv(O,'gnp'))*.006)*(1-post*.5);
-      if(Math.random()<ch){gr.prevPos=gr.pos;gr.trans=16;gr.pos=gr.pos===4?2:gr.pos===3?1:gr.pos-1;gr.idle=0;floatText(gr.cx,190,POSN[gr.pos],'#9fe0a8');say(`${F.nick}, ${POSN[gr.pos]}로 회복합니다`)}
+      const ch=([0,.32,.32,.2,.2,.3][gr.pos]+(sv(F,'subD')-sv(O,'gnp'))*.006)*(1-post*.5);
+      if(Math.random()<ch){gr.prevPos=gr.pos;gr.trans=16;gr.pos=gr.pos===5?0:gr.pos===4?2:gr.pos===3?1:gr.pos-1;gr.idle=0;floatText(gr.cx,190,POSN[gr.pos],'#9fe0a8');say(`${F.nick}, ${POSN[gr.pos]}로 회복합니다`)}
       else say(`${O.nick}가 포지션을 지킵니다`);break}
     case 'b_getup':{
-      const ch=[.4,.3,.18,.07,.1][gr.pos]+(sv(F,'tdd')-sv(O,'td'))*.006+(F.st>50?.05:-.1)-(F.rocked?.2:0)+(legF(F)-1)*.3;
+      const ch=[.4,.3,.18,.07,.1,.34][gr.pos]+(sv(F,'tdd')-sv(O,'td'))*.006+(F.st>50?.05:-.1)-(F.rocked?.2:0)+(legF(F)-1)*.3;
       if(Math.random()<ch)exitGround(`${F.nick}, 케이지를 짚고 일어납니다`);
       else say(`${O.nick}가 다시 눌러 둡니다`);break}
     case 'b_sub':{
@@ -560,7 +620,7 @@ function upGround(F){
   const gr=S.gr,top=F===gr.top,O=top?gr.bot:gr.top;
   if(top&&gr.trans>0)gr.trans--;
   if(F.flash>0)F.flash--;if(F.rocked>0)F.rocked--;
-  F.st=clamp(F.st+.055*(.55+sv(F,'car')*.006)-(!top&&gr.pos>=3?.05:0),0,stMax(F));
+  F.st=clamp(F.st+.055*(.55+sv(F,'car')*.006)*(top&&(gr.pos===3||gr.pos===4)?1.3:1)-(!top&&gr.pos>=3?.05:0),0,stMax(F));upExh(F);
   if(top)add(F,'ctrl',1);
   if(F.g.act){F.g.t++;if(F.g.t===F.g.A.w){resolveG(F,O);if(!S.gr||S.sub||S.mode!=='fight')return}
     if(F.g.t>=F.g.A.w+F.g.A.r)F.g={act:null,t:0,A:null};return}
@@ -576,8 +636,8 @@ function aiGround(E,P){
   if(E.g.act)return;
   const s=k=>sv(E,k)/100;
   let o;
-  if(top)o=[['g_pound',3+s('gnp')*2+(P.head<40?2.5:0)],['g_elbow',E.st>20?1.5+s('gnp'):0],['g_hammer',1+s('gnp')],['g_bodyp',1],['g_pass',gr.pos<3?.8+s('subO')*2.2:0],['g_back',gr.pos===2||gr.pos===3?T.sub*2:0],['g_sub',TOP_SUBS[gr.pos].length?(gr.pos===0?.3:1)*T.sub*1.7+(P.head<40?.8:0):0],['g_stand',T.td<.1&&T.kick>.3?1.4:.1],['g_power',E.meter>=100?4:0]];
-  else o=[['b_punch',1.2],['b_elbow',.8],['b_sweep',gr.pos<4?T.sub*1.5+.3:0],['b_regard',gr.pos>0?1.3:0],['b_getup',1+s('tdd')*1.8],['b_sub',BOT_SUBS[gr.pos].length?T.sub*1.3:0],['cover',1+(E.head<40?2:0)+(E.st<25?1:0)]];
+  if(top)o=[['g_pound',3+s('gnp')*2+(P.head<40?2.5:0)],['g_elbow',E.st>20?1.5+s('gnp'):0],['g_hammer',1+s('gnp')],['g_bodyp',1],['g_pass',gr.pos<3?.8+s('subO')*2.2:0],['g_back',gr.pos===2||gr.pos===3?T.sub*2:gr.pos===5?1.6:0],['g_sub',TOP_SUBS[gr.pos].length?(gr.pos===0?.3:1)*T.sub*1.7+(P.head<40?.8:0):0],['g_stand',T.td<.1&&T.kick>.3?1.4:.1],['g_power',E.meter>=100?4:0]];
+  else o=[['b_punch',1.2],['b_elbow',.8],['b_sweep',gr.pos<4||gr.pos===5?T.sub*1.5+.3:0],['b_regard',gr.pos>0?1.3:0],['b_getup',1+s('tdd')*1.8],['b_sub',BOT_SUBS[gr.pos].length?T.sub*1.3:0],['cover',1+(E.head<40?2:0)+(E.st<25?1:0)]];
   const k=wpick(o);
   if(k==='cover')E.blockT=24;else E.slot=k;
 }
@@ -608,7 +668,7 @@ function upSub(){
     finish(s.att,'서브미션',s.name);return}
   if(s.prog<=0||s.t>=420){
     const gr=S.gr;say(`${s.def.nick}, ${s.name}에서 빠져나옵니다!`);
-    if(gr&&gr.top===s.att)gr.pos=Math.max(0,gr.pos-2);
+    if(gr&&gr.top===s.att)gr.pos=gr.pos===5?0:Math.max(0,gr.pos-2);
     s.att.st=Math.max(0,s.att.st-14);S.sub=null;if(gr)gr.idle=0;
   }
 }
@@ -622,7 +682,7 @@ function netInput(R){if(!S||!S.remote||!R)return;S.rin=R;const E=S.b,P=S.a;
     if(S.mode!=='fight')continue;
     if(S.sub){mashFor(E);continue}if(q[1]==='mash')continue;E.slot=resolveFor(E,P,!!q[2],q[1]);E.bufT=10}}
 const r1=v=>Math.round(v*10)/10;
-const NK=['x','z','f','t','walk','koT','head','body','legs','cuts','st','stun','moveDir','meter','heart','rocked','flash'];
+const NK=['x','z','f','t','walk','koT','head','body','legs','lgL','lgR','cuts','st','stun','moveDir','meter','heart','rocked','flash'];
 function nF(F){const o={s:F.state,b:F.blockHeld?1:0};for(const k of NK){const v=F[k];if(v)o[k]=typeof v==='number'?r1(v):v}
   if(F.A)o.A=[F.A.anim,F.A.w,F.A.a,F.A.r,F.A.special?1:0,F.A.kind||'',F.A.id||'',F.A.target||''];
   if(F.g&&(F.g.act||F.g.t))o.g=[F.g.act,F.g.t,F.g.A?F.g.A.w:0,F.g.A?F.g.A.r:0,F.g.A?F.g.A.dmg||0:0,F.g.A?F.g.A.target||'':''];
@@ -720,7 +780,7 @@ function start(o){
   S={o,D,diffKey:o.diff||'normal',rounds:o.rounds||3,roundFrames:Math.round((o.roundSec||120)*60),round:1,timer:0,
     mode:'intro',phaseT:110,frame:0,sparks:[],texts:[],feed:[],banner:null,shake:0,slow:0,gr:null,cl:null,sub:null,
     held:{left:false,right:false,block:false},rounds_:[],paused:false,practice:o.practice||null,events:{},pbf:0,title:!!o.title,label:o.label||'',
-    pat:{},lean:0,cardLead:0,zoomKick:0,
+    pat:{...(o.pat||{})},wild:!!o.wild,lean:0,cardLead:0,zoomKick:0,
     demo:!!o.demo,rings:[],stains:[],cage:{x:400,z:0,ang:0},camTheta:0,hitstop:0,flashScr:0,rec:[],ref:{x:400,f:1,state:'start',walk:0},camFocus:null,winSide:null,replayOn:o.replay!==false};
   S.a=mkRun(o.a,'a');S.b=mkRun(o.b,'b');S.p=S.a;S.e=S.b;S.b.mul=D.mul;
   S.remote=!!o.remote;S.mirror=!!o.mirror;S.spec=!!o.spec;S.net=S.remote;S.nl=[];S.nseq=0;S.rin={};if(S.remote){S.b.mul=1;S.replayOn=false}
@@ -742,7 +802,7 @@ function startRound(){
   say(S.practice?'연습 모드: 시간 제한 없이 기술을 익혀 보세요':S.round===1?`${a.nick} 대 ${b.nick}, 경기 시작합니다!`:`${S.round}라운드, 다시 맞붙습니다`);
 }
 /* ---------- walkout & announcer ---------- */
-const WK=[{k:'blueAisle',d:150},{k:'blueIn',d:40},{k:'blueAnn',d:110},{k:'redAisle',d:150},{k:'redIn',d:40},{k:'redAnn',d:110},{k:'faceoff',d:175},{k:'touch',d:40},{k:'back',d:40}];
+const WK=[{k:'blueAisle',d:150},{k:'blueIn',d:40},{k:'blueAnn',d:110},{k:'redAisle',d:150},{k:'redIn',d:40},{k:'redAnn',d:110},{k:'faceoff',d:175},{k:'touch',d:40},{k:'back',d:40},{k:'coach',d:130}];
 const songOf=F=>{const S0=IC.SONGS,k=IC.songPick?IC.songPick(F.d):null;return S0[k!=null&&S0[k]?k:IC.hash((F.d.id||'')+F.name)%S0.length]};
 const AISLE0=-300,AISLE1=600;
 function startWalkout(){
@@ -797,6 +857,11 @@ function stepWalkout(){
       break}
     case 'touch':W.tension=0;if(W.ev==='push'){a.state=b.state='idle';if(W.t===1){banner('글러브 터치 거부!','#ff6b5e',70);ann('ref',`${b.nick}, 글러브 터치를 거부합니다! 감정이 끓어오릅니다!`);sfx('crowd')}}else{a.state=b.state='block';a.x=lerp(a.x,362,.15);b.x=lerp(b.x,438,.15);if(W.t===18)sfx('block')}break;
     case 'back':a.state=b.state='walk';walkTo(a,250,0,4);walkTo(b,550,0,4);a.f=1;b.f=-1;break;
+    case 'coach':{a.state=b.state='idle';walkTo(a,190,0,3);walkTo(b,610,0,3);a.f=-1;b.f=1;
+      if(W.t===1){const E=b,t=E.ai,L=[];if(t.td>.25)L.push('저 친구 태클 들어온다. 가드 올리고 아래로 눌러서 스프롤!');if(t.kick>.4)L.push('킥이 많아. 차고 들어올 때 잡아서 넘겨!');if(t.sub>.5)L.push('밑에 깔리면 위험해. 그라운드는 피하고 서서 싸워!');
+        if(E.s.chin<75)L.push('맷집이 약해. 머리를 노려!');if(E.s.car<75)L.push('체력이 약점이야. 바디 치고 끝까지 압박해!');L.push('잽으로 거리 재고, 서두르지 마. 숨 아끼면서 가자!');
+        ann('coach',`코치: "${pick(L.slice(0,3))}"`);sfx('coach')}
+      if(W.t>110){a.f=1;b.f=-1}break}
   }
   if(W.t>=st.d){W.i++;W.t=0;
     if(W.i>=WK.length)endWalkout();else W.k=WK[W.i].k}
@@ -841,17 +906,17 @@ function next(){
   if(!S)return;S.round++;
   for(const F of [S.a,S.b]){if(F.cuts>=2&&Math.random()<.6)F.cuts--}
   if(S.b.plan==null||Math.random()<.5)S.b.plan=pick(['press','wrestle','safe',null]);
-  for(const F of [S.a,S.b]){F.head=Math.min(100,F.head+18);F.body=Math.min(100,F.body+10);F.legs=Math.min(100,F.legs+6);F.st=stMax(F)}
+  for(const F of [S.a,S.b]){F.head=Math.min(100,F.head+18);F.body=Math.min(100,F.body+10);F.lgL=Math.min(100,F.lgL+6);F.lgR=Math.min(100,F.lgR+6);syncLegs(F);F.exh=false;F.st=stMax(F)}
   startRound();
 }
 function topHL(){const L=(S.hlPend||[]).slice().sort((x,y)=>y.score-x.score);const out=[];for(const h of L){if(out.length>=3)break;if(!out.some(o=>Math.abs(o.at-h.until)<40))out.push({label:h.label,frames:h.frames,at:h.until})}return out.sort((x,y)=>x.at-y.at)}
-function end(){const o=S.o;const r={...S.result,highlights:topHL(),injA:S.a.inj?Object.keys(S.a.inj):[],injB:S.b.inj?Object.keys(S.b.inj):[],fouls:{a:S.a.fouls||0,b:S.b.fouls||0},perfects:S.a.perfects||0,coachWins:S.coachWins||0,heartA:!!S.a.heartUsed,heartB:!!S.b.heartUsed,rounds:S.rounds_,stats:{a:{...S.a.tot},b:{...S.b.tot}},hp:{a:{h:S.a.head,b:S.a.body,l:S.a.legs},b:{h:S.b.head,b:S.b.body,l:S.b.legs}},a:S.a.d,b:S.b.d};
+function end(){const o=S.o;const r={...S.result,highlights:topHL(),injA:S.a.inj?Object.keys(S.a.inj):[],injB:S.b.inj?Object.keys(S.b.inj):[],fouls:{a:S.a.fouls||0,b:S.b.fouls||0},perfects:S.a.perfects||0,coachWins:S.coachWins||0,heartA:!!S.a.heartUsed,heartB:!!S.b.heartUsed,rounds:S.rounds_,stats:{a:{...S.a.tot},b:{...S.b.tot}},hp:{a:{h:S.a.head,b:S.a.body,l:S.a.legs},b:{h:S.b.head,b:S.b.body,l:S.b.legs}},a:S.a.d,b:S.b.d,pat:{...S.pat},wild:!!S.wild,wildN:S.wildN||0};
   r.perf=r.method!=='판정'&&r.method!=='무승부';
   r.fotn=(r.stats.a.dH+r.stats.b.dH)>140&&Math.min(r.stats.a.sigL,r.stats.b.sigL)>25;
   if(o.onEnd)o.onEnd(r)}
 function hlTick(){if(!S.hlPend||!S.hlPend.length)return;const f=S.rec[S.rec.length-1];for(const h of S.hlPend)if(S.frame<=h.until)h.frames.push(f)}
 function step(){
-  S.frame++;
+  S.frame++;S.heat=(S.heat||0)*.992;
   const P=S.p,E=S.e;
   if(S.mode==='fight'){
     if(P.bufT>0)P.bufT--;else if(!S.demo)P.slot=null;
@@ -926,7 +991,7 @@ function step(){
 }
 const lerp=(a,b,t)=>a+(b-a)*t;
 let slowTick=0;
-const SNAPK=['x','z','moveZ','f','state','t','walk','blockHeld','rocked','flash','koT','head','body','legs','cuts','st','stun','moveDir'];
+const SNAPK=['x','z','moveZ','f','state','t','walk','blockHeld','rocked','flash','koT','head','body','legs','lgL','lgR','stance','exh','cuts','st','stun','moveDir'];
 function snapF(F){const o={};for(const k of SNAPK)o[k]=F[k];o.A=F.A?{anim:F.A.anim,w:F.A.w,a:F.A.a,r:F.A.r,special:F.A.special,kind:F.A.kind,id:F.A.id}:null;o.g={act:F.g.act,t:F.g.t,A:F.g.A?{w:F.g.A.w,r:F.g.A.r,dmg:F.g.A.dmg,target:F.g.A.target}:null};return o}
 function snap(){return{a:snapF(S.a),b:snapF(S.b),gr:S.gr?{top:S.gr.top.side,pos:S.gr.pos,cx:S.gr.cx,hd:S.gr.hd,cz:S.gr.cz}:null,cl:S.cl?{ctrl:S.cl.ctrl.side,cage:S.cl.cage,cx:S.cl.cx,dir:S.cl.dir,cz:S.cl.cz}:null,sub:S.sub?{att:S.sub.att.side,name:S.sub.name,prog:S.sub.prog}:null,ref:{...S.ref},cage:{...S.cage},th:S.camTheta}}
 function replayView(){
@@ -992,16 +1057,16 @@ function resolve(id){return resolveFor(S.p,S.e,!!S.held.block,id)}
 function resolveFor(P,E,g,id){
   const dist=Math.abs(E.x-P.x);
   switch(id){
-    case '@jab':return g?'bodyshot':'jab';
+    case '@jab':return g?(S.wild?'eyepoke':'bodyshot'):'jab';
     case '@cross':return g?'slip':'cross';
     case '@hook':return g?'upper':'hook';
-    case '@kick':return g?'lowkick':dist>110?'highkick':dist>92?'midkick':'lowkick';
+    case '@kick':return g?(S.wild?'lowblow':'calf'):dist>110?'highkick':dist>92?'midkick':'lowkick';
     case '@grap':{const sh=E.state==='attack'&&E.A&&E.A.kind==='shoot'&&E.t<=E.A.w+E.A.a;return sh?'clinch':(g||dist<=86)?'clinch':'td'}
     case '@cp':return g?'c_elbow':'c_short';
-    case '@ck':return g?'c_kneeH':'c_knee';
+    case '@ck':return g?(S.wild?'c_hbutt':'c_kneeH'):'c_knee';
     case '@cpos':return S.cl&&S.cl.ctrl===P?'c_cage':'c_rev';
     case '@gp':return g?'g_bodyp':'g_pound';
-    case '@ge':return g?'g_hammer':'g_elbow';
+    case '@ge':return g?(S.wild?'g_soccer':'g_hammer'):'g_elbow';
     case '@adv':{const pos=S.gr?S.gr.pos:0;return pos<2?'g_pass':pos===2?(g?'g_back':'g_pass'):'g_back'}
     case '@bp':return g?'b_elbow':'b_punch';
   }
@@ -1018,34 +1083,34 @@ function context(){
     grid=Array.from({length:6},()=>I('mash','연타!',{mash:true}));
     hint=att?`${S.sub.name}! 버튼이나 화면을 빠르게 연타해서 조이세요.`:`${S.sub.name}에 걸렸습니다! 연타해서 빠져나오세요.`;
   }else if(S.gr){
-    const gr=S.gr,top=gr.top===P,pos=gr.pos;key=(top?'t':'b')+pos+full+g;
+    const gr=S.gr,top=gr.top===P,pos=gr.pos,X=!!P.exh,wd=!!S.wild;key=(top?'t':'b')+pos+full+g+X+wd;
     if(top){
       const subs=TOP_SUBS[pos];
       left=[off(),I('block','포스처',{hold:true})];
-      grid=[I('@gp',g?'바디 파운딩':'파운딩'),I('@ge',g?'해머피스트':'엘보'),I('@adv',pos<2?'패스':pos===2?(g?'백 테이크':'패스'):pos===3?'백 테이크':'—',{dim:pos>=4,tone:'g'}),
-        I('g_sub','서브미션',{dim:!subs.length,tone:'g'}),I('g_stand','일어서기',{tone:'g'}),I('g_power','파워 파운딩',{dim:!full,ready:full,tone:'s'})];
-      hint=`상위 · ${POSN[pos]}. 패스로 포지션을 올리면 파운딩이 세지고 서브미션이 열려요. 포스처를 누른 채 파운딩 = 바디 파운딩.`;
+      grid=[I('@gp',g?'바디 파운딩':'파운딩'),I('@ge',g?(wd?'사커킥':'해머피스트'):'엘보',{dim:X&&!g}),I('@adv',pos<2?'패스':pos===2?(g?'백 테이크':'패스'):pos===3||pos===5?'백 테이크':'—',{dim:pos===4||X,tone:'g'}),
+        I('g_sub','서브미션',{dim:!subs.length||X,tone:'g'}),I('g_stand','일어서기',{tone:'g'}),I('g_power','파워 파운딩',{dim:!full||X,ready:full,tone:'s'})];
+      hint=pos===5?'프론트 헤드락! 상대는 터틀입니다. 서브미션(길로틴·다스)이나 백 테이크를 노리세요.':X?'탈진 상태 — 포지션을 지키며 숨을 고르세요. 마운트·백 상위에서는 회복이 1.3배 빠릅니다.':`상위 · ${POSN[pos]}. 패스로 포지션을 올리면 파운딩이 세지고 서브미션이 열려요. 포스처를 누른 채 파운딩 = 바디 파운딩.`;
     }else{
       const subs=BOT_SUBS[pos];
       left=[off(),I('block','커버',{hold:true})];
-      grid=[I('@bp',g?'엘보':'펀치'),I('b_sweep','스윕',{dim:pos===4,tone:'g'}),I('b_regard','리가드',{dim:pos===0,tone:'g'}),
-        I('b_sub',subs.length?'서브미션':'—',{dim:!subs.length,tone:'g'}),I('b_getup','일어나기',{tone:'g'}),off()];
-      hint=`하위 · 상대가 ${POSN[pos]}. 커버로 파운딩을 막고, 리가드·스윕·일어나기로 빠져나오세요.`;
+      grid=[I('@bp',g?'엘보':'펀치'),I('b_sweep',pos===5?'싱글렉 역전':'스윕',{dim:pos===4||X,tone:'g'}),I('b_regard',pos===5?'가드 당기기':'리가드',{dim:pos===0,tone:'g'}),
+        I('b_sub',subs.length?'서브미션':'—',{dim:!subs.length||X,tone:'g'}),I('b_getup','일어나기',{dim:X,tone:'g'}),off()];
+      hint=pos===5?'터틀 자세로 눌렸어요! 가드 당기기·싱글렉 역전·일어나기로 빠져나오세요.':`하위 · 상대가 ${POSN[pos]}. 커버로 파운딩을 막고, 리가드·스윕·일어나기로 빠져나오세요.`;
     }
   }else if(S.cl){
-    const ctrl=S.cl.ctrl===P;key='c'+ctrl+S.cl.cage+g;
+    const ctrl=S.cl.ctrl===P,X=!!P.exh,wd=!!S.wild;key='c'+ctrl+S.cl.cage+g+X+wd;
     left=[off(),I('block','프레임',{hold:true})];
-    grid=[I('@cp',g?'엘보':'숏 펀치'),I('@ck',g?'헤드 니킥':'니킥'),I('c_trip','클린치 TD',{tone:'g'}),
-      I('@cpos',ctrl?'케이지 압박':'포지션 역전',{dim:ctrl&&S.cl.cage,tone:'g'}),I('c_brk','브레이크',{tone:'g'}),I('c_thigh','허벅지 니킥')];
+    grid=[I('@cp',g?'엘보':'숏 펀치',{dim:X&&g}),I('@ck',g?(wd?'헤드버트':'헤드 니킥'):'니킥',{dim:X&&g}),I('c_trip','클린치 TD',{dim:X,tone:'g'}),
+      I('@cpos',ctrl?'케이지 압박':'포지션 역전',{dim:ctrl&&S.cl.cage||X,tone:'g'}),I('c_brk','브레이크',{tone:'g'}),I('c_thigh','허벅지 니킥')];
     hint=ctrl?'클린치 주도권. 니킥·엘보로 데미지를 쌓거나 케이지로 밀어 넘기세요. 프레임을 누른 채 누르면 엘보·헤드 니킥.':'클린치에 잡혔어요. 역전하거나 브레이크로 빠져나오세요.';
   }else{
     const E=S.e,shooting=E.state==='attack'&&E.A&&E.A.kind==='shoot'&&E.t<=E.A.w+E.A.a,dist=Math.abs(E.x-P.x);
-    const kick=g?'로킥':dist>110?'하이킥':dist>92?'미들킥':'로킥';
-    key='s'+full+P.d.special+shooting+g+kick+(dist<=86);
+    const kick=g?'카프킥':dist>110?'하이킥':dist>92?'미들킥':'로킥';
+    const X=!!P.exh,wd=!!S.wild;key='s'+full+P.d.special+shooting+g+kick+(dist<=86)+X+wd+P.stance;
     left=[I('move','이동',{hold:true}),I('block','가드',{hold:true})];
-    grid=[I('@jab',g?'바디샷':'잽'),I('@cross',g?'회피':'크로스'),I('@hook',g?'어퍼컷':'훅'),
-      I('@kick',kick),I('@grap',shooting?'길로틴!':(g||dist<=86)?'클린치':'테이크다운',{tone:'g',ready:shooting}),I('special',SPM[P.d.special].name,{dim:!full,ready:full,tone:'s'})];
-    hint='가드를 누른 채 누르면: 잽→바디샷, 크로스→회피, 훅→어퍼컷, 킥→로킥. 킥은 거리에 따라 로·미들·하이킥, 그래플은 멀면 태클·가까우면 클린치.';
+    grid=[I('@jab',g?(wd?'눈 찌르기':'바디샷'):'잽'),I('@cross',g?'회피':'크로스',{dim:X&&!g}),I('@hook',g?'어퍼컷':'훅',{dim:X}),
+      I('@kick',g&&wd?'로블로':kick,{dim:X&&kick!=='로킥'&&kick!=='카프킥'}),I('@grap',shooting?'길로틴!':(g||dist<=86)?'클린치':'테이크다운',{tone:'g',ready:shooting,dim:X}),I('special',SPM[P.d.special].name,{dim:!full||X,ready:full,tone:'s'})];
+    hint=shooting?'태클이 들어와요! 가드 + 아래(S)를 누르면 스프롤 → 프론트 헤드락':X?'탈진! 강공격과 그래플이 막혔어요. 거리를 벌리고 숨을 고르세요.':wd?'야생 매치: 가드를 누른 채 잽 = 눈 찌르기, 킥 = 로블로. 클린치 가드+니킥 = 헤드버트, 그라운드 가드+엘보 = 사커킥.':'가드를 누른 채 누르면: 잽→바디샷, 크로스→회피, 훅→어퍼컷, 킥→카프킥(앞다리 집중). 킥은 거리에 따라 로·미들·하이킥, 그래플은 멀면 태클·가까우면 클린치.';
   }
   if(dim)key+='dim';
   return{key,left,grid,hint,dim};
@@ -1071,6 +1136,7 @@ IC.Fight={
   setPlan,INJ,
   playHL(list,done){if(!S||!list||!list.length){done&&done();return}S.hlQ=list.slice(1);S.rp={frames:list[0].frames,i:0,sub:0,hl:true,label:list[0].label};S.mode='replay';S.hlDone=done;S.paused=false},
   press(id){if(!S)return;if(S.mirror){if(!S.spec&&S.netOut)S.netOut('p',S.sub?'mash':id,!!S.held.block);return}if(S.mode!=='fight')return;if(S.sub){mash();return}if(id==='mash')return;S.p.slot=resolve(id);S.p.bufT=10},
+  stance(){if(!S||S.mode!=='fight'||S.gr||S.cl||S.mirror)return;const P=S.p;if(P.swT>0||P.state==='attack'||P.state==='hit')return;P.stance=P.stance==='south'?'orth':'south';P.swT=16;floatText(P.x,150+zy(P),P.stance==='south'?'사우스포':'오소독스','#7fe3ff');sfx('whoosh')},
   hold(k,on){if(S){S.held[k]=on;if(S.mirror&&S.netOut)S.netOut('h')}},
   releaseAll(){if(S)S.held={left:false,right:false,block:false,up:false,dn:false,ax:0,az:0}},
   axis(v,w){if(S){S.held.ax=v;S.held.az=w||0;if(S.mirror&&S.netOut)S.netOut('h')}},
@@ -1078,9 +1144,11 @@ IC.Fight={
   netSnap,applyNet,netInput,
   oppLeft(){if(!S||S.result)return;S.mode='fight';finish(S.p,'TKO','상대 연결 끊김');say('상대의 연결이 끊겼습니다.')},
   skipIntro(){skipWalkout()},
+  skipReplay(){if(!S||S.mode!=='replay'||!S.rp)return;if(S.rp.hl){S.hlQ=[];S.mode='over';S.rp=null;const cb=S.hlDone;S.hlDone=null;if(cb)cb()}else startOutro()},
   forfeit(){if(!S)return;if(S.mirror){S.netOut&&S.netOut('p','ff');return}const W=S.e;S.mode='fight';S.replayOn=false;finish(W,'TKO','기권');S.phaseT=1},
   stop(){S=null},
   W,H,GY,GNP,TOP_SUBS,BOT_SUBS,
-  _ai:{aiStand,aiClinch,aiGround},replayView
+  _ai:{aiStand,aiClinch,aiGround},replayView,
+  intensity(){if(!S)return 0;let I=(S.heat||0)*.6;if(S.sub)I+=S.sub.prog/130;if(S.a.rocked>0||S.b.rocked>0)I+=.25;if(S.mode==='ko'||S.mode==='replay')I=1.2;if(S.mode==='outro'||S.mode==='decision')I=Math.max(I,.8);return Math.max(0,Math.min(1.2,I))}
 };
 })(window.IC);
