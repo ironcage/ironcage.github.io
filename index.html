@@ -2,7 +2,24 @@
 <html lang="ko">
 <head>
 <meta name="google-site-verification" content="vj00vRPLtIMEfV1T8ssvNeys5cdKPDKwToFJEl3xcgM" /><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"
+  >
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LGPBWCFQ8S"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  // PWA (standalone) 실행 여부 확인
+  const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+  gtag('config', 'G-LGPBWCFQ8S', {
+    'custom_map': {'dimension1': 'display_mode'},
+    'display_mode': isPWA ? 'pwa' : 'browser'
+  });
+</script>
+
 <meta name="theme-color" content="#101318">
 <meta name="description" content="종합격투기 커리어 게임 — 아이언 케이지">
 <!-- PWA / iPhone home screen -->
