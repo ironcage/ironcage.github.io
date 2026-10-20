@@ -222,13 +222,17 @@ function drawHead(F,c,ang,f,o){
 
 /* draw a full figure from joints */
 function drawBody(F,J){
+  /* stance depth: the lead (forward) arm and leg sit on the camera side only when the fighter's lead side faces the camera.
+     orthodox facing right / southpaw facing left → lead limbs near; otherwise they swing behind the torso */
+  const sw=!!J.swapD;if(sw)J=Object.assign({},J,{nearHand:J.farHand,farHand:J.nearHand,nearFoot:J.farFoot,farFoot:J.nearFoot,kneeN:J.kneeF,kneeF:J.kneeN,elbN:J.elbF,elbF:J.elbN,footN:J.footF,footF:J.footN});
   const f=J.f,o=F.kind==='ref'?F:fighterLook(F,J);
   const skin=o.skinNow,skinD=shade(o.look.skin,.8);
   const sp=vsub(J.chest,J.hip),sd=vn(sp),fwd=vmul({x:-sd.y,y:sd.x},f);
   const shB=vadd(J.chest,vmul(sd,-5));
   const tw=J.twist||0,ht=J.hipTwist||0;
-  const shN=vadd(vadd(shB,vmul(fwd,4-tw*6)),vmul(sd,tw<0?tw*1.5:0)),shF=vadd(vadd(shB,vmul(fwd,-5+tw*9)),vmul(sd,tw>0?-tw*1.5:0));
-  const hipN=vadd(J.hip,vmul(fwd,3-ht*3)),hipF=vadd(J.hip,vmul(fwd,-3+ht*8));
+  const shL=vadd(vadd(shB,vmul(fwd,4-tw*6)),vmul(sd,tw<0?tw*1.5:0)),shR=vadd(vadd(shB,vmul(fwd,-5+tw*9)),vmul(sd,tw>0?-tw*1.5:0));
+  const hpL=vadd(J.hip,vmul(fwd,3-ht*3)),hpR=vadd(J.hip,vmul(fwd,-3+ht*8));
+  const shN=sw?shR:shL,shF=sw?shL:shR,hipN=sw?hpR:hpL,hipF=sw?hpL:hpR;
   const head=J.head||vadd(vadd(J.chest,vmul(sd,21)),vmul(fwd,3));
   const hAng=Math.atan2(sd.y,sd.x)+Math.PI/2+(J.tilt||0)*f;
   const legF=ik(hipF,J.farFoot,46,44,J.kneeF||'fwd',f),legN=ik(hipN,J.nearFoot,46,44,J.kneeN||'fwd',f);
@@ -257,7 +261,7 @@ function drawBody(F,J){
   {const dg=ctx.createRadialGradient(shN.x+fwd.x*2,shN.y-3,0,shN.x,shN.y,10);dg.addColorStop(0,'rgba(255,240,225,.22)');dg.addColorStop(1,'rgba(255,240,225,0)');ctx.fillStyle=dg;ctx.beginPath();ctx.arc(shN.x,shN.y,9,0,7);ctx.fill()}
   if(o.shirt)sleeve(shN,armN.j,armN.end,o.shirt);
   glove(armN.end,Math.atan2(armN.end.y-armN.j.y,armN.end.x-armN.j.x),o,false);
-  return{head,handN:armN.end,handF:armF.end,footF:legF.end};
+  return sw?{head,handN:armF.end,handF:armN.end,footF:legN.end}:{head,handN:armN.end,handF:armF.end,footF:legF.end};
 }
 function fighterLook(F,J){
   const L=F.look;
@@ -398,6 +402,8 @@ function poseStand(F,O,S){
     if(['lowkick','midkick','highkick','spinkick','qmark'].includes(an)){front={x:front.x-f*2*e,y:front.y-2*e};chest.x-=f*3*e}
   }
   if(st==='hit'){const k=F.t!=null?Math.max(0,1-F.t/18):1;tilt-=.25*k;chest.x-=f*4*k}
+  /* stance switch: a quick hop where the feet scissor through each other */
+  if(F.swT>0&&st!=='ko'){const k=Math.sin((1-F.swT/16)*Math.PI);hip.y-=7*k;chest.y-=7*k;near.y-=6*k;far.y-=6*k;front={x:lerp(front.x,x,k*.8),y:front.y-12*k};back={x:lerp(back.x,x,k*.8),y:back.y-9*k}}
   return{f,hip,chest,tilt,mood,nearHand:near,farHand:far,nearFoot:front,farFoot:back,kneeN,kneeF,elbN,elbF,twist,hipTwist};
 }
 function poseRef(R,S){
@@ -605,6 +611,8 @@ function drawStandingFighter(F,O,S){
   ctx.save();depth(F.x,F.z||0);
   shadowAt(F.x,52);
   const J=smoothPose(F,poseStand(F,O,S));
+  if(F.stance)J.swapD=(F.f===1)===(F.stance==='south');
+  if(F.swT>0){const k=1-F.swT/16;ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=`rgba(127,227,255,${(1-k)*.8})`;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(F.x,GY+2,30+k*46,7+k*9,0,0,7);ctx.stroke();ctx.restore()}
   ctx.save();
   if(F.state==='ko'){const a=Math.min(1,F.koT/22)*Math.PI/2*.94;ctx.translate(F.x-F.f*22,GY-4);ctx.rotate(-F.f*a);ctx.translate(-(F.x-F.f*22),-(GY-4));J.mood='ko'}
   if(F.heart>0){const g=ctx.createRadialGradient(J.chest.x,J.chest.y,10,J.chest.x,J.chest.y,90);g.addColorStop(0,`rgba(255,60,40,${.18+.1*Math.sin(S.frame*.2)})`);g.addColorStop(1,'rgba(255,60,40,0)');ctx.fillStyle=g;ctx.fillRect(J.chest.x-90,J.chest.y-90,180,180)}
@@ -1022,14 +1030,24 @@ function cagePyro(S,P){if(!P)return;const AR=S.arena||{k:'main'},L=TIERL[AR.k]??
   if(t<6){ctx.fillStyle=`rgba(255,200,120,${.25*(1-t/6)})`;ctx.fillRect(0,0,WH,HH)}}
 /* broadcast "tale of the tape" slide */
 function koRate(d){const r=d.rec||[0,0,0],w=r[0]||0;return clamp(Math.round(25+((d.s&&d.s.pow)||70)*.5-20+(IC.hash?IC.hash(d.name||'')%15:0)),10,88)}
-function tapeSlide(S,t){const A=S.a.d,B=S.b.d,p=clamp(t/18,0,1),e=1-Math.pow(1-p,3),w=Math.min(WH*.86,560),h=Math.min(HH*.82,300),x=WH/2-w/2,y=HH*.09+(1-e)*30;
+function tapeSlide(S,t){const A=S.a.d,B=S.b.d,p=clamp(t/18,0,1),e=1-Math.pow(1-p,3),w=Math.min(WH*.86,560),OD=S.odds,oh=OD?40:0,h=Math.min(HH*.88,300+oh),x=WH/2-w/2,y=Math.max(8,HH*.06)+(1-e)*30;
   ctx.save();ctx.globalAlpha=e*clamp((230-t)/14,0,1);frost(x,y,w,h,16,.82);chrome(x,y,w,h,16,'#e8b33a');
   ctx.textAlign='center';ctx.textBaseline='middle';num('TALE OF THE TAPE',WH/2,y+18,12,'#e8b33a','center');
   const hy=y+44;for(const [F,side] of [[S.a,-1],[S.b,1]]){const cxp=WH/2+side*w*.3;ctx.fillStyle=F.corner;ctx.fillRect(cxp-w*.16,hy-14,w*.32,3);disp(`"${F.nick}"`,cxp,hy+4,Math.min(20,w*.04),'#fff','center');txt(F.name,cxp,hy+22,10.5,'rgba(220,226,236,.8)','center','600')}
   disp('VS',WH/2,hy+8,22,'#e8b33a','center');
+  /* betting line: decimal odds + implied win probability, the favourite's side glows */
+  if(OD){const oy=hy+46,k=clamp((t-8)/16,0,1),ke=1-Math.pow(1-k,3),pa=OD.pa,bw=w*.36,favA=pa>=.5;ctx.globalAlpha=e*k;
+    ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.roundRect(x+14,oy-17,w-28,36,10);ctx.fill();ctx.strokeStyle='rgba(232,179,58,.35)';ctx.lineWidth=1;ctx.stroke();
+    for(const [side,o,pr,col,fav] of [[-1,OD.a,pa,S.a.corner,favA],[1,OD.b,1-pa,S.b.corner,!favA]]){const cx0=WH/2+side*w*.38;
+      if(fav){const gg=ctx.createRadialGradient(cx0,oy,2,cx0,oy,48);gg.addColorStop(0,rgba(col,.35));gg.addColorStop(1,rgba(col,0));ctx.fillStyle=gg;ctx.fillRect(cx0-50,oy-18,100,36)}
+      num((o*ke+1*(1-ke)).toFixed(2),cx0,oy-3,19,fav?'#fff':'#c9d1dc','center');txt(`${Math.round(pr*100)}% · ${fav?'우세':'언더독'}`,cx0,oy+11,8.5,fav?'#ffe08a':'rgba(214,220,230,.65)','center','700')}
+    const bx=WH/2-bw/2,byy=oy+3;txt(OD.rv?'경기 전 배당률 · 라이벌전':'경기 전 배당률',WH/2,oy-9,8.5,'#e8b33a','center','800');
+    ctx.fillStyle='rgba(255,255,255,.08)';ctx.beginPath();ctx.roundRect(bx,byy,bw,7,3.5);ctx.fill();
+    const split=bw*(.5+(pa-.5)*ke);ctx.save();ctx.beginPath();ctx.roundRect(bx,byy,bw,7,3.5);ctx.clip();ctx.fillStyle=S.a.corner;ctx.fillRect(bx,byy,split,7);ctx.fillStyle=S.b.corner;ctx.fillRect(bx+split,byy,bw-split,7);
+    ctx.fillStyle='rgba(255,255,255,.35)';ctx.fillRect(bx,byy,bw,2);ctx.restore();ctx.fillStyle='#fff';ctx.fillRect(bx+split-1,byy-2,2,11);ctx.globalAlpha=e}
   const rows=[['전적',(A.rec||[0,0,0]).join('-'),(B.rec||[0,0,0]).join('-')],['나이',`${A.age||'-'}세`,`${B.age||'-'}세`],['키',`${A.height||'-'}cm`,`${B.height||'-'}cm`],['리치',`${A.reach||'-'}cm`,`${B.reach||'-'}cm`],['KO율',`${koRate(A)}%`,`${koRate(B)}%`],['스타일',IC.STYLES[A.style].name,IC.STYLES[B.style].name]];
-  rows.forEach((r,i)=>{const ry=hy+44+i*17,k=clamp((t-14-i*5)/10,0,1);ctx.globalAlpha=e*k;if(i%2===0){ctx.fillStyle='rgba(255,255,255,.04)';ctx.fillRect(x+14,ry-8,w-28,16)}num(r[1],WH/2-w*.3,ry,13,'#f2f4f8','center');txt(r[0],WH/2,ry,10.5,'rgba(214,220,230,.7)','center','700');num(r[2],WH/2+w*.3,ry,13,'#f2f4f8','center')});
-  const by=hy+44+rows.length*17+8,G=[['타격',d=>(d.s.pow+d.s.spd+d.s.kick)/3],['레슬링',d=>(d.s.td+d.s.tdd)/2],['주짓수',d=>(d.s.subO+d.s.subD)/2],['체력',d=>d.s.car],['맷집',d=>d.s.chin]];
+  rows.forEach((r,i)=>{const ry=hy+44+oh+i*17,k=clamp((t-14-i*5)/10,0,1);ctx.globalAlpha=e*k;if(i%2===0){ctx.fillStyle='rgba(255,255,255,.04)';ctx.fillRect(x+14,ry-8,w-28,16)}num(r[1],WH/2-w*.3,ry,13,'#f2f4f8','center');txt(r[0],WH/2,ry,10.5,'rgba(214,220,230,.7)','center','700');num(r[2],WH/2+w*.3,ry,13,'#f2f4f8','center')});
+  const by=hy+44+oh+rows.length*17+8,G=[['타격',d=>(d.s.pow+d.s.spd+d.s.kick)/3],['레슬링',d=>(d.s.td+d.s.tdd)/2],['주짓수',d=>(d.s.subO+d.s.subD)/2],['체력',d=>d.s.car],['맷집',d=>d.s.chin]];
   G.forEach(([lab,f],i)=>{const ry=by+i*13,k=clamp((t-50-i*6)/24,0,1),va=f(A)/100*k,vb=f(B)/100*k,bw=w*.34;ctx.globalAlpha=e*clamp((t-46-i*6)/8,0,1);
     ctx.fillStyle='rgba(255,255,255,.07)';ctx.fillRect(WH/2-30-bw,ry-3,bw,6);ctx.fillRect(WH/2+30,ry-3,bw,6);ctx.fillStyle=S.a.corner;ctx.fillRect(WH/2-30-bw*va,ry-3,bw*va,6);ctx.fillStyle=S.b.corner;ctx.fillRect(WH/2+30,ry-3,bw*vb,6);
     txt(lab,WH/2,ry+.5,9.5,f(A)>f(B)?'#9fc4ff':f(B)>f(A)?'#ffaaa0':'#ddd','center','700')});

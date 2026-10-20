@@ -46,42 +46,87 @@ Sound.music=function(on,song){const genre=song&&song.g||'rock',K=song&&song.key|
   const dist=ac.createWaveShaper();{const n=1024,c=new Float32Array(n);for(let k=0;k<n;k++){const x=k/n*2-1;c[k]=Math.tanh(x*6)}dist.curve=c}const dg=ac.createGain();dg.gain.value=.16;dist.connect(dg).connect(bus);
   const cheer=()=>{const t=ac.currentTime+Math.random()*.3;this.whoo(t,.05+Math.random()*.07,cmix);if(Math.random()<.25){const o=ac.createOscillator(),a=ac.createGain();o.type='sine';o.frequency.setValueAtTime(2100,t);o.frequency.linearRampToValueAtTime(2700,t+.12);o.frequency.linearRampToValueAtTime(2300,t+.35);a.gain.setValueAtTime(.0001,t);a.gain.linearRampToValueAtTime(.025,t+.04);a.gain.exponentialRampToValueAtTime(.001,t+.4);o.connect(a).connect(cmix);o.start(t);o.stop(t+.42)}};
   const claps=t=>{for(let k=0;k<14;k++){const s=ac.createBufferSource();s.buffer=this.nb;const fl=ac.createBiquadFilter();fl.type='bandpass';fl.frequency.value=1300+Math.random()*900;fl.Q.value=1.2;const a=ac.createGain(),tt=t+Math.random()*.035;a.gain.setValueAtTime(.05,tt);a.gain.exponentialRampToValueAtTime(.001,tt+.07);s.connect(fl).connect(a).connect(cmix);s.start(tt,Math.random()*.4);s.stop(tt+.08)}};
-  const hit=(t,f,d,v,type='sine',to,dst)=>{const o=ac.createOscillator(),a=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+d);a.gain.setValueAtTime(v,t);a.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(a).connect(dst||bus);o.start(t);o.stop(t+d+.02)};
+  const hit=(t,f,d,v,type='sine',to,dst)=>{const o=ac.createOscillator(),a=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+d);a.gain.setValueAtTime(v,t);a.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(a).connect(dst||syn);o.start(t);o.stop(t+d+.02)};
   const pad=(t,f,d,v,type='sawtooth',cut=1200)=>{const o=ac.createOscillator(),o2=ac.createOscillator(),fl=ac.createBiquadFilter(),a=ac.createGain();o.type=o2.type=type;o.frequency.value=f;o2.frequency.value=f*1.006;fl.type='lowpass';fl.frequency.value=cut;
-    a.gain.setValueAtTime(.0001,t);a.gain.linearRampToValueAtTime(v,t+d*.35);a.gain.linearRampToValueAtTime(.0001,t+d);o.connect(fl);o2.connect(fl);fl.connect(a).connect(bus);o.start(t);o2.start(t);o.stop(t+d+.05);o2.stop(t+d+.05)};
+    a.gain.setValueAtTime(.0001,t);a.gain.linearRampToValueAtTime(v,t+d*.35);a.gain.linearRampToValueAtTime(.0001,t+d);o.connect(fl);o2.connect(fl);fl.connect(a).connect(syn);o.start(t);o2.start(t);o.stop(t+d+.05);o2.stop(t+d+.05)};
   const nz=(t,d,v,type,f)=>{const s=ac.createBufferSource();s.buffer=this.nb;const fl=ac.createBiquadFilter();fl.type=type;fl.frequency.value=f;const a=ac.createGain();a.gain.setValueAtTime(v,t);a.gain.exponentialRampToValueAtTime(.001,t+d);s.connect(fl).connect(a).connect(bus);s.start(t);s.stop(t+d+.02)};
-  const kick=(t,v=1)=>hit(t,130,.32,v,'sine',40),snare=(t,v=.5)=>{nz(t,.2,v,'bandpass',1900);hit(t,190,.1,v*.5,'triangle',120)},hat=(t,v=.1,d=.04)=>nz(t,d,v,'highpass',7500);
+  const BPM=song&&song.bpm||({rock:150,hiphop:88,epic:76,edm:128})[genre]||150,beat=60/BPM;
+  // sidechain bus: synths duck under every kick (the "pumping" that makes a drop feel alive)
+  const duck=ac.createGain();duck.connect(bus);const syn=duck;
+  // tempo-synced echo for leads
+  const dl=ac.createDelay(1.5);dl.delayTime.value=beat*.75;const fb=ac.createGain();fb.gain.value=.34;const dlf=ac.createBiquadFilter();dlf.type='lowpass';dlf.frequency.value=2800;dl.connect(dlf).connect(fb).connect(dl);const wet=ac.createGain();wet.gain.value=.3;dlf.connect(wet).connect(bus);
+  // master sweep filter: opens through intro/build, slams open on the drop
+  const sweep=ac.createBiquadFilter();sweep.type='lowpass';sweep.frequency.value=900;sweep.Q.value=.9;
+  try{bus.disconnect();bus.connect(sweep);sweep.connect(g);sweep.connect(send)}catch(e){}
+  const pump=(t,d)=>{duck.gain.cancelScheduledValues(t);duck.gain.setValueAtTime(.28,t);duck.gain.linearRampToValueAtTime(1,t+d)};
+  const kick=(t,v=1)=>{hit(t,150,.34,v,'sine',42,bus);hit(t,2400,.012,v*.25,'square',null,bus);pump(t,beat*.7)},
+    snare=(t,v=.5)=>{nz(t,.2,v,'bandpass',1900);nz(t,.09,v*.6,'highpass',5000);hit(t,200,.1,v*.5,'triangle',130,bus)},
+    hat=(t,v=.1,d=.04)=>nz(t,d,v,'highpass',7500),
+    crash=(t,v=.3)=>{nz(t,1.8,v,'highpass',5200);nz(t,1.1,v*.5,'bandpass',3200)},
+    boom=t=>{hit(t,62,2.2,1,'sine',30,bus);nz(t,.8,.5,'lowpass',240);crash(t,.34)};
+  const semi=(r,s)=>r*Math.pow(2,s/12);
+  const lead=(t,f,d,v,type='sawtooth',cut=3600,toDelay=true)=>{const fl=ac.createBiquadFilter(),a=ac.createGain();fl.type='lowpass';fl.Q.value=3;fl.frequency.setValueAtTime(cut*1.8,t);fl.frequency.exponentialRampToValueAtTime(cut*.55,t+d);
+    for(const [m,tp,lv] of [[1,type,1],[1.0045,type,.8],[.5,'square',.35]]){const o=ac.createOscillator(),og=ac.createGain();o.type=tp;o.frequency.setValueAtTime(f*m,t);og.gain.value=lv;o.connect(og).connect(fl);o.start(t);o.stop(t+d+.08)}
+    a.gain.setValueAtTime(.0001,t);a.gain.linearRampToValueAtTime(v,t+.008);a.gain.setValueAtTime(v*.8,t+d*.7);a.gain.exponentialRampToValueAtTime(.001,t+d+.06);fl.connect(a);a.connect(syn);if(toDelay)a.connect(dl)};
+  const hey=(t,v=.2)=>{for(const [f,q,k] of [[700,7,1],[1150,8,.7],[2500,9,.3]]){const s=ac.createBufferSource();s.buffer=this.nb2||this.nb;const fl=ac.createBiquadFilter();fl.type='bandpass';fl.frequency.value=f;fl.Q.value=q;const a=ac.createGain();a.gain.setValueAtTime(.0001,t);a.gain.linearRampToValueAtTime(v*k*2.2,t+.03);a.gain.exponentialRampToValueAtTime(.001,t+.24);s.connect(fl).connect(a).connect(cmix);s.start(t,Math.random()*3);s.stop(t+.26)}};
+  const riser=(t,d,v=.22)=>{const s=ac.createBufferSource();s.buffer=this.nb2||this.nb;const fl=ac.createBiquadFilter();fl.type='bandpass';fl.Q.value=2;fl.frequency.setValueAtTime(300,t);fl.frequency.exponentialRampToValueAtTime(7000,t+d);const a=ac.createGain();a.gain.setValueAtTime(.005,t);a.gain.exponentialRampToValueAtTime(v,t+d);s.connect(fl).connect(a).connect(bus);s.start(t,Math.random());s.stop(t+d+.02);
+    const o=ac.createOscillator(),og=ac.createGain();o.type='sawtooth';o.frequency.setValueAtTime(110*K,t);o.frequency.exponentialRampToValueAtTime(880*K,t+d);og.gain.setValueAtTime(.001,t);og.gain.exponentialRampToValueAtTime(v*.35,t+d);o.connect(og).connect(bus);o.start(t);o.stop(t+d+.02)};
+  // arrangement: intro -> build -> DROP (x4 bars) -> DROP B (x2) -> build -> ...
+  const IB=BPM<100?1:2;
+  const phase=bar=>{if(bar<IB)return 0;if(bar<IB*2)return 1;const c=(bar-IB*2)%8;return c<4?2:c<6?3:1};
+  let prev=-1;
+  const sect=(i,bar,t,b)=>{const p=phase(bar),bd=b*4;
+    if(i===0){if(p!==prev){
+        if(p===0){sweep.frequency.setValueAtTime(700,t);sweep.frequency.exponentialRampToValueAtTime(2600,t+bd*IB)}
+        if(p===1){sweep.frequency.setValueAtTime(1800,t);sweep.frequency.exponentialRampToValueAtTime(9000,t+bd*IB*.98)}
+        if(p>=2&&prev<2){sweep.frequency.cancelScheduledValues(t);sweep.frequency.setValueAtTime(18000,t);boom(t);for(let k=0;k<3;k++)hey(t+k*.09,.12);this.roar&&setTimeout(()=>{try{this.roar(.22)}catch(e){}},Math.max(0,(t-ac.currentTime)*1000))}
+        prev=p}
+      if(p===1)riser(t,bd,.12+.1*((bar-IB)%IB+1)/IB)}
+    if(p===1){const last=phase(bar+1)>=2;const roll=last?(i>=8?1:2):(i%2===0?2:0);if(roll&&(i%roll===0))snare(t,.18+.3*i/16);if(last&&i===15){hit(t,90,.2,.5,'sine',40,bus)}}
+    if(p>=2&&(i===4||i===12))claps(t);
+    if(p===3&&(i===12||i===14)&&bar%2)hey(t,.16);
+    if(p>=2&&i===0&&bar%4===0)crash(t,.22);
+    return p};
   const G={
-    rock:{bpm:150,f(i,st,t,b){const bar=st>>4,root=[82.4,82.4,98,110][bar%4]*K;
-      if(i===0||i===6||i===8||i===11)kick(t);if(i===4||i===12)snare(t,.6);if(i%2===0)hat(t,.08);
-      const chug=[1,1,0,1,1,0,1,0,1,1,0,1,1,1,0,1][i];if(chug){hit(t,root,b*.22,.5,'sawtooth',null,dist);hit(t,root*1.5,b*.22,.4,'sawtooth',null,dist)}
-      if(i===0&&bar%2===0){hit(t,root*2,b*7,.3,'sawtooth',null,dist);hit(t,root*3,b*7,.25,'sawtooth',null,dist)}
-      if(i===0&&bar%4===3)nz(t,1.2,.25,'highpass',5000)}},
-    hiphop:{bpm:88,swing:.12,f(i,st,t,b){const bar=st>>4,root=[55,55,49,58.3][bar%4]*K;
-      if(i===0||i===7||i===10)kick(t,1);if(i===4||i===12){snare(t,.55);nz(t,.08,.25,'bandpass',1200)}if(i%2===0)hat(t,i%4===2?.13:.07);
-      if(i===0)hit(t,root,b*3.6,.55,'sine',root*.94);if(i===10)hit(t,root*1.19,b*1.4,.4,'sine');
+    rock:{f(i,st,t,b){const bar=st>>4,p=sect(i,bar,t,b),rs=[0,0,3,5][bar%4],root=semi(82.4*K,rs);
+      if(p===0){if(i===0||i===8)kick(t);if(i%4===2)hat(t,.06)}
+      else if(p===1){if(i%4===0)kick(t);if(i%2===0)hat(t,.07)}
+      else{if(i%2===0||i===7||i===15)kick(t,.9);if(i===4||i===12)snare(t,.65);hat(t,i%2?.05:.09);if(i===0)nz(t,.6,.12,'highpass',6000)}
+      const chug=p>=2?[1,1,0,1,1,0,1,0,1,1,0,1,1,1,0,1][i]:p===1?i%2===0:i%4===0;
+      if(chug){hit(t,root,b*.22,.5,'sawtooth',null,dist);hit(t,root*1.5,b*.22,.4,'sawtooth',null,dist)}
+      if(p===0&&i===0){hit(t,root*2,b*7,.3,'sawtooth',null,dist);hit(t,root*3,b*7,.22,'sawtooth',null,dist)}
+      if(p>=2){const HK=p===2?[12,null,12,15,null,17,null,19,17,null,15,null,12,null,10,12]:[24,null,22,19,null,17,19,null,22,null,24,null,27,24,22,19],n=HK[i];
+        if(n!=null)lead(t,semi(82.4*K,n+rs*(p===2?0:0)),b*(HK[i+1]===null?.48:.24),.085,'sawtooth',3000)}}},
+    hiphop:{swing:.1,f(i,st,t,b){const bar=st>>4,p=sect(i,bar,t,b),root=[55,55,49,58.3][bar%4]*K;
+      if(p===0){if(i===0||i===10)kick(t);if(i%4===0)hat(t,.07)}
+      else{if(i===0||i===7||i===10||(p>=2&&i===13))kick(t,1);if(i===4||i===12){snare(t,.55);nz(t,.08,.25,'bandpass',1200)}
+        // trap hats: 16ths with rolls into the next bar
+        if(p>=2){hat(t,i%4===2?.12:.06,.03);if(i===14||(p===3&&i===6))for(let k=1;k<3;k++)hat(t+k*b/12,.07,.02)}else if(i%2===0)hat(t,.08)}
+      if(i===0)hit(t,root,b*3.6,.6,'sine',root*.94);if(i===10){hit(t,root*1.19,b*1.4,.45,'sine');if(p>=2)hit(t+b*1.2,root*1.19,b*.6,.3,'sine',root*.8)}
       if(i===0||i===6){for(const r of [4,4.76,6])hit(t,root*r,b*.9,.06,'triangle')}
-      if(i===14&&bar%2&&!(song&&song.big))hit(t,root*8,b*.4,.04,'square');
-      if(song&&song.big){const tri=[1,1.189,1.498].map(x=>root*4*x);
-        if(i===0){for(const f of tri)pad(t,f,b*4.1,.055,'sawtooth',1600);pad(t,root*2,b*4.1,.08,'sawtooth',700);for(const f of [root*8,root*8*1.498])pad(t,f,b*4.1,.03,'triangle',3000);hit(t,58,1.6,.7,'sine',32);nz(t,.5,.3,'lowpass',260)}
-        if(i===8)hit(t,70,1,.6,'sine',36);
-        if(i===0||i===3||i===10){for(const f of tri.slice(0,2)){hit(t,f*.5,b*.55,.12,'sawtooth');hit(t,f*.501,b*.55,.09,'sawtooth')}}
-        if(i===4||i===12)claps(t);
-        if(i===15&&bar%4===3){for(let k=0;k<4;k++)hit(t+k*b/16,90-k*8,.18,.5,'sine',40)}}}},
-    epic:{bpm:76,f(i,st,t,b){const bar=st>>4,ch=[[110,130.8,164.8],[87.3,110,130.8],[98,123.5,146.8],[82.4,103.8,123.5]][bar%4].map(x=>x*K);
-      if(i===0||i===3||i===6||i===10){hit(t,72,.9,1,'sine',38);nz(t,.3,.3,'lowpass',400)}if(i===12||i===14)snare(t,.3);
-      if(i===0){for(const f of ch)pad(t,f*2,b*4.1,.07);pad(t,ch[0]/2,b*4.1,.12,'sawtooth',500)}
-      if(i===8&&bar%2===1){for(const f of ch)hit(t,f*2,b*1.6,.09,'sawtooth')}
+      if(p>=2){const HK=p===2?[12,null,null,15,null,null,19,null,17,null,15,null,null,12,10,null]:[24,null,24,null,22,null,19,null,22,null,19,null,17,null,15,null],n=HK[i];
+        if(n!=null)lead(t,semi(55*K,n),b*.5,.07,p===2?'square':'sawtooth',2400);
+        if(i===0)for(const r of [1,1.189,1.498])pad(t,root*4*r,b*4.1,.045,'sawtooth',1500)}
+      if(song&&song.big&&p>=2){if(i===0){hit(t,58,1.6,.7,'sine',32,bus);nz(t,.5,.3,'lowpass',260)}if(i===0||i===3||i===10){for(const f of [1,1.189].map(x=>root*2*x)){hit(t,f,b*.55,.12,'sawtooth');hit(t,f*1.002,b*.55,.09,'sawtooth')}}}}},
+    epic:{f(i,st,t,b){const bar=st>>4,p=sect(i,bar,t,b),ch=[[110,130.8,164.8],[87.3,110,130.8],[98,123.5,146.8],[82.4,103.8,123.5]][bar%4].map(x=>x*K);
+      const tk=p===0?[0,6]:p===1?[0,4,8,12]:[0,3,6,8,10,12,14];if(tk.includes(i)){hit(t,72,.9,p>=2?1:.8,'sine',38,bus);nz(t,.3,.3,'lowpass',400);if(p>=2)pump(t,b*.6)}
+      if(p===1&&i>=8&&i%2===0)snare(t,.2+i*.02);if(p>=2&&(i===4||i===12))snare(t,.45);if(p>=2&&i%2===1)nz(t,.05,.06,'bandpass',3000);
+      if(i===0){for(const f of ch)pad(t,f*2,b*4.1,p>=2?.06:.07);pad(t,ch[0]/2,b*4.1,.12,'sawtooth',500)}
+      // driving string ostinato (16ths) — the engine of every trailer cue
+      if(p>=1){const os=[0,0,12,0,7,0,12,0,0,0,12,0,7,12,7,0][i];hit(t,semi(ch[0],os),b*.2,p>=2?.1:.06,'sawtooth')}
+      if(p>=2){const HK=p===2?[24,null,null,null,27,null,26,null,24,null,null,null,22,null,19,null]:[31,null,null,null,29,null,27,null,26,null,27,null,29,null,31,null],n=HK[i];
+        if(n!=null)lead(t,semi(55*K,n),b*(i%8===0?1.9:.9),.075,'sawtooth',2200)}
       if(i===0&&bar%4===0)nz(t,2.2,.18,'bandpass',600)}},
-    edm:{bpm:128,f(i,st,t,b){const bar=st>>4,root=[110,87.3,130.8,98][bar%4]*K,arp=[1,1.5,2,2.4,2,1.5,3,2.4];
-      if(i%4===0)kick(t,1.1);if(i%4===2)nz(t,.12,.16,'highpass',6000);if(i===4||i===12){nz(t,.15,.4,'bandpass',1500);nz(t,.12,.3,'bandpass',1100)}
-      hat(t,.05,.03);
-      const f=root*2*arp[i%8];hit(t,f,b*.22,.11,'sawtooth');hit(t,f*1.008,b*.22,.08,'sawtooth');
-      if(i%4===2)hit(t,root/2,b*.4,.45,'sawtooth',root/2*.99,dist);
-      if(i===0&&bar%4===3)for(let k=0;k<8;k++)nz(t+k*b/8,.05,.05+k*.03,'bandpass',1000+k*400)}}
+    edm:{f(i,st,t,b){const bar=st>>4,p=sect(i,bar,t,b),root=[110,87.3,130.8,98][bar%4]*K,arp=[1,1.5,2,2.4,2,1.5,3,2.4];
+      if(p===0){if(i%4===0)kick(t,.9)}else if(p===1){if(i%4===0&&!(phase(bar+1)>=2&&i>=8))kick(t,.9)}else{if(i%4===0)kick(t,1.15)}
+      if(p>=2){if(i%4===2)nz(t,.12,.18,'highpass',6000);if(i===4||i===12){nz(t,.15,.4,'bandpass',1500);nz(t,.12,.3,'bandpass',1100)}hat(t,.05,.03)}
+      const f=root*2*arp[i%8];hit(t,f,b*.22,p>=2?.08:.1,'sawtooth');hit(t,f*1.008,b*.22,.06,'sawtooth');
+      if(p>=2&&i%4===2)hit(t,root/2,b*.4,.5,'sawtooth',root/2*.99,dist);
+      if(p>=2&&(i===0||i===3||i===6||i===10||i===12)){for(const r of [2,2.378,2.997])for(const d of [1,1.006,.994])hit(t,root*r*d,b*.5,.03,'sawtooth')}
+      if(p>=2){const HK=p===2?[24,null,24,27,null,24,31,null,29,null,27,null,24,null,22,null]:[36,34,31,null,29,31,null,27,29,null,31,34,null,31,29,27],n=HK[i];if(n!=null)lead(t,semi(55*K,n),b*.3,.07,'square',4200)}}}
   };
-  const T=G[genre]||G.rock,beat=60/(song&&song.bpm||T.bpm);let step=0,next=ac.currentTime+.1;
-  const sched=()=>{while(next<ac.currentTime+.4){const i=step%16,sw=T.swing&&i%2?beat/4*T.swing:0;try{T.f(i,step,next+sw,beat)}catch(e){}next+=beat/4;step++}if(Math.random()<.22)cheer()};
+  const T=G[genre]||G.rock;let step=0,next=ac.currentTime+.1;
+  const sched=()=>{while(next<ac.currentTime+.4){const i=step%16,sw=T.swing&&i%2?beat/4*T.swing:0;try{T.f(i,step,next+sw,beat)}catch(e){if(!Sound._merr){Sound._merr=String(e);console.warn('music',e)}}next+=beat/4;step++}if(Math.random()<.22)cheer()};
   sched();this._mus={g,crowd,timer:setInterval(sched,100)};
 };
 Sound.roar=function(v=.4){if(!this.ac||!this.on)return;try{const ac=this.ac,t=ac.currentTime;
@@ -556,7 +601,7 @@ const TALK={weigh:['내일 밤, 넌 바닥에서 천장을 보게 될 거야.','
   '내 다음 상대 명단에 {me} 이름은 없었어. 쉬어 가는 경기지.','{me}, 기자회견은 잘하네. 싸움도 그만큼 하나 보자.','{me}한테 한 가지 조언하지. 턱 숙여.','{me}, 링 위에서 울지만 마라.']};
 function talk(kind,repl={}){const L=TALK[kind],seen=(DATA.talkSeen=DATA.talkSeen||{})[kind]||[];let pool=L.filter(x=>!seen.includes(x));if(!pool.length)pool=L;
   const t=pick(pool);DATA.talkSeen[kind]=[t,...seen].slice(0,Math.min(10,L.length-2));let s=t;for(const k in repl)s=s.split('{'+k+'}').join(repl[k]);return s}
-IC.talk=talk;
+IC.talk=talk;IC._startFight=c=>startFight(c);
 function scoutNote(b){const t=STYLES[b.style].ai,n=[];
   if(t.td>.25)n.push('테이크다운을 자주 노립니다. 가드로 스프롤 준비.');if(t.kick>.4)n.push('킥 비중이 높아요. 킥에 테이크다운으로 반격.');
   if(t.sub>.5)n.push('그라운드에서 서브미션이 위험합니다. 하위 포지션을 피하세요.');if(t.counter>.4)n.push('카운터 성향. 무리한 큰 공격은 읽힙니다.');
@@ -679,9 +724,10 @@ function startFight(cfg){
   CFG=cfg;Sound.on=DATA.settings.sound;Sound.init();Crowd.start();if(IC.KO)IC.KO.reset();
   scr.hidden=true;game.hidden=false;between.hidden=true;pad.hidden=false;hintEl.hidden=false;
   $('#glabel').textContent=cfg.label||'';
-  stopDemo();IC.opts.nums=!!DATA.settings.nums;IC.Fight.start({walkout:!cfg.online&&DATA.settings.walkout!==false,replay:!cfg.online&&DATA.settings.replay!==false,remote:cfg.online==='host',coach:DATA.settings.coach!==false,a:cfg.a,b:cfg.b,rounds:cfg.rounds||3,roundSec:cfg.roundSec||DATA.settings.roundSec,diff:cfg.diff||DATA.settings.diff,title:cfg.title,practice:cfg.practice,condition:cfg.condition,wild:!!cfg.wild,pat:cfg.pat||null,arena:cfg.arena!=null?cfg.arena:cfg.practice?0:cfg.title?3:cfg.online?2:cfg.wild?1:2,
+  stopDemo();IC.opts.nums=!!DATA.settings.nums;IC.opts.haptic=DATA.settings.haptic!==false;IC.Fight.start({walkout:!cfg.online&&DATA.settings.walkout!==false,replay:!cfg.online&&DATA.settings.replay!==false,remote:cfg.online==='host',coach:DATA.settings.coach!==false,a:cfg.a,b:cfg.b,rounds:cfg.rounds||3,roundSec:cfg.roundSec||DATA.settings.roundSec,diff:cfg.diff||DATA.settings.diff,title:cfg.title,practice:cfg.practice,condition:cfg.condition,wild:!!cfg.wild,pat:cfg.pat||null,arena:cfg.arena!=null?cfg.arena:cfg.practice?0:cfg.title?3:cfg.online?2:cfg.wild?1:2,
     onRound:showBetween,onEnd:res=>{stopLoop();res.ach=checkFightAch(res,cfg);setTimeout(()=>cfg.onResult(res),30)}});
   const S=IC.Fight.S;
+  try{if(!cfg.practice){const ov=f=>f.ovr!=null?f:Object.assign({},f,{ovr:IC.ovrOf(f.s,f.style)});S.odds=oddsOf(ov(cfg.a),ov(cfg.b))}}catch(e){S.odds=null}
   USE3D=!!(IC.R3D&&IC.R3D.init(gl));gl.hidden=!USE3D;if(USE3D)IC.R3D.reset();
   if(cfg.scoutMul)S.b.mul*=cfg.scoutMul;
   if(cfg.oppMul)S.b.mul*=cfg.oppMul;
@@ -741,7 +787,7 @@ const KR=['J','U','H','K','I','O']; // J 펀치 · K 킥 · I 클린치/테이�
 function itemAt(side,i){return CUR?(side==='l'?CUR.left[i]:CUR.grid[i]):null}
 function mkBtn(side,i){
   const b=document.createElement('button');b.className='pb';b.type='button';
-  b.addEventListener('pointerdown',e=>{e.preventDefault();Sound.init();const it=itemAt(side,i);if(!it||(it.dim&&!it.mash))return;b.classList.add('on');
+  b.addEventListener('pointerdown',e=>{e.preventDefault();Sound.init();const it=itemAt(side,i);if(!it||(it.dim&&!it.mash))return;b.classList.add('on');if(IC.opts.haptic!==false&&IC.Haptic&&!navigator.vibrate)IC.Haptic.tap();
     if(it.hold){IC.Fight.hold(it.id,true);b._hold=it.id;b._pid=e.pointerId;try{b.setPointerCapture(e.pointerId)}catch(_){}}else IC.Fight.press(it.id)});
   const up=()=>{b.classList.remove('on');if(b._hold){IC.Fight.hold(b._hold,false);b._hold=null}};
   b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('lostpointercapture',up);
@@ -910,11 +956,12 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <div class="field"><span class="lbl">라운드 시간</span>${secSeg()}</div>
   <div class="field"><span class="lbl">선수 입장·소개</span>${seg('walk',['on','off'],s.walkout!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <div class="field"><span class="lbl">경기 중 코치 지시</span>${seg('coachS',['on','off'],s.coach!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
+  <div class="field"><span class="lbl">타격 진동</span>${seg('hap',['on','off'],s.haptic!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <div class="field"><span class="lbl">데미지 숫자</span>${seg('nums',['on','off'],s.nums?'on':'off',v=>v==='on'?'표시':'숨김')}</div>
   <div class="field"><span class="lbl">피니시 리플레이</span>${seg('rpl',['on','off'],s.replay!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <p>${Store.db?'진행 상황은 내 계정에 저장되어 다른 기기에서도 이어집니다.':'진행 상황은 이 브라우저에 저장됩니다.'}</p>
   <button class="btn" data-act="reset">${resetArm?'정말 모든 기록을 지울까요? 한 번 더 누르면 삭제':'모든 기록 초기화'}</button></div>`};
-A.walk=d=>{DATA.settings.walkout=d.v==='on';save();render()};A.coachS=d=>{DATA.settings.coach=d.v==='on';save();render()};A.voice=d=>{DATA.settings.voiceOn=d.v==='on';save();render()};A.gfx=d=>{DATA.settings.gfx=d.v;save();render()};A.nums=d=>{DATA.settings.nums=d.v==='on';save();render()};A.rpl=d=>{DATA.settings.replay=d.v==='on';save();render()};A.hpos=d=>{DATA.settings.hudPos=d.v;save();render()};
+A.walk=d=>{DATA.settings.walkout=d.v==='on';save();render()};A.coachS=d=>{DATA.settings.coach=d.v==='on';save();render()};A.voice=d=>{DATA.settings.voiceOn=d.v==='on';save();render()};A.gfx=d=>{DATA.settings.gfx=d.v;save();render()};A.nums=d=>{DATA.settings.nums=d.v==='on';save();render()};A.hap=d=>{DATA.settings.haptic=d.v==='on';IC.opts.haptic=DATA.settings.haptic;save();if(DATA.settings.haptic&&IC.Haptic)IC.Haptic.play([20,30,40]);render()};A.rpl=d=>{DATA.settings.replay=d.v==='on';save();render()};A.hpos=d=>{DATA.settings.hudPos=d.v;save();render()};
 A.snd=d=>{DATA.settings.sound=d.v==='on';Sound.on=DATA.settings.sound;save();render()};
 A.reset=()=>{if(!resetArm){resetArm=true;render();return}resetArm=false;DATA=D0();loadCustom();save();go('home')};
 

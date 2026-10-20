@@ -70,7 +70,15 @@ function syncLegs(F){F.legs=Math.min(F.lgL,F.lgR)}
 function setLegs(F,v){F.lgL=F.lgR=v;F.legs=v}
 const weakLeg=F=>Math.min(F.lgL??100,F.lgR??100)<30;
 /* haptics: only for the person holding the phone (navigator.vibrate is not available on iPhone Safari; Android vibrates) */
-function buzz(p){if(!S||S.demo||S.spec)return;try{if(navigator.vibrate)navigator.vibrate(p)}catch(e){}}
+/* iPhone: Safari has no vibrate API, but toggling a native <input switch> fires the Taptic Engine (iOS 18+).
+   A hidden switch is clicked once per pulse; Android uses real vibration patterns. */
+const Haptic={el:null,last:0,
+  ios(){if(this.el)return this.el;try{const l=document.createElement('label'),i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');l.appendChild(i);l.setAttribute('aria-hidden','true');l.style.cssText='position:fixed;left:-99px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';document.body.appendChild(l);this.el=l}catch(e){}return this.el},
+  tap(){const n=performance.now();if(n-this.last<38)return;this.last=n;const l=this.ios();try{l&&l.click()}catch(e){}},
+  play(p){if(IC.opts&&IC.opts.haptic===false)return;try{if(navigator.vibrate){navigator.vibrate(p);return}}catch(e){}
+    const P=Array.isArray(p)?p:[p];let t=0;for(let k=0;k<P.length&&k<6;k+=2){const d=t;setTimeout(()=>this.tap(),d);if(P[k]>=60)setTimeout(()=>this.tap(),d+45);t+=P[k]+(P[k+1]||0)}}};
+IC.Haptic=Haptic;
+function buzz(p){if(!S||S.demo||S.spec)return;Haptic.play(p)}
 const STRONG=new Set([/* escapes (get up, re-guard) stay allowed when exhausted */'cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','lowblow','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub']);
 function exhausted(F,id){if(!F.exh||!STRONG.has(id))return false;if(F===S.p)floatText(F.x,166,'탈진! 강공격·그랩 불가','#8e97a6');return true}
 function upExh(F){if(!F.exh&&F.st<=1&&S.mode==='fight'){F.exh=true;floatText(F.x,150+zy(F),'탈진','#c0c6d0');if(Math.random()<.6)say(`${F.nick}, 완전히 지쳤습니다! 숨을 헐떡입니다`);sweat(F.x,200,10)}
@@ -152,7 +160,7 @@ function deal(F,O,dmg,target,o){
   F.meter=Math.min(100,F.meter+dmg*(o.blocked?1:3.2));O.meter=Math.min(100,O.meter+dmg*1.3);
   O.flash=5;S.heat=Math.min(2,(S.heat||0)+(o.blocked?dmg*.012:dmg*.045+(dmg>7?.2:0)));
   const hx=o.x,hy=o.y;
-  if(o.blocked){S.kick={x:F.f*4,y:0,t:6,max:6};if(F===S.p||O===S.p)buzz(10);burst(hx,hy,5,'#c9d1dc');floatText(hx,hy-40,'막음','#c9d1dc');sfxHit('block',dmg);S.shake=Math.max(S.shake,2)}
+  if(o.blocked){S.kick={x:F.f*4,y:0,t:6,max:6};if(F===S.p||O===S.p)buzz([6,20,6]);burst(hx,hy,5,'#c9d1dc');floatText(hx,hy-40,'막음','#c9d1dc');sfxHit('block',dmg);S.shake=Math.max(S.shake,2)}
   else{burst(hx,hy,7+Math.round(dmg*1.4),o.counter?'#ffd75e':'#fff2d8');
     if(target==='head'){const bl=(O.head<75?dmg>3:dmg>6)?Math.round(dmg*.8+O.cuts*2+(100-O.head)/12):0;if(bl)blood(hx,hy,bl,-F.f);if(dmg>8&&O.head<70)bloodArc(hx,hy-6,F.f,10+O.cuts*3)}
     if(target==='body'&&dmg>7&&O.body<50)blood(hx,hy,3,-F.f);
@@ -161,7 +169,7 @@ function deal(F,O,dmg,target,o){
     S.rings.push({x:hx,y:hy,r:4,l:14,big:dmg>6});NL('r',hx|0,hy|0,dmg>6?1:0);if(target==='head')sweat(hx,hy,4+Math.round(dmg));
     S.hitstop=Math.max(S.hitstop,dmg>8?9:dmg>5?6:3);if(dmg>7)S.flashScr=8;
     S.shake=Math.max(S.shake,dmg*1.9+2);S.kick={x:F.f*Math.min(26,4+dmg*2.2),y:target==='head'?-3:4,t:10,max:10};(S.impacts=S.impacts||[]).push({x:hx,y:hy,t:12,max:12,big:dmg>6,f:F.f,col:o.counter?'#ffd75e':'#fff6e0'});if(S.impacts.length>8)S.impacts.shift();sfxHit(o.src==='ground'?'ground':o.knee?'knee':target==='body'?'body':o.kick?'kick':'punch',dmg)}
-  if(!o.blocked&&(F===S.p||O===S.p))buzz(dmg>8?45:dmg>4?25:12);
+  if(!o.blocked&&(F===S.p||O===S.p)){const mine=F===S.p;buzz(dmg>12?[18,22,70,30,40]:dmg>8?[14,18,48]:dmg>4?(mine?[10,14,24]:28):(mine?14:18))}
   if(S.practice&&S.practice.inf){for(const k of ['head','body'])if(O[k]<15)O[k]=100;if(O.legs<15)setLegs(O,100);if(F.st<10)F.st=100;return false}
   if(!O.heartUsed&&O.head>0&&O.head<26&&O.body>0&&O.legs>0&&S.mode==='fight'){O.heartUsed=true;O.heart=480;O.meter=100;O.st=Math.min(stMax(O),O.st+40);O.rocked=0;
     banner('투혼!','#ff5a4a',70,`${O.nick} 마지막 힘을 끌어올립니다`);sfx('crowd');say(`${O.nick}, 쓰러지지 않습니다! 투혼 발동!`)}
@@ -291,7 +299,7 @@ function tryHit(F,O){
   const counter=O.state==='attack'&&O.A&&O.t<=O.A.w;
   const pw=A.kick?sv(F,'kick'):sv(F,'pow');
   const inj=F.inj||{},oinj=O.inj||{};
-  const dmg=DMG*A.dmg*(.55+pw*.0075)*F.stMul*(A.kick?legF(F)*(inj.knee?.7:1):(inj.hand?.68:1))*(A.target==='body'&&oinj.rib?1.15:1)*(A.target==='head'&&oinj.eye?1.12:1)*(counter?1.35:1)*(F.ctrW>0?1.3:1)*F.mul*(F.heart>0?1.18:1)*(F.plan==='press'?1.06:1)*(O.plan==='safe'?.92:1)*F.cp.pow*(A.kick&&A.target==='body'&&F.stance!==O.stance?1.1:1)*(F.exh?.7:1)*rnd(.88,1.12)*mul;
+  const dmg=DMG*A.dmg*(.55+pw*.0075)*F.stMul*(A.kick?legF(F)*(inj.knee?.7:1):(inj.hand?.68:1))*(A.target==='body'&&oinj.rib?1.15:1)*(A.target==='head'&&oinj.eye?1.12:1)*(counter?1.35:1)*(F.ctrW>0?1.3:1)*F.mul*(F.heart>0?1.18:1)*(F.plan==='press'?1.06:1)*(O.plan==='safe'?.92:1)*F.cp.pow*(A.kick&&A.target==='body'&&F.stance!==O.stance?1.12:1)*(F.stance!==O.stance&&(A.anim==='cross'||A.anim==='overhand')?1.12:1)*(F.stance===O.stance&&A.anim==='jab'?1.1:1)*(F.exh?.7:1)*rnd(.88,1.12)*mul;
   if(F.ctrW>0&&!blocked){floatText(F.x,140,'슬립 카운터','#ffd75e');F.ctrW=0}
   if(!blocked){O.stun=4+Math.round(dmg*1.6);O.state='hit';O.vx=F.f*A.kb*.7;O.A=null;O.queue=[];O.react={k:A.target==='head'?(dmg>7?'big':'head'):A.target,t:0,d:dmg,up:A.anim==='upper'};
     if(counter&&dmg>6&&!S.demo){S.slow=Math.max(S.slow,20);S.zoomKick=.07}else if(dmg>8)S.zoomKick=.045}else O.x+=F.f*A.kb*.6;
@@ -1153,7 +1161,8 @@ IC.Fight={
   setPlan,INJ,
   playHL(list,done){if(!S||!list||!list.length){done&&done();return}S.hlQ=list.slice(1);S.rp={frames:list[0].frames,i:0,sub:0,hl:true,label:list[0].label};S.mode='replay';S.hlDone=done;S.paused=false},
   press(id){if(!S)return;if(S.mirror){if(!S.spec&&S.netOut)S.netOut('p',S.sub?'mash':id,!!S.held.block);return}if(S.mode!=='fight')return;if(S.sub){mash();return}if(id==='mash')return;S.p.slot=resolve(id);S.p.bufT=10},
-  stance(){if(!S||S.mode!=='fight'||S.gr||S.cl||S.mirror)return;const P=S.p;if(P.swT>0||P.state==='attack'||P.state==='hit')return;P.stance=P.stance==='south'?'orth':'south';P.swT=16;floatText(P.x,150+zy(P),P.stance==='south'?'사우스포':'오소독스','#7fe3ff');sfx('whoosh')},
+  stance(){if(!S||S.mode!=='fight'||S.gr||S.cl||S.mirror)return;const P=S.p;if(P.swT>0||P.state==='attack'||P.state==='hit')return;P.stance=P.stance==='south'?'orth':'south';P.swT=16;const open=P.stance!==S.e.stance;floatText(P.x,150+zy(P),(P.stance==='south'?'사우스포':'오소독스')+(open?' · 오픈 스탠스':' · 클로즈드'),'#7fe3ff');sfx('whoosh');buzz([8,30,8]);
+    say(open?`${P.nick}, ${P.stance==='south'?'사우스포':'오소독스'} 전환! 뒷손·몸통킥 강화`:`${P.nick}, 스탠스를 맞춥니다! 잽 강화`)},
   hold(k,on){if(S){S.held[k]=on;if(S.mirror&&S.netOut)S.netOut('h')}},
   releaseAll(){if(S)S.held={left:false,right:false,block:false,up:false,dn:false,ax:0,az:0}},
   axis(v,w){if(S){S.held.ax=v;S.held.az=w||0;if(S.mirror&&S.netOut)S.netOut('h')}},
