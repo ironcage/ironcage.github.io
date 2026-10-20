@@ -71,17 +71,18 @@ function setLegs(F,v){F.lgL=F.lgR=v;F.legs=v}
 const weakLeg=F=>Math.min(F.lgL??100,F.lgR??100)<30;
 /* haptics: only for the person holding the phone (navigator.vibrate is not available on iPhone Safari; Android vibrates) */
 function buzz(p){if(!S||S.demo||S.spec)return;try{if(navigator.vibrate)navigator.vibrate(p)}catch(e){}}
-const STRONG=new Set(['cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','lowblow','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub','b_getup']);
+const STRONG=new Set([/* escapes (get up, re-guard) stay allowed when exhausted */'cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','lowblow','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub']);
 function exhausted(F,id){if(!F.exh||!STRONG.has(id))return false;if(F===S.p)floatText(F.x,166,'탈진! 강공격·그랩 불가','#8e97a6');return true}
 function upExh(F){if(!F.exh&&F.st<=1&&S.mode==='fight'){F.exh=true;floatText(F.x,150+zy(F),'탈진','#c0c6d0');if(Math.random()<.6)say(`${F.nick}, 완전히 지쳤습니다! 숨을 헐떡입니다`);sweat(F.x,200,10)}
-  else if(F.exh&&F.st>=22){F.exh=false;if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
+  else if(F.exh&&F.st>=15){F.exh=false;if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
 const ZY=.35,LANE=28,zy=F=>(F.z||0)*ZY;
 /* dynamic arena scaling: the higher the stakes, the bigger the octagon, the denser the crowd and the louder the roar */
 const ARENAS=[
   {k:'practice',name:'체육관 연습장',r:250,crowd:.1,rows:3,beams:1,beamA:.05,roar:.18,flash:0,att:'관중 없음'},
-  {k:'regional',name:'지역 대회장',r:286,crowd:.42,rows:6,beams:2,beamA:.08,roar:.55,flash:1,att:'관중 1,200명'},
+  {k:'regional',name:'지역 대회장',r:286,crowd:.16,rows:5,beams:2,beamA:.07,roar:.4,flash:0,att:'관중 300명'},
   {k:'main',name:'IRON CAGE 넘버링 이벤트',r:318,crowd:.82,rows:9,beams:3,beamA:.1,roar:1,flash:2,att:'관중 9,500명'},
-  {k:'title',name:'타이틀전 메인이벤트',r:356,crowd:1,rows:12,beams:5,beamA:.15,roar:1.7,flash:5,att:'관중 19,800명 · 매진'}];
+  {k:'title',name:'타이틀전 메인이벤트',r:356,crowd:1,rows:12,beams:5,beamA:.15,roar:1.7,flash:5,att:'관중 19,800명 · 매진'},
+  {k:'prelim',name:'IRON CAGE 언더카드',r:306,crowd:.42,rows:7,beams:2,beamA:.09,roar:.7,flash:1,att:'관중 3,500명'}];
 const cageR=()=>(S&&S.arena?S.arena.r:318)-36;
 /* keep fighters inside the octagon's flat walls (apothem 294) with room for the body, not inside a circle that pokes past the fence */
 const cageApo=()=>(S&&S.arena?S.arena.r:318)*Math.cos(Math.PI/8)-30;
@@ -631,7 +632,7 @@ function upGround(F){
   const gr=S.gr,top=F===gr.top,O=top?gr.bot:gr.top;
   if(top&&gr.trans>0)gr.trans--;
   if(F.flash>0)F.flash--;if(F.rocked>0)F.rocked--;
-  F.st=clamp(F.st+.055*(.55+sv(F,'car')*.006)*(top&&(gr.pos===3||gr.pos===4)?1.3:1)-(!top&&gr.pos>=3?.05:0),0,stMax(F));upExh(F);
+  F.st=clamp(F.st+.07*(.55+sv(F,'car')*.006)*(top&&(gr.pos===3||gr.pos===4)?1.3:1)-(!top&&gr.pos>=3?.018:0)+(F.exh?.025:0),0,stMax(F));upExh(F);
   if(top)add(F,'ctrl',1);
   if(F.g.act){F.g.t++;if(F.g.t===F.g.A.w){resolveG(F,O);if(!S.gr||S.sub||S.mode!=='fight')return}
     if(F.g.t>=F.g.A.w+F.g.A.r)F.g={act:null,t:0,A:null};return}
@@ -1105,8 +1106,8 @@ function context(){
       const subs=BOT_SUBS[pos];
       left=[off(),I('block','커버',{hold:true})];
       grid=[I('@bp',g?'엘보':'펀치'),I('b_sweep',pos===5?'싱글렉 역전':'스윕',{dim:pos===4||X,tone:'g'}),I('b_regard',pos===5?'가드 당기기':'리가드',{dim:pos===0,tone:'g'}),
-        I('b_sub',subs.length?'서브미션':'—',{dim:!subs.length||X,tone:'g'}),I('b_getup','일어나기',{dim:X,tone:'g'}),off()];
-      hint=pos===5?'터틀 자세로 눌렸어요! 가드 당기기·싱글렉 역전·일어나기로 빠져나오세요.':`하위 · 상대가 ${POSN[pos]}. 커버로 파운딩을 막고, 리가드·스윕·일어나기로 빠져나오세요.`;
+        I('b_sub',subs.length?'서브미션':'—',{dim:!subs.length||X,tone:'g'}),I('b_getup','일어나기',{tone:'g'}),off()];
+      hint=X?'탈진 상태 — 커버로 버티며 숨을 고르고, 일어나기·리가드로 빠져나오세요.':pos===5?'터틀 자세로 눌렸어요! 가드 당기기·싱글렉 역전·일어나기로 빠져나오세요.':`하위 · 상대가 ${POSN[pos]}. 커버로 파운딩을 막고, 리가드·스윕·일어나기로 빠져나오세요.`;
     }
   }else if(S.cl){
     const ctrl=S.cl.ctrl===P,X=!!P.exh,wd=!!S.wild;key='c'+ctrl+S.cl.cage+g+X+wd;
