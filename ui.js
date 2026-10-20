@@ -120,7 +120,7 @@ const Crowd={g:null,src:null,lv:-1,
   start(){if(!Sound.ac||!Sound.on||this.g)return;try{const ac=Sound.ac,src=ac.createBufferSource();src.buffer=Sound.nb2||Sound.nb;src.loop=true;const g=ac.createGain();g.gain.value=0;
     for(const [f,q,v] of [[380,.7,.5],[1100,1,.22],[2500,1.3,.07]]){const fl=ac.createBiquadFilter();fl.type='bandpass';fl.frequency.value=f;fl.Q.value=q;const cg=ac.createGain();cg.gain.value=v;src.connect(fl);fl.connect(cg);cg.connect(g)}
     g.connect(ac.destination);src.start();this.g=g;this.src=src;this.lv=-1}catch(e){}},
-  set(I,muted){if(!this.g)return;const v=muted?0:.05+.55*Math.pow(Math.max(0,I),1.2);if(Math.abs(v-this.lv)<.01)return;this.lv=v;try{this.g.gain.setTargetAtTime(v,Sound.ac.currentTime,I>this.lv?.12:.6)}catch(e){}},
+  set(I,muted,roar=1){if(!this.g)return;const v=muted?0:Math.min(1.6,(.05+.55*Math.pow(Math.max(0,I),1.2))*roar);if(Math.abs(v-this.lv)<.01)return;this.lv=v;try{this.g.gain.setTargetAtTime(v,Sound.ac.currentTime,I>this.lv?.12:.6)}catch(e){}},
   stop(){if(!this.g)return;const g=this.g,s=this.src;this.g=null;this.src=null;try{g.gain.setTargetAtTime(0,Sound.ac.currentTime,.3);setTimeout(()=>{try{s.stop();g.disconnect()}catch(e){}},1200)}catch(e){}}};
 /* ring announcer: browser speech synthesis, Korean voice, slow and dramatic */
 const Announcer={voice:null,
@@ -548,6 +548,15 @@ function oddsOf(a,b){
   return{pa,a:o(pa),b:o(1-pa),rv:!!rv}}
 function oddsHtml(a,b){const O=oddsOf(a,b),fav=O.pa>=.5?a:b;
   return `<div class="odds"><div class="oa"><b>${O.a.toFixed(2)}</b><span>${Math.round(O.pa*100)}%</span></div><div class="om"><span>경기 전 배당률</span><em>${esc(fav.nick)} 우세${O.rv?' · 라이벌전':''}</em></div><div class="ob"><b>${O.b.toFixed(2)}</b><span>${Math.round((1-O.pa)*100)}%</span></div></div>`}
+const TALK={weigh:['내일 밤, 넌 바닥에서 천장을 보게 될 거야.','체중은 맞췄네. 이제 실력만 맞추면 되겠다.','눈 피하지 마. 내일도 똑바로 봐라.','네 코치한테 수건 준비하라고 해.','케이지 문 닫히면 아무도 못 도와줘.','난 준비됐어. 넌 아니야.','1라운드면 충분해.','그 웃음, 내일은 못 짓게 해 주지.',
+  '감량하느라 힘 다 뺐지? 티 난다.','네 하이라이트 영상, 내일 내가 망쳐 줄게.','가족들한테 미리 인사해 둬.','내일 심판이 널 구해 줄 거야. 운 좋으면.','네 턱, 내일 시험해 볼게.','숨 고르는 법은 연습했냐?','이 무대는 너한텐 너무 커.','도망가는 연습만 했다며?',
+  '난 네 영상 다 봤어. 약점 세 개 찾았지.','오늘 웃어 둬. 내일은 못 웃어.','지난 경기 운이 좋았던 거야.','네 펀치? 간지러울 것 같은데.'],
+ press:['{me}? 들어본 적도 없는 이름이네. 1라운드면 충분해.','{me}는 아직 이 무대에 올 준비가 안 됐어.','내가 {me}를 은퇴시켜 주지.','{me}, 케이지 문 닫히면 아무도 못 도와줘.','{me}의 레슬링? 고등학생 수준이야.','{me}는 맞아 본 적이 없어서 저렇게 자신만만한 거야.',
+  '{me}, 너 같은 상대는 스파링에서 매일 만난다.','{me}가 나한테 이기면 내가 은퇴한다.','{me}의 팬들, 표 환불 준비해라.','{me}는 판정 가면 이긴다고 생각하겠지. 판정까지 못 가.','{me}, 체급 올려 온 건 실수였어.','{me}의 하이라이트는 남이 만들어 준 거야.',
+  '내 다음 상대 명단에 {me} 이름은 없었어. 쉬어 가는 경기지.','{me}, 기자회견은 잘하네. 싸움도 그만큼 하나 보자.','{me}한테 한 가지 조언하지. 턱 숙여.','{me}, 링 위에서 울지만 마라.']};
+function talk(kind,repl={}){const L=TALK[kind],seen=(DATA.talkSeen=DATA.talkSeen||{})[kind]||[];let pool=L.filter(x=>!seen.includes(x));if(!pool.length)pool=L;
+  const t=pick(pool);DATA.talkSeen[kind]=[t,...seen].slice(0,Math.min(10,L.length-2));let s=t;for(const k in repl)s=s.split('{'+k+'}').join(repl[k]);return s}
+IC.talk=talk;
 function scoutNote(b){const t=STYLES[b.style].ai,n=[];
   if(t.td>.25)n.push('테이크다운을 자주 노립니다. 가드로 스프롤 준비.');if(t.kick>.4)n.push('킥 비중이 높아요. 킥에 테이크다운으로 반격.');
   if(t.sub>.5)n.push('그라운드에서 서브미션이 위험합니다. 하위 포지션을 피하세요.');if(t.counter>.4)n.push('카운터 성향. 무리한 큰 공격은 읽힙니다.');
@@ -571,13 +580,14 @@ V.weigh=p=>{const C=CLASSES.find(c=>c.id===p.a.cls)||CLASSES[0],r=p.weigh;
   <div class="row"><button class="btn-go" data-act="weighGo" style="flex:1">${p.rounds}라운드 · 경기 시작</button><button class="btn" data-act="weighReplay">다시 보기</button></div></div>`};
 A.weighBack=()=>{cancelAnimationFrame(wRaf);W3=null;Sound.music(false);go('tale',P)};
 A.weighReplay=()=>{P.t0=performance.now()};
+A.weighBack0=0;
 A.weighGo=()=>{cancelAnimationFrame(wRaf);if(W3){W3=null;homeGl()}Sound.music(false);const r=P.weigh;P.run&&P.run({weigh:r})};
 function runWeigh(){
   const el=document.getElementById('wcv');if(!el)return;const c=el.getContext('2d');
   const C=CLASSES.find(x=>x.id===P.a.cls)||CLASSES[0],WI=IC.Draw.WI,TR=IC.Draw.WTRASH;
   const mkF=(d,side)=>({d,name:d.name,nick:d.nick,side});
   const h=IC.hash(P.a.name+'|'+P.b.name),evs=['push','stare','shout'];
-  const st={a:mkF(P.a,'a'),b:mkF(P.b,'b'),res:P.weigh,cls:C.name,limLb:C.lb,limKg:(C.lb*.4536).toFixed(1),title:P.title,t:0,ev:evs[h%3],trashA:TR[h%TR.length],trashB:TR[(h>>>4)%TR.length===h%TR.length?(h%TR.length+3)%TR.length:(h>>>4)%TR.length],hot:0};
+  const st={a:mkF(P.a,'a'),b:mkF(P.b,'b'),res:P.weigh,cls:C.name,limLb:C.lb,limKg:(C.lb*.4536).toFixed(1),title:P.title,t:0,ev:(P._ev=P._ev||pick(evs)),trashA:(P._ta=P._ta||talk('weigh')),trashB:(P._tb=P._tb||talk('weigh')),hot:0};
   let fired={},lastT=-1;
   Sound.init();Sound.music(false);Sound.music(true,{g:'hiphop',bpm:84,key:.94,crowd:.7,verb:.3});
   const once=(k,f)=>{if(!fired[k]){fired[k]=1;f()}};
@@ -656,7 +666,7 @@ function loop(now){
   if(USE3D){try{IC.R3D.render(S,w,h);IC.Draw.render(S,ctx,w,h,{project:IC.R3D.project})}catch(e){console.error(e);USE3D=false;gl.hidden=true}}
   else IC.Draw.render(S,ctx,w,h);
   game.classList.toggle('walking',!!S.walk);game.classList.toggle('replaying',S.mode==='replay');game.classList.toggle('tutorial',!!(S.practice&&S.tasks));
-  Crowd.set(IC.Fight.intensity(),!!S.walk||S.mode==='between');
+  Crowd.set(IC.Fight.intensity(),!!S.walk||S.mode==='between',(S.arena&&S.arena.roar)||1);
   if(IC.KO&&!S.demo&&!S.practice&&!(CFG&&CFG.online==='spec')&&['fight','ko','intro'].includes(S.mode)&&!S.walk){IC.KO.capture(USE3D?[gl,cv]:[cv],S);
     if(S.mode==='ko'&&S.result&&!S.koSeen){S.koSeen=1;const r=S.result,W=r.winner==='a'?S.a:S.b,L=W===S.a?S.b:S.a;
       const score=(r.method==='KO'?100:r.method==='TKO'?82:76)+Math.max(0,(S.rounds-r.round))*8+(W===S.p?10:0)+(S.title?12:0);
@@ -669,7 +679,7 @@ function startFight(cfg){
   CFG=cfg;Sound.on=DATA.settings.sound;Sound.init();Crowd.start();if(IC.KO)IC.KO.reset();
   scr.hidden=true;game.hidden=false;between.hidden=true;pad.hidden=false;hintEl.hidden=false;
   $('#glabel').textContent=cfg.label||'';
-  stopDemo();IC.opts.nums=!!DATA.settings.nums;IC.Fight.start({walkout:!cfg.online&&DATA.settings.walkout!==false,replay:!cfg.online&&DATA.settings.replay!==false,remote:cfg.online==='host',coach:DATA.settings.coach!==false,a:cfg.a,b:cfg.b,rounds:cfg.rounds||3,roundSec:cfg.roundSec||DATA.settings.roundSec,diff:cfg.diff||DATA.settings.diff,title:cfg.title,practice:cfg.practice,condition:cfg.condition,wild:!!cfg.wild,pat:cfg.pat||null,
+  stopDemo();IC.opts.nums=!!DATA.settings.nums;IC.Fight.start({walkout:!cfg.online&&DATA.settings.walkout!==false,replay:!cfg.online&&DATA.settings.replay!==false,remote:cfg.online==='host',coach:DATA.settings.coach!==false,a:cfg.a,b:cfg.b,rounds:cfg.rounds||3,roundSec:cfg.roundSec||DATA.settings.roundSec,diff:cfg.diff||DATA.settings.diff,title:cfg.title,practice:cfg.practice,condition:cfg.condition,wild:!!cfg.wild,pat:cfg.pat||null,arena:cfg.arena!=null?cfg.arena:cfg.practice?0:cfg.title?3:cfg.online?2:cfg.wild?1:2,
     onRound:showBetween,onEnd:res=>{stopLoop();res.ach=checkFightAch(res,cfg);setTimeout(()=>cfg.onResult(res),30)}});
   const S=IC.Fight.S;
   USE3D=!!(IC.R3D&&IC.R3D.init(gl));gl.hidden=!USE3D;if(USE3D)IC.R3D.reset();
@@ -1071,7 +1081,7 @@ V.chub=()=>{const c=ensureC(DATA.career),me=meData(c),idx=c.order.indexOf('me'),
     const f=getF(c.fight.opp,c);main=`${c.fight.card?`<div class="evmini"><span>${c.fight.card.reg?'지역 대회':'넘버링 이벤트'}</span><b>${esc(c.fight.card.name)}</b><em>${esc(c.fight.card.city)} · ${(c.fight.card.bouts.find(b=>b.me)||{}).slot||''}</em><button class="btn sm" data-act="nav" data-to="ccard">대진표</button></div>`:''}<h3>파이트 캠프 · D-${Math.max(0,(c.camp.len||CAMP_LEN)-(c.camp.day||0))}</h3><p>상대: ${esc(f.name)} (${STYLES[f.style].name}, 종합 ${f.ovr})</p><button class="btn-go blue" data-act="nav" data-to="camp">캠프로 가기</button>`;
   }else if(c.phase==='fight'){
     const f=getF(c.fight.opp,c),o=c.fight;const evm=o.card?`<div class="evmini"><span>${o.card.reg?'지역 대회':'넘버링 이벤트'} · 오늘 밤</span><b>${esc(o.card.name)}</b><em>${esc(o.card.city)} · ${(o.card.bouts.find(b=>b.me)||{}).slot||''}</em><button class="btn sm" data-act="nav" data-to="ccard">대진표</button></div>`:'';
-    if(!o.press){o.trash=o.trash||pick(TRASH).replace('{me}',c.nick).replace('{op}',f.nick);
+    if(!o.press){o.trash=o.trash||talk('press',{me:c.nick,op:f.nick});
       main=`${evm}<div class="cine3d" id="pressHost"><span class="cTag">기자회견 · LIVE</span></div><h3>기자회견</h3><div class="advice"><b>${esc(f.nick)}</b> · “${esc(o.trash)}”</div><p>어떻게 받아칠까요? 선택에 따라 인지도와 상대의 독기가 달라집니다.</p>
       <div class="acts"><button class="act" data-act="cPress" data-v="respect"><b>존중</b><span>“좋은 선수다. 케이지에서 보여 주겠다.”</span><span>인지도 +2 · 상대 평정심 유지</span></button>
       <button class="act" data-act="cPress" data-v="taunt"><b>도발</b><span>“넌 내 연습 상대 수준이야.”</span><span>인지도 +8 · 상대가 독기를 품음 (데미지 +5%)</span></button>
@@ -1325,7 +1335,7 @@ A.cFight=()=>{const c=DATA.career,o=c.fight,a=meData(c),b=getF(o.opp,c),oi=c.ord
   const isRival=!!(c.rival&&b.id===c.rival.id),pat=isRival&&c.pat?Object.fromEntries(Object.entries(c.pat).map(([k,v])=>[k,Math.min(6,v*1.4)])):null;
   const diff=c.league==='super'?(hofScore(c).total>=HOF_NEED?'hof':'legend'):undefined;
   const lab2=(c.league==='super'?'슈퍼리그 · ':'')+label+(diff==='hof'?' · 명예의 전당 난이도':'');
-  go('tale',{a,b,rounds:o.rounds,label:lab2,rivalRead:isRival?patNote(c.pat):null,title:o.title,mustWeigh:true,risk,scout:c.camp&&c.camp.scout,backTo:'chub',run:(w={})=>{if(w.weigh&&!w.weigh.a.ok){o.penalty=.2;save()}startFight({weigh:w.weigh,oppMul:(o.oppMul||1)*(c.league==='super'?1.1:1),diff,pat,a,b,rounds:o.rounds,title:o.title,label:lab2,condition:.8+.2*c.energy/100,myMul:campMul(c),scoutMul:c.camp&&c.camp.scout?.93:1,onResult:res=>careerResult(res)})}})};
+  go('tale',{a,b,rounds:o.rounds,label:lab2,rivalRead:isRival?patNote(c.pat):null,title:o.title,mustWeigh:true,risk,scout:c.camp&&c.camp.scout,backTo:'chub',run:(w={})=>{if(w.weigh&&!w.weigh.a.ok){o.penalty=.2;save()}startFight({arena:o.title||o.kc?3:(c.tier==='regional'||o.local||o.contender)?1:2,weigh:w.weigh,oppMul:(o.oppMul||1)*(c.league==='super'?1.1:1),diff,pat,a,b,rounds:o.rounds,title:o.title,label:lab2,condition:.8+.2*c.energy/100,myMul:campMul(c),scoutMul:c.camp&&c.camp.scout?.93:1,onResult:res=>careerResult(res)})}})};
 function patNote(p){if(!p)return '아직 분석된 패턴이 없습니다.';const L={kick:'킥',shoot:'태클',head:'안면 펀치'},top=Object.entries(p).filter(([k])=>L[k]).sort((a,b)=>b[1]-a[1])[0];
   return top&&top[1]>1.5?`라이벌이 당신의 ${L[top[0]]} 습관을 분석했습니다. 그 공격엔 대비가 되어 있어요.`:'라이벌이 당신을 연구했지만 뚜렷한 습관은 못 찾았습니다.'}
 /* ---------- fight night: numbered events with a full card ---------- */

@@ -75,10 +75,17 @@ const STRONG=new Set(['cross','hook','upper','midkick','highkick','special','td'
 function exhausted(F,id){if(!F.exh||!STRONG.has(id))return false;if(F===S.p)floatText(F.x,166,'탈진! 강공격·그랩 불가','#8e97a6');return true}
 function upExh(F){if(!F.exh&&F.st<=1&&S.mode==='fight'){F.exh=true;floatText(F.x,150+zy(F),'탈진','#c0c6d0');if(Math.random()<.6)say(`${F.nick}, 완전히 지쳤습니다! 숨을 헐떡입니다`);sweat(F.x,200,10)}
   else if(F.exh&&F.st>=22){F.exh=false;if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
-const ZY=.35,LANE=28,zy=F=>(F.z||0)*ZY,CAGE_R=282;
+const ZY=.35,LANE=28,zy=F=>(F.z||0)*ZY;
+/* dynamic arena scaling: the higher the stakes, the bigger the octagon, the denser the crowd and the louder the roar */
+const ARENAS=[
+  {k:'practice',name:'체육관 연습장',r:250,crowd:.1,rows:3,beams:1,beamA:.05,roar:.18,flash:0,att:'관중 없음'},
+  {k:'regional',name:'지역 대회장',r:286,crowd:.42,rows:6,beams:2,beamA:.08,roar:.55,flash:1,att:'관중 1,200명'},
+  {k:'main',name:'IRON CAGE 넘버링 이벤트',r:318,crowd:.82,rows:9,beams:3,beamA:.1,roar:1,flash:2,att:'관중 9,500명'},
+  {k:'title',name:'타이틀전 메인이벤트',r:356,crowd:1,rows:12,beams:5,beamA:.15,roar:1.7,flash:5,att:'관중 19,800명 · 매진'}];
+const cageR=()=>(S&&S.arena?S.arena.r:318)-36;
 /* keep fighters inside the octagon's flat walls (apothem 294) with room for the body, not inside a circle that pokes past the fence */
-const CAGE_APO=318*Math.cos(Math.PI/8)-30;
-function inCage(F){const C=S.cage;for(let k=0;k<8;k++){const a=C.ang+k*Math.PI/4,nx=Math.cos(a),nz=Math.sin(a),dx=F.x-C.x,dz=(F.z||0)-C.z,p=dx*nx+dz*nz;if(p>CAGE_APO){F.x-=nx*(p-CAGE_APO);F.z=(F.z||0)-nz*(p-CAGE_APO)}}}
+const cageApo=()=>(S&&S.arena?S.arena.r:318)*Math.cos(Math.PI/8)-30;
+function inCage(F){const C=S.cage;for(let k=0;k<8;k++){const a=C.ang+k*Math.PI/4,nx=Math.cos(a),nz=Math.sin(a),dx=F.x-C.x,dz=(F.z||0)-C.z,p=dx*nx+dz*nz,AP=cageApo();if(p>AP){F.x-=nx*(p-AP);F.z=(F.z||0)-nz*(p-AP)}}}
 /* orbit camera: the engine works in camera space. While nobody is mid-strike the frame turns so the fighters stay side-on
    to the camera and recentres on their midpoint; the cage, referee and stains are carried along. */
 function camFrame(){
@@ -144,15 +151,15 @@ function deal(F,O,dmg,target,o){
   F.meter=Math.min(100,F.meter+dmg*(o.blocked?1:3.2));O.meter=Math.min(100,O.meter+dmg*1.3);
   O.flash=5;S.heat=Math.min(2,(S.heat||0)+(o.blocked?dmg*.012:dmg*.045+(dmg>7?.2:0)));
   const hx=o.x,hy=o.y;
-  if(o.blocked){burst(hx,hy,5,'#c9d1dc');floatText(hx,hy-40,'막음','#c9d1dc');sfxHit('block',dmg);S.shake=Math.max(S.shake,2)}
+  if(o.blocked){S.kick={x:F.f*4,y:0,t:6,max:6};if(F===S.p||O===S.p)buzz(10);burst(hx,hy,5,'#c9d1dc');floatText(hx,hy-40,'막음','#c9d1dc');sfxHit('block',dmg);S.shake=Math.max(S.shake,2)}
   else{burst(hx,hy,7+Math.round(dmg*1.4),o.counter?'#ffd75e':'#fff2d8');
     if(target==='head'){const bl=(O.head<75?dmg>3:dmg>6)?Math.round(dmg*.8+O.cuts*2+(100-O.head)/12):0;if(bl)blood(hx,hy,bl,-F.f);if(dmg>8&&O.head<70)bloodArc(hx,hy-6,F.f,10+O.cuts*3)}
     if(target==='body'&&dmg>7&&O.body<50)blood(hx,hy,3,-F.f);
     if(o.counter)floatText(hx,hy-64,'카운터!','#ffd75e');
     floatText(hx,hy-40,String(Math.round(dmg)),target==='leg'?'#ffcf99':target==='body'?'#ffe0b0':'#fff',true);
     S.rings.push({x:hx,y:hy,r:4,l:14,big:dmg>6});NL('r',hx|0,hy|0,dmg>6?1:0);if(target==='head')sweat(hx,hy,4+Math.round(dmg));
-    S.hitstop=Math.max(S.hitstop,dmg>8?7:dmg>5?4:2);if(dmg>7)S.flashScr=7;
-    S.shake=Math.max(S.shake,dmg*1.1);sfxHit(o.src==='ground'?'ground':o.knee?'knee':target==='body'?'body':o.kick?'kick':'punch',dmg)}
+    S.hitstop=Math.max(S.hitstop,dmg>8?9:dmg>5?6:3);if(dmg>7)S.flashScr=8;
+    S.shake=Math.max(S.shake,dmg*1.9+2);S.kick={x:F.f*Math.min(26,4+dmg*2.2),y:target==='head'?-3:4,t:10,max:10};(S.impacts=S.impacts||[]).push({x:hx,y:hy,t:12,max:12,big:dmg>6,f:F.f,col:o.counter?'#ffd75e':'#fff6e0'});if(S.impacts.length>8)S.impacts.shift();sfxHit(o.src==='ground'?'ground':o.knee?'knee':target==='body'?'body':o.kick?'kick':'punch',dmg)}
   if(!o.blocked&&(F===S.p||O===S.p))buzz(dmg>8?45:dmg>4?25:12);
   if(S.practice&&S.practice.inf){for(const k of ['head','body'])if(O[k]<15)O[k]=100;if(O.legs<15)setLegs(O,100);if(F.st<10)F.st=100;return false}
   if(!O.heartUsed&&O.head>0&&O.head<26&&O.body>0&&O.legs>0&&S.mode==='fight'){O.heartUsed=true;O.heart=480;O.meter=100;O.st=Math.min(stMax(O),O.st+40);O.rocked=0;
@@ -229,7 +236,7 @@ function startStrike(F,A0){
   F.state='attack';F.t=0;F.hitDone=false;
   if(A0.kind!=='shoot')add(F,'sigA',1);
   if(A0.special){F.meter=0;banner(A0.name,'#ffd75e',40);say(`${F.nick}의 필살기, ${A0.name}!`)}
-  sfx('whoosh');return true;
+  sfx('whoosh');if(F===S.p&&!A0.kick&&A0.kind!=='shoot')buzz(6);return true;
 }
 function doStand(F,O,id){
   if(exhausted(F,id))return false;
@@ -339,9 +346,10 @@ function resolveShoot(F,O){
   }else{
     F.stun=34;F.state='hit';F.vx=-F.f*1.5;F.A=null;
     {const C=S.cage,dO=Math.hypot(O.x-C.x,(O.z||0)-C.z);if(dO>220&&Math.random()<.18){foul(O,F,'fence');return}}
-    if(sprawlTimed&&!S.gr){floatText(O.x,150+zy(O),'스프롤 → 프론트 헤드락!','#9fe0a8');say(`${O.nick}, 엉덩이로 눌러 뭉갭니다! 프론트 헤드락, ${F.nick}는 터틀!`);sfx('slam');ev(O,'sprawl');
-      if(F===S.p||O===S.p)buzz([30,30,30]);F.stun=0;F.state='idle';F.A=null;enterGround(O,F,5);return}
-    floatText(O.x,166,'스프롤!','#9fe0a8');say(`${O.nick}, 깔끔한 스프롤로 막아냅니다`);sfx('block');ev(O,'sprawl');
+    O.state='sprawl';O.t=0;O.A=null;O.slot=null;O.queue=[];O.stun=0;O.vx=-O.f*3.2;O.sprawlTo=sprawlTimed?F:null;F.stun=sprawlTimed?40:34;F.state='stuffed';F.t=0;F.react={k:'body',t:0,d:6};
+    S.shake=Math.max(S.shake,9);S.kick={x:-O.f*8,y:6,t:10,max:10};if(F===S.p||O===S.p)buzz(sprawlTimed?[30,30,60]:[25]);sfx('slam');ev(O,'sprawl');
+    if(sprawlTimed){floatText(O.x,150+zy(O),'스프롤!','#9fe0a8');say(`${O.nick}, 다리를 뒤로 빼며 엉덩이로 눌러 뭉갭니다!`);return}
+    floatText(O.x,166,'스프롤!','#9fe0a8');say(`${O.nick}, 깔끔한 스프롤로 막아냅니다`);
   }
 }
 function upStand(F,O){
@@ -350,7 +358,10 @@ function upStand(F,O){
   if(F.state==='ko'){F.koT++;return}
   if(F.swT>0)F.swT--;upExh(F);
   if(F.state!=='attack'&&F.state!=='slip'&&Math.abs(O.x-F.x)>6)F.f=O.x>F.x?1:-1;
-  if(F.stun>0){F.stun--;F.state='hit';F.x+=F.vx;F.vx*=.82;F.st=Math.min(stMax(F),F.st+.1);if(F.stun===0)F.state='idle';return}
+  if(F.state==='sprawl'){F.t++;F.x+=F.vx;F.vx*=.86;F.st=Math.min(stMax(F),F.st+.05);
+    if(F.sprawlTo&&F.t===18&&S.mode==='fight'&&!S.gr&&!S.cl){const B=F.sprawlTo;F.sprawlTo=null;floatText(F.x,150+zy(F),'프론트 헤드락!','#9fe0a8');say(`프론트 헤드락! ${B.nick}는 터틀로 웅크립니다!`);B.stun=0;B.state='idle';enterGround(F,B,5);return}
+    if(F.t>=26){F.state='idle';F.sprawlTo=null}return}
+  if(F.stun>0){F.stun--;F.state=F.state==='stuffed'?'stuffed':'hit';F.t=(F.t||0)+1;F.x+=F.vx;F.vx*=.82;F.st=Math.min(stMax(F),F.st+.1);if(F.stun===0)F.state='idle';return}
   if(F.state==='slip'){F.t++;F.x-=F.f*.6;if(F.t>=16)F.state='idle';return}
   if(F.state==='attack'){
     const A=F.A;F.t++;
@@ -780,7 +791,7 @@ function start(o){
   S={o,D,diffKey:o.diff||'normal',rounds:o.rounds||3,roundFrames:Math.round((o.roundSec||120)*60),round:1,timer:0,
     mode:'intro',phaseT:110,frame:0,sparks:[],texts:[],feed:[],banner:null,shake:0,slow:0,gr:null,cl:null,sub:null,
     held:{left:false,right:false,block:false},rounds_:[],paused:false,practice:o.practice||null,events:{},pbf:0,title:!!o.title,label:o.label||'',
-    pat:{...(o.pat||{})},wild:!!o.wild,lean:0,cardLead:0,zoomKick:0,
+    arena:ARENAS[o.arena!=null?o.arena:o.practice?0:o.title?3:2],pat:{...(o.pat||{})},wild:!!o.wild,lean:0,cardLead:0,zoomKick:0,
     demo:!!o.demo,rings:[],stains:[],cage:{x:400,z:0,ang:0},camTheta:0,hitstop:0,flashScr:0,rec:[],ref:{x:400,f:1,state:'start',walk:0},camFocus:null,winSide:null,replayOn:o.replay!==false};
   S.a=mkRun(o.a,'a');S.b=mkRun(o.b,'b');S.p=S.a;S.e=S.b;S.b.mul=D.mul;
   S.remote=!!o.remote;S.mirror=!!o.mirror;S.spec=!!o.spec;S.net=S.remote;S.nl=[];S.nseq=0;S.rin={};if(S.remote){S.b.mul=1;S.replayOn=false}
@@ -797,7 +808,7 @@ function startRound(){
   S.timer=S.roundFrames;S.mode='intro';S.ref.x=400;S.ref.state='start';
   if(S.round===1&&!S.practice&&!S.demo&&S.o.walkout!==false){startWalkout();return}
   S.phaseT=110;S.introLen=110;S.walk=null;
-  banner(S.practice?'연습':`${S.round}라운드`,'#e9e6df',100,S.practice?null:S.round===S.rounds?(S.title?'챔피언십 라운드':'마지막 라운드'):null);
+  banner(S.practice?'연습':`${S.round}라운드`,'#e9e6df',100,S.practice?S.arena.name:S.round===1?`${S.arena.name} · ${S.arena.att}`:S.round===S.rounds?(S.title?'챔피언십 라운드':'마지막 라운드'):null);
   sfx('bell');
   say(S.practice?'연습 모드: 시간 제한 없이 기술을 익혀 보세요':S.round===1?`${a.nick} 대 ${b.nick}, 경기 시작합니다!`:`${S.round}라운드, 다시 맞붙습니다`);
 }
@@ -843,7 +854,7 @@ function stepWalkout(){
     case 'redAnn':walkTo(b,550,0,3);b.f=-1;if(W.t===1)ann('red',annText(b,'레드'));if(W.t===60)sfx('reveal');if(W.t>40)b.state=W.t%70<35?'celebrate':'idle';break;
     case 'faceoff':{
       if(!W.bub){if(!S.demo&&IC.Sound&&IC.Sound.music)IC.Sound.music(false);ann('ref','레퍼리가 두 선수를 불러 모읍니다. 깨끗한 경기 부탁드립니다!');
-        const h=IC.hash(a.name+b.name+S.rounds),TR=IC.Draw&&IC.Draw.WTRASH||['…'];W.ev=['push','stare','shout'][h%3];W.bub=[{F:b,text:TR[(h>>>3)%TR.length],t0:40},{F:a,text:TR[(h>>>6)%TR.length===(h>>>3)%TR.length?((h>>>6)+2)%TR.length:(h>>>6)%TR.length],t0:62}]}
+        W.ev=pick(['push','stare','shout']);const tk=IC.talk||(()=>'…');W.bub=[{F:b,text:tk('weigh'),t0:40},{F:a,text:tk('weigh'),t0:62}]}
       a.f=1;b.f=-1;W.tension=0;
       if(W.t<45){a.state=b.state='idle';walkTo(a,345,0,2.4);walkTo(b,455,0,2.4);S.ref.state='start'}
       else if(W.t<120){a.state=b.state='idle';a.x=lerp(a.x,374+Math.sin(W.t*.08)*2,.06);b.x=lerp(b.x,426+Math.sin(W.t*.08+1)*2,.06);S.ref.state='watch';W.tension=Math.min(1,(W.t-45)/40);
@@ -870,7 +881,7 @@ function endWalkout(){
   if(IC.Sound&&IC.Sound.music)IC.Sound.music(false);
   const a=S.a,b=S.b;S.walk=null;b.hidden=false;a.walkShirt=b.walkShirt=null;a.x=250;b.x=550;a.z=b.z=0;a.f=1;b.f=-1;a.state=b.state='idle';a.walk=b.walk=0;
   S.mode='intro';S.phaseT=70;S.introLen=70;S.ref.x=400;S.ref.state='start';
-  banner('1라운드','#e9e6df',60,S.rounds===1?null:null);sfx('bell');
+  banner('1라운드','#e9e6df',80,`${S.arena.name} · ${S.arena.att}`);sfx('bell');
   if(IC.Announcer)IC.Announcer.say('파이트!');
   say(`${a.nick} 대 ${b.nick}, 경기 시작합니다!`);
 }
@@ -916,7 +927,7 @@ function end(){const o=S.o;const r={...S.result,highlights:topHL(),injA:S.a.inj?
   if(o.onEnd)o.onEnd(r)}
 function hlTick(){if(!S.hlPend||!S.hlPend.length)return;const f=S.rec[S.rec.length-1];for(const h of S.hlPend)if(S.frame<=h.until)h.frames.push(f)}
 function step(){
-  S.frame++;S.heat=(S.heat||0)*.992;
+  S.frame++;S.heat=(S.heat||0)*.992;if(S.kick&&--S.kick.t<=0)S.kick=null;if(S.impacts)for(let i=S.impacts.length-1;i>=0;i--)if(--S.impacts[i].t<=0)S.impacts.splice(i,1);
   const P=S.p,E=S.e;
   if(S.mode==='fight'){
     if(P.bufT>0)P.bufT--;else if(!S.demo)P.slot=null;
@@ -929,7 +940,7 @@ function step(){
       if(S.gr&&!S.sub){S.gr.idle++;if(S.gr.idle>720)exitGround('레퍼리가 두 선수를 일으켜 세웁니다')}
     }else if(S.cl){
       S.remote?remoteCtl(E,P):aiClinch(E,P);upClinch(S.cl.ctrl);if(S.cl&&S.mode==='fight')upClinch(S.cl.other);
-      if(S.cl){S.cl.idle++;if(S.cl.cage){const C=S.cage,hz=(S.cl.cz||0)-C.z,half=Math.sqrt(Math.max(0,CAGE_R*CAGE_R-hz*hz)),wall=C.x+S.cl.dir*half;S.cl.cx=lerp(S.cl.cx,wall-S.cl.dir*26,.02)}clinchPos();if(S.cl.idle>480)exitClinch('레퍼리가 클린치를 떼어놓습니다')}
+      if(S.cl){S.cl.idle++;if(S.cl.cage){const C=S.cage,hz=(S.cl.cz||0)-C.z,half=Math.sqrt(Math.max(0,cageR()*cageR()-hz*hz)),wall=C.x+S.cl.dir*half;S.cl.cx=lerp(S.cl.cx,wall-S.cl.dir*26,.02)}clinchPos();if(S.cl.idle>480)exitClinch('레퍼리가 클린치를 떼어놓습니다')}
     }else{
       P.moveDir=S.held.ax?S.held.ax:(S.held.right?1:0)-(S.held.left?1:0);
       if(!S.demo)P.moveZ=S.held.az?S.held.az:(S.held.dn?1:0)-(S.held.up?1:0);
@@ -991,7 +1002,7 @@ function step(){
 }
 const lerp=(a,b,t)=>a+(b-a)*t;
 let slowTick=0;
-const SNAPK=['x','z','moveZ','f','state','t','walk','blockHeld','rocked','flash','koT','head','body','legs','lgL','lgR','stance','exh','cuts','st','stun','moveDir'];
+const SNAPK=['x','z','moveZ','f','state','t','vx','walk','blockHeld','rocked','flash','koT','head','body','legs','lgL','lgR','stance','exh','cuts','st','stun','moveDir'];
 function snapF(F){const o={};for(const k of SNAPK)o[k]=F[k];o.A=F.A?{anim:F.A.anim,w:F.A.w,a:F.A.a,r:F.A.r,special:F.A.special,kind:F.A.kind,id:F.A.id}:null;o.g={act:F.g.act,t:F.g.t,A:F.g.A?{w:F.g.A.w,r:F.g.A.r,dmg:F.g.A.dmg,target:F.g.A.target}:null};return o}
 function snap(){return{a:snapF(S.a),b:snapF(S.b),gr:S.gr?{top:S.gr.top.side,pos:S.gr.pos,cx:S.gr.cx,hd:S.gr.hd,cz:S.gr.cz}:null,cl:S.cl?{ctrl:S.cl.ctrl.side,cage:S.cl.cage,cx:S.cl.cx,dir:S.cl.dir,cz:S.cl.cz}:null,sub:S.sub?{att:S.sub.att.side,name:S.sub.name,prog:S.sub.prog}:null,ref:{...S.ref},cage:{...S.cage},th:S.camTheta}}
 function replayView(){
@@ -1149,6 +1160,7 @@ IC.Fight={
   stop(){S=null},
   W,H,GY,GNP,TOP_SUBS,BOT_SUBS,
   _ai:{aiStand,aiClinch,aiGround},replayView,
+  arena(){return S?S.arena:ARENAS[2]},ARENAS,
   intensity(){if(!S)return 0;let I=(S.heat||0)*.6;if(S.sub)I+=S.sub.prog/130;if(S.a.rocked>0||S.b.rocked>0)I+=.25;if(S.mode==='ko'||S.mode==='replay')I=1.2;if(S.mode==='outro'||S.mode==='decision')I=Math.max(I,.8);return Math.max(0,Math.min(1.2,I))}
 };
 })(window.IC);
