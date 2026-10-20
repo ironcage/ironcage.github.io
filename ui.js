@@ -275,25 +275,58 @@ function cardsTable(rounds){
 }
 
 /* ---------- home ---------- */
+/* ---------- home: game-style main menu ---------- */
+const ICO={
+  wild:'<path d="M12 3c1 3 4 4.5 4 8.5A4 4 0 0 1 8 12c0-1.5.7-2.6 1.6-3.4C9.8 10 10.6 11 12 11c-1.2-2.6-.6-5.6 0-8z"/><path d="M7 15.5A5 5 0 0 0 17 15.5"/>',
+  tour:'<path d="M3 5h5v4H3zM3 15h5v4H3zM8 7h3v10H8M11 12h4M15 10h6v4h-6z"/>',
+  practice:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>',
+  gp:'<path d="M13 2 5 13h6l-1 9 8-11h-6z"/>',
+  gym:'<path d="M3 10v4M6 8v8M18 8v8M21 10v4M6 12h12"/>',
+  online:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+  lb:'<path d="M5 20V11M12 20V5M19 20v-6"/>',
+  album:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M3 15h18M7 5v4M11 5v4M15 5v4M7 15v4M11 15v4M15 15v4"/>',
+  hof:'<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>',
+  roster:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2c3 .2 5.5 2.4 5.5 5.8"/>'};
+const ico=k=>`<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICO[k]}</svg>`;
+function champsOf(){const c=DATA.career;return CLASSES.map(C=>{let id=null;
+  if(c&&((IC.CLSMAP||{})[c.cls]||c.cls)===C.id&&c.order&&c.order.length)id=c.order[0];
+  if(!id){const l=ROSTER.filter(f=>((IC.CLSMAP||{})[f.cls]||f.cls)===C.id).sort((x,y)=>y.ovr-x.ovr);id=l[0]&&l[0].id}
+  const d=id&&getF(id);return d?{C,id,d}:null}).filter(Boolean)}
+function tickerItems(){const c=DATA.career,R=DATA.records,ch=champsOf(),out=[];
+  ch.forEach(x=>out.push(`👑 ${x.C.name} 챔피언 <b>"${esc(x.d.nick)}" ${esc(x.d.name)}</b> ${(x.d.rec||[0,0,0]).slice(0,2).join('-')}`));
+  const day=Math.floor(Date.now()/864e5),C=CLASSES[day%CLASSES.length],l=ROSTER.filter(f=>((IC.CLSMAP||{})[f.cls]||f.cls)===C.id).sort((x,y)=>y.ovr-x.ovr);
+  if(l[1]&&l[2])out.splice(2,0,`🔥 오늘의 빅매치 · ${C.name} <b>${esc(l[1].nick)} vs ${esc(l[2].nick)}</b> 승자가 타이틀 도전권`);
+  if(c&&c.news)c.news.slice(0,2).forEach(n=>out.splice(1,0,`📰 ${esc(n)}`));
+  const fin=(R.fin.KO||0)+(R.fin.TKO||0)+(R.fin['서브미션']||0);out.push(`💥 내 피니시 승 <b>${fin}회</b>`);
+  out.push('🥊 6개 체급 · '+ROSTER.length+'명의 파이터가 기다립니다');return out}
 V.home=()=>{
   const c=DATA.career,R=DATA.records;
-  const cs=c?`${esc(c.name)} · ${c.rec.join('-')} · ${clsName(c.cls)} ${rankLabel(c.order.indexOf('me'))}`:'새 선수를 만들어 무명에서 챔피언까지';
-  return `<section class="hero"><canvas id="demo" aria-label="데모 경기"></canvas>${hmChip()}<div class="heroTxt"><div class="eyebrow">종합격투기 · 커리어 · 토너먼트</div><h2>아이언 <span>케이지</span></h2>
-  <p>6개 체급 ${ROSTER.length}명의 파이터와 직접 만든 선수로 케이지에 오르세요. 타격, 클린치, 테이크다운, 그라운드, 서브미션을 모두 직접 조작합니다.</p></div></section>
-  <div class="modes">
-    <button class="tile main" data-act="career"><span class="tn">커리어</span><span class="td">선수 생성 → 트레이닝 캠프 → 랭킹 → 타이틀전. 체육관을 옮기고 필살기를 배우며 레전드가 되세요.</span><span class="tx">${cs}</span></button>
-    <button class="tile wildt" data-act="nav" data-to="wild"><span class="tn">야생 매치</span><span class="td">반칙이 전부 허용되는 스페셜 레트로 룰. 로블로·헤드버트·사커킥·눈 찌르기 OK.</span><span class="tx">${(R.wild||{w:0}).w}승 ${(R.wild||{l:0}).l}패</span></button>
-    <button class="tile" data-act="tour"><span class="tn">토너먼트</span><span class="td">한 체급 8인 녹아웃 대진. 세 번 이기면 우승.</span><span class="tx">우승 ${R.tour.won}회 / ${R.tour.played}회</span></button>
-    <button class="tile" data-act="nav" data-to="practice"><span class="tn">연습</span><span class="td">시간 제한 없이 기술 익히기. 과제 체크리스트 포함.</span><span class="tx">처음이라면 여기부터</span></button>
-    <button class="tile" data-act="gp"><span class="tn">그랑프리</span><span class="td">하룻밤 16인 토너먼트. 데미지가 다음 경기로 이어집니다.</span><span class="tx">우승 ${DATA.records.gpWon||0}회</span></button>
-    <button class="tile" data-act="nav" data-to="gymm"><span class="tn">체육관 모드</span><span class="td">내 체육관을 운영하며 유망주를 영입·육성하고 라이벌 체육관과 대항전.</span><span class="tx">${DATA.gymm?esc(DATA.gymm.name)+' · '+DATA.gymm.pts+'점':'새 체육관 열기'}</span></button>
-    <button class="tile main2${window.claude?'':' locked'}" data-act="nav" data-to="online"><span class="tn">온라인 아레나${window.claude?'':' 🔒'}</span><span class="td">친구와 실시간 1:1 대전, 관전·응원 채팅, 고스트 대전, 주간 토너먼트.</span><span class="tx">${window.claude?`${(DATA.records.online||{w:0}).w}승 · 주간 우승 ${DATA.records.weekly||0}`:'앱 버전에서는 준비 중'}</span></button>
-    <button class="tile${window.claude?'':' locked'}" data-act="lbOpen"><span class="tn">리더보드${window.claude?'':' 🔒'}</span><span class="td">이 게임을 하는 사람들과 커리어·벨트·레전드 별 점수 비교.</span><span class="tx">${window.claude?'온라인':'앱 버전에서는 준비 중'}</span></button>
-    <button class="tile albt" data-act="album"><span class="tn">KO 명장면 앨범</span><span class="td">피니시 직전 3초를 픽셀 GIF로 자동 녹화. 상위 5개 장면 보관.</span><span class="tx">📼 5슬롯</span></button>
-    <button class="tile hoft" data-act="nav" data-to="hof"><span class="tn">명예의 전당</span><span class="td">전설로 남은 파이터들의 헌액 명판. 커리어 선수가 은퇴할 때 기준을 넘으면 이곳에 이름이 새겨집니다.</span><span class="tx">헌액 ${(DATA.hof||[]).length}명 · 레전드 ${LEG.length}명</span></button>
-    <button class="tile" data-act="nav" data-to="roster"><span class="tn">선수 명단</span><span class="td">체급별 파이터 능력치와 스타일 보기.</span><span class="tx">${ROSTER.length}명</span></button>
+  const cs=c?`${esc(c.name)} · ${c.rec.join('-')} · ${clsName(c.cls)} ${rankLabel(c.order.indexOf('me'))}`:'무명에서 챔피언까지 · 내 선수를 만들어 보세요';
+  const tk=tickerItems().map(s=>`<span>${s}</span>`).join('<i>◆</i>');
+  const ch=champsOf();
+  const T=(act,to,k,name,line,stat,cls='',tag='')=>`<button class="mt ${cls}${tag?' hasrib':''}" data-act="${act}"${to?` data-to="${to}"`:''}>${tag?`<em class="rib">${tag}</em>`:''}<span class="mic">${ico(k)}</span><span class="mtn">${name}</span><span class="mtd">${line}</span><span class="mts">${stat}</span></button>`;
+  return `<section class="hero2"><canvas id="demo" aria-label="데모 경기"></canvas><div class="h2fx"></div>${hmChip()}
+    <div class="livepill"><i></i>LIVE <span id="demoTag">데모 경기</span></div>
+    <div class="h2main"><div class="lgo"><span class="l1">IRON</span><span class="l2">CAGE</span></div><div class="lgk">아이언 케이지 · 종합격투기 액션</div>
+      <button class="cta" data-act="career"><span class="ctaT">${c?'커리어 이어하기':'커리어 시작'} <b>▶</b></span><span class="ctaS">${cs}</span></button>
+      <div class="qk"><button data-act="nav" data-to="wild">🔥 야생 매치</button><button data-act="tour">🏆 토너먼트</button><button data-act="nav" data-to="practice">🎯 연습</button></div></div>
+    <div class="ticker"><div class="tkr">${tk}<i>◆</i>${tk}<i>◆</i></div></div></section>
+  <div class="sech"><h3>현 챔피언</h3><span>6개 체급의 왕좌 · 벨트를 빼앗아 오세요</span></div>
+  <div class="chrow">${ch.map(x=>`<button class="chc${x.id==='me'?' me':''}" data-act="nav" data-to="roster"><canvas data-pid="${esc(x.id)}" data-mode="bust"></canvas><span class="chbelt"></span><span class="chk">${x.C.name}</span><span class="chn">"${esc(x.d.nick)}"</span><span class="chr">${(x.d.rec||[0,0,0]).join('-')}</span></button>`).join('')}</div>
+  <div class="sech"><h3>게임 모드</h3><span>오늘은 어떤 싸움을?</span></div>
+  <div class="modes2">
+    ${T('nav','wild','wild','야생 매치','로블로·헤드버트·사커킥 OK',`${(R.wild||{w:0}).w}승 ${(R.wild||{l:0}).l}패`,'wildt','HOT')}
+    ${T('tour','','tour','토너먼트','8인 녹아웃 · 3연승이면 우승',`우승 ${R.tour.won}회`)}
+    ${T('gp','','gp','그랑프리','하룻밤 16인 · 데미지 누적',`우승 ${DATA.records.gpWon||0}회`,'gpt')}
+    ${T('nav','practice','practice','연습','과제 체크리스트로 기술 익히기','처음이라면 여기부터','prt')}
+    ${T('nav','gymm','gym','체육관 모드','유망주 영입 · 라이벌 대항전',DATA.gymm?esc(DATA.gymm.name)+' · '+DATA.gymm.pts+'점':'새 체육관 열기','gymt')}
+    ${T('album','','album','KO 명장면','피니시 3초 픽셀 GIF 자동 녹화','📼 5슬롯','albt','NEW')}
+    ${T('nav','hof','hof','명예의 전당','레전드 도전 · 헌액 명판',`헌액 ${(DATA.hof||[]).length}명`,'hoft')}
+    ${T('nav','roster','roster','선수 명단','체급별 능력치와 스타일',`${ROSTER.length}명`)}
+    ${T('nav','online','online','온라인 아레나','실시간 1:1 · 관전 채팅',window.claude?`${(DATA.records.online||{w:0}).w}승`:'준비 중',window.claude?'':'locked')}
+    ${T('lbOpen','','lb','리더보드','커리어·벨트 점수 비교',window.claude?'온라인':'준비 중',window.claude?'':'locked')}
   </div>
-  <div class="between-row"><p>난이도 ${DIFFS[DATA.settings.diff].label} · 라운드 ${DATA.settings.roundSec/60}분 · 피니시 승 ${(R.fin.KO||0)+(R.fin.TKO||0)+(R.fin['서브미션']||0)}회</p><div class="row"><button class="btn" data-act="nav" data-to="records">기록 · 설정</button><button class="btn" data-act="nav" data-to="wipe">게임 초기화</button></div></div>`;
+  <div class="between-row"><p>난이도 ${DIFFS[DATA.settings.diff].label} · 라운드 ${DATA.settings.roundSec/60}분 · v${(IC.VER||'')}</p><div class="row"><button class="btn" data-act="nav" data-to="records">기록 · 설정</button><button class="btn" data-act="nav" data-to="wipe">게임 초기화</button></div></div>`;
 };
 
 /* ---------- roster ---------- */
@@ -1612,7 +1645,7 @@ function startDemo(){
   const el=document.getElementById('demo');if(!el)return;
   stopDemo();demoOn=true;
   const cls=pick(CLASSES).id,l=IC.byClass(cls);const a=pick(l);let b=pick(l);while(b===a)b=pick(l);
-  IC.opts.nums=false;
+  IC.opts.nums=false;{const tg=document.getElementById('demoTag');if(tg)tg.textContent=`${a.nick} vs ${b.nick} · ${clsName(cls)}`}
   IC.Fight.start({a,b,rounds:1,roundSec:90,diff:'hard',demo:true,replay:false,onRound:()=>{},onEnd:()=>{setTimeout(()=>{if(demoOn&&SCREEN==='home')startDemo()},600)}});
   const dc=el.getContext('2d');
   const fitD=()=>{const d=Math.min(2,window.devicePixelRatio||1);el.width=800*d;el.height=450*d;dc.setTransform(d,0,0,d,0,0)};fitD();
@@ -1870,19 +1903,32 @@ function showTitle(){
   const C={set:'title',a:heroFighter(),hype:false};const has3d=startCine($('#tHost'),C,{keep:true});
   if(!has3d)el.classList.add('flat');
   let phase='title';
-  const finish=()=>{if(phase==='done')return;phase='done';stopCine();el.classList.add('out');document.body.classList.remove('titling');setTimeout(()=>el.remove(),450);go('home');homeMusic(true)};
+  const finish=()=>{if(phase==='done')return;phase='done';stopCine();el.classList.add('out');document.body.classList.remove('titling');setTimeout(()=>el.remove(),450);const keep=!!Sound._mus;go('home');if(!keep)homeMusic(true)};
   el.querySelector('.tSkip').addEventListener('click',e=>{e.stopPropagation();finish()});
   el.addEventListener('pointerdown',()=>{if(phase!=='title')return;phase='belt';Sound.on=true;Sound.init();
     el.classList.add('belt');el.querySelector('.tSkip').hidden=false;
-    if(!has3d){/* 2D: the championship belt ceremony plays right after TAP TO START */
+    if(!has3d){/* 2D: TAP TO START → the last 10 seconds of a title fight (tap to land the finisher) → championship belt ceremony */
       const host=$('#tHost'),cvb=document.createElement('canvas');cvb.style.cssText='position:absolute;inset:0;width:100%;height:100%';host.appendChild(cvb);el.classList.remove('flat');el.classList.add('beltflat');
-      const c2=cvb.getContext('2d'),B=IC.Draw.BELT,d=C.a,cls=clsName(d.cls),t0=performance.now(),fired={},once=(k,f)=>{if(!fired[k]){fired[k]=1;try{f()}catch(e){}}},END=B.lift+170;
-      try{Sound.music(false)}catch(e){}
-      const fr=now=>{if(phase!=='belt')return;const t=(now-t0)/1000*60*1.35;
-        once('a',()=>Sound.roar(.3));if(t>=B.reveal)once('rv',()=>{Sound.sting(true);Sound.roar(.6);Sound.applause(4)});if(t>=B.close)once('cl',()=>Sound.play('reveal'));
-        if(t>=B.wrap)once('wr',()=>Sound.applause(5,.07));if(t>=B.lift)once('lf',()=>{Sound.noise(.9,'lowpass',220,1);Sound.roar(.7);Sound.applause(6,.08)});
+      const c2=cvb.getContext('2d'),B=IC.Draw.BELT,KI=IC.Draw.KOI,d=C.a,cls=clsName(d.cls),fired={},once=(k,f)=>{if(!fired[k]){fired[k]=1;try{f()}catch(e){}}},END=B.lift+170,SPD=1.55;
+      const cm=x=>(IC.CLSMAP||{})[x]||x,opp=ROSTER.filter(f=>cm(f.cls)===cm(d.cls)&&f.id!==d.id).sort((x,y)=>y.ovr-x.ovr)[0]||ROSTER[1];
+      let mode='ko',p0=performance.now(),t0=0,hitAt=null,pNow=0,lastBeat=-1;
+      try{Sound.music(false);Sound.roar(.45)}catch(e){}
+      const doHit=()=>{if(hitAt!=null||mode!=='ko')return;hitAt=pNow;try{Sound.play('whoosh');if(IC.Haptic)IC.Haptic.tap()}catch(e){}
+        setTimeout(()=>{try{Sound.play('big');Sound.play('slam');Sound.roar(1);Sound.applause(6,.09);if(IC.Haptic)IC.Haptic.play([45,30,110,40,70])}catch(e){}},KI.hit/(60*1.35)*1000);
+        setTimeout(()=>{try{Sound.play('ko')}catch(e){}},700)};
+      el.addEventListener('pointerdown',()=>{if(phase==='belt')doHit()});
+      const fr=now=>{if(phase!=='belt')return;
         const dpr=Math.min(2.5,devicePixelRatio||1),w=cvb.clientWidth,h=cvb.clientHeight;if(cvb.width!==Math.round(w*dpr)){cvb.width=Math.round(w*dpr);cvb.height=Math.round(h*dpr)}
-        c2.setTransform(cvb.width/800,0,0,cvb.width/800,0,0);try{IC.Draw.beltScene(c2,w,h,Math.min(t,END),d,cls,{})}catch(e){console.error(e);finish();return}
+        c2.setTransform(cvb.width/800,0,0,cvb.width/800,0,0);
+        if(mode==='ko'){pNow=(now-p0)/1000*60*1.35;
+          if(hitAt==null){const bt=Math.floor(pNow/34);if(bt!==lastBeat){lastBeat=bt;try{Sound.play('heart')}catch(e){}}if(pNow>420)doHit()}
+          try{IC.Draw.koScene(c2,w,h,pNow,d,opp,hitAt)}catch(e){console.error(e);mode='belt';t0=now}
+          if(hitAt!=null&&pNow-hitAt>=KI.end){mode='belt';t0=now}
+          requestAnimationFrame(fr);return}
+        const t=(now-t0)/1000*60*SPD;
+        once('a',()=>Sound.roar(.3));if(t>=B.reveal)once('rv',()=>{Sound.sting(true);Sound.roar(.7);Sound.applause(4);Sound.music(true,Object.assign({},HOME_THEME,{vol:.42}))});if(t>=B.close)once('cl',()=>Sound.play('reveal'));
+        if(t>=B.wrap)once('wr',()=>Sound.applause(5,.07));if(t>=B.lift)once('lf',()=>{Sound.noise(.9,'lowpass',220,1);Sound.roar(.8);Sound.applause(6,.08);if(IC.Haptic)IC.Haptic.play([30,30,60])});
+        try{IC.Draw.beltScene(c2,w,h,Math.min(t,END),d,cls,{opp})}catch(e){console.error(e);finish();return}
         if(t>=END){finish();return}requestAnimationFrame(fr)};
       requestAnimationFrame(fr);return}
     try{Sound.play('reveal');setTimeout(()=>{try{Sound.roar(.7);Sound.applause(5,.08)}catch(e){}},900)}catch(e){}

@@ -1161,7 +1161,7 @@ IC.Fight={
   setPlan,INJ,
   playHL(list,done){if(!S||!list||!list.length){done&&done();return}S.hlQ=list.slice(1);S.rp={frames:list[0].frames,i:0,sub:0,hl:true,label:list[0].label};S.mode='replay';S.hlDone=done;S.paused=false},
   press(id){if(!S)return;if(S.mirror){if(!S.spec&&S.netOut)S.netOut('p',S.sub?'mash':id,!!S.held.block);return}if(S.mode!=='fight')return;if(S.sub){mash();return}if(id==='mash')return;S.p.slot=resolve(id);S.p.bufT=10},
-  stance(){if(!S||S.mode!=='fight'||S.gr||S.cl||S.mirror)return;const P=S.p;if(P.swT>0||P.state==='attack'||P.state==='hit')return;P.stance=P.stance==='south'?'orth':'south';P.swT=16;const open=P.stance!==S.e.stance;floatText(P.x,150+zy(P),(P.stance==='south'?'사우스포':'오소독스')+(open?' · 오픈 스탠스':' · 클로즈드'),'#7fe3ff');sfx('whoosh');buzz([8,30,8]);
+  stance(){if(!S||S.mode!=='fight'||S.gr||S.cl||S.mirror)return;const P=S.p;if(P.swT>0||P.state==='attack'||P.state==='hit')return;P.stance=P.stance==='south'?'orth':'south';P.swT=16;const open=P.stance!==S.e.stance;S.stCall={f:S.frame,s:P.stance,open};floatText(P.x,150+zy(P),(P.stance==='south'?'사우스포':'오소독스')+(open?' · 오픈 스탠스':' · 클로즈드'),'#7fe3ff');sfx('whoosh');buzz([8,30,8]);
     say(open?`${P.nick}, ${P.stance==='south'?'사우스포':'오소독스'} 전환! 뒷손·몸통킥 강화`:`${P.nick}, 스탠스를 맞춥니다! 잽 강화`)},
   hold(k,on){if(S){S.held[k]=on;if(S.mirror&&S.netOut)S.netOut('h')}},
   releaseAll(){if(S)S.held={left:false,right:false,block:false,up:false,dn:false,ax:0,az:0}},

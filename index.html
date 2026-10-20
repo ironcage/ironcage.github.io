@@ -436,7 +436,7 @@ body.titling{overflow:hidden}
 .pb.mash{background:linear-gradient(180deg,rgba(255,215,94,.35),rgba(255,215,94,.1));--acc:#ffd75e}
 .pb.dim{opacity:.35;filter:saturate(.3)}
 #guardBtn{--acc:rgba(232,179,58,.95);border-top-color:rgba(255,255,255,.34)}
-#stanceBtn{--acc:rgba(127,227,255,.95);border-top-color:rgba(255,255,255,.34)}
+#stanceBtn{--acc:rgba(127,227,255,.95);border-top-color:rgba(255,255,255,.34)}#stanceBtn[data-s=south]{color:#7fe3ff;box-shadow:0 0 0 1px rgba(127,227,255,.6) inset,0 0 16px rgba(127,227,255,.35)}
 .joyBase{background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.14),rgba(255,255,255,.03) 62%);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.2);box-shadow:0 8px 24px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.2)}
 .joyBase::before{border-color:rgba(255,255,255,.14)}
 .joyKnob{background:radial-gradient(circle at 38% 30%,rgba(255,255,255,.55),rgba(160,175,200,.25) 45%,rgba(30,36,48,.75));border:1px solid rgba(255,255,255,.35);box-shadow:0 6px 16px rgba(0,0,0,.45),inset 0 1px 1px rgba(255,255,255,.4)}
@@ -475,6 +475,64 @@ body.titling{overflow:hidden}
 @media (prefers-reduced-motion:reduce){#rotateGate .ph{animation:none;transform:rotate(-90deg)}}
 .credit{margin:22px auto 4px;text-align:center}.credit p{margin:0 auto;font-size:12px;color:var(--muted);letter-spacing:.06em}
 .app:has(#game:not([hidden])) .credit{display:none}
+
+/* ===== home: game main menu ===== */
+.hero2{position:relative;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:#05060a;height:min(78vh,520px);min-height:300px;box-shadow:0 20px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08)}
+.hero2 canvas#demo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(1.15) contrast(1.05)}
+.h2fx{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(4,5,8,.92) 0%,rgba(4,5,8,.62) 38%,rgba(4,5,8,0) 68%),linear-gradient(0deg,rgba(4,5,8,.85),rgba(4,5,8,0) 30%),radial-gradient(120% 80% at 80% 20%,rgba(232,179,58,.12),transparent 60%)}
+.h2fx::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px);mix-blend-mode:overlay}
+.livepill{position:absolute;right:14px;bottom:40px;z-index:3;display:flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:rgba(8,10,14,.66);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);font:800 11px/1 "Rajdhani","IBM Plex Sans KR",sans-serif;letter-spacing:.08em;color:#fff}
+.livepill i{width:7px;height:7px;border-radius:50%;background:#ff3b2e;box-shadow:0 0 8px #ff3b2e;animation:blink 1.2s steps(2) infinite}
+.livepill span{font-weight:600;letter-spacing:0;color:#d6dbe4}
+@keyframes blink{50%{opacity:.25}}
+.h2main{position:absolute;left:clamp(16px,4vw,40px);top:50%;transform:translateY(-54%);z-index:2;display:flex;flex-direction:column;align-items:flex-start;gap:10px;max-width:min(520px,62%)}
+.lgo{font-family:var(--display);line-height:.82;display:flex;flex-direction:column;filter:drop-shadow(0 6px 18px rgba(0,0,0,.7))}
+.lgo span{font-size:clamp(54px,11vw,104px);letter-spacing:.01em;background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 5s linear infinite}
+.lgo .l1{background-image:linear-gradient(100deg,#8d96a6 0%,#f4f6fa 22%,#9aa3b2 34%,#5d6573 48%,#e9edf3 62%,#8d96a6 100%)}
+.lgo .l2{background-image:linear-gradient(100deg,#a8741a 0%,#ffe9a8 20%,#e8b33a 34%,#8a5a10 50%,#ffd76a 64%,#a8741a 100%);margin-top:-.04em}
+@keyframes shine{to{background-position:-200% 0}}
+.lgk{font:700 12px/1.2 "IBM Plex Sans KR",sans-serif;letter-spacing:.14em;color:#e8b33a;text-transform:uppercase;margin-top:-2px}
+.cta{position:relative;margin-top:6px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:13px 22px 12px;min-width:min(330px,100%);border:none;border-radius:14px;cursor:pointer;color:#1a1204;text-align:left;
+  background:linear-gradient(180deg,#ffe7a0,#f0b93a 48%,#c88a14);box-shadow:0 0 0 1px rgba(255,240,200,.6) inset,0 -3px 0 rgba(120,70,0,.5) inset,0 10px 30px rgba(232,179,58,.35);animation:ctaPulse 2.2s ease-in-out infinite;overflow:hidden}
+.cta::after{content:"";position:absolute;top:0;bottom:0;width:40%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.65),transparent);transform:skewX(-18deg);animation:ctaSweep 3.2s ease-in-out infinite}
+.cta:active{transform:translateY(2px) scale(.985)}
+.ctaT{font-family:var(--display);font-size:clamp(22px,4.4vw,30px);line-height:1}.ctaT b{font-size:.7em;margin-left:4px}
+.ctaS{font:700 12px/1.3 "IBM Plex Sans KR",sans-serif;color:rgba(40,25,0,.78)}
+@keyframes ctaPulse{50%{box-shadow:0 0 0 1px rgba(255,240,200,.6) inset,0 -3px 0 rgba(120,70,0,.5) inset,0 10px 44px rgba(232,179,58,.6)}}
+@keyframes ctaSweep{0%,55%{left:-60%}100%{left:130%}}
+.qk{display:flex;gap:8px;flex-wrap:wrap}
+.qk button{padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);backdrop-filter:blur(8px);color:#fff;font:700 13px/1 "IBM Plex Sans KR",sans-serif;cursor:pointer}
+.qk button:active{transform:scale(.96)}
+.ticker{position:absolute;left:0;right:0;bottom:0;z-index:2;height:30px;overflow:hidden;background:linear-gradient(90deg,rgba(232,179,58,.95),rgba(232,179,58,.85));color:#1a1204;display:flex;align-items:center;mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+.tkr{display:flex;gap:18px;white-space:nowrap;animation:tick 48s linear infinite;font:600 12.5px/1 "IBM Plex Sans KR",sans-serif;padding-left:18px}
+.tkr b{font-weight:800}.tkr i{font-style:normal;opacity:.5;font-size:9px;align-self:center}
+@keyframes tick{to{transform:translateX(-50%)}}
+.sech{display:flex;align-items:baseline;gap:10px;margin:8px 2px -2px}
+.sech h3{margin:0;font-family:var(--display);font-weight:400;font-size:22px;color:#fff}.sech span{font-size:12px;color:var(--muted)}
+.chrow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+@media (max-width:640px){.chrow{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.chc{position:relative;border-radius:12px;overflow:hidden;border:1px solid rgba(232,179,58,.28);background:radial-gradient(90% 70% at 50% 25%,rgba(232,179,58,.2),rgba(10,11,15,.95) 70%);padding:0 0 8px;cursor:pointer;color:#fff;display:flex;flex-direction:column;align-items:center;gap:1px;transition:transform .15s}
+.chc:hover{transform:translateY(-3px)}.chc:active{transform:scale(.97)}
+.chc.me{border-color:#e8b33a;box-shadow:0 0 18px rgba(232,179,58,.45)}
+.chc canvas{width:100%;height:92px;display:block}
+.chbelt{width:58%;height:9px;margin-top:2px;border-radius:5px;background:linear-gradient(180deg,#ffe7a0,#d79a20 60%,#8a5a10);box-shadow:0 2px 6px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.4);position:relative}
+.chbelt::after{content:"";position:absolute;left:50%;top:50%;width:16px;height:13px;transform:translate(-50%,-50%);border-radius:4px;background:linear-gradient(180deg,#fff2c0,#e8b33a);box-shadow:0 0 0 1px rgba(90,60,0,.6)}
+.chk{font:800 10px/1.2 "IBM Plex Sans KR",sans-serif;color:#e8b33a;margin-top:6px;letter-spacing:.04em}
+.chn{font-family:var(--display);font-size:15px;line-height:1.1;max-width:94%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chr{font:700 11px/1 "Rajdhani",sans-serif;color:rgba(255,255,255,.6)}
+.modes2{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+@media (max-width:760px){.modes2{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.mt{--ac:#9fb3d1;position:relative;overflow:hidden;text-align:left;border-radius:14px;border:1px solid rgba(255,255,255,.1);padding:14px 14px 12px;min-height:122px;cursor:pointer;color:#fff;display:flex;flex-direction:column;gap:4px;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--ac) 22%,#151820),#0d0f14 70%);box-shadow:inset 0 1px 0 rgba(255,255,255,.08);transition:transform .15s,border-color .15s}
+.mt:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--ac) 60%,transparent)}.mt:active{transform:scale(.97)}
+.mt .mic{position:absolute;right:-8px;bottom:-10px;width:78px;height:78px;color:var(--ac);opacity:.22}.mt .mic svg{width:100%;height:100%}
+.mt.hasrib .mtn{padding-right:30px}.mtn{font-family:var(--display);font-size:21px;line-height:1.05;color:#fff}
+.mtd{font-size:12px;line-height:1.4;color:rgba(220,226,236,.72)}
+.mts{margin-top:auto;align-self:flex-start;font:800 11px/1 "IBM Plex Sans KR",sans-serif;color:var(--ac);background:color-mix(in srgb,var(--ac) 16%,transparent);padding:5px 8px;border-radius:999px}
+.mt .rib{position:absolute;top:0;right:0;border-radius:0 13px 0 9px!important;font:900 10px/1 "Rajdhani",sans-serif;letter-spacing:.1em;font-style:normal;padding:4px 7px;border-radius:6px;background:var(--ac);color:#140a06}
+.mt.wildt{--ac:#ff6b5e}.mt.gpt{--ac:#b48cff}.mt.prt{--ac:#5fd3ff}.mt.gymt{--ac:#7fe0a0}.mt.albt{--ac:#9fe0a8}.mt.hoft{--ac:#e8b33a}
+.mt.locked{opacity:.5;filter:saturate(.3)}
+@media (max-height:460px) and (orientation:landscape){.hero2{height:calc(100vh - 70px);min-height:280px}.h2main{gap:6px;top:calc(50% - 14px);transform:translateY(-50%)}.lgo span{font-size:clamp(40px,7.4vw,74px)}.cta{padding:10px 18px 9px}}
 </style>
 
 <div class="app">
@@ -505,7 +563,11 @@ body.titling{overflow:hidden}
 <script src="ui.js"></script>
 <script>
 /* PWA: offline cache (service worker). Relative path so it works on GitHub Pages sub-folders. */
-if('serviceWorker' in navigator&&location.protocol!=='file:'){addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW 등록 실패',e))})}
+if('serviceWorker' in navigator&&location.protocol!=='file:'){addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').then(r=>{try{r.update()}catch(e){}}).catch(e=>console.warn('SW 등록 실패',e))});
+  /* a new version took over: reload right away unless a fight is running (then reload on the next return to the menu) */
+  const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||reloaded)return;const busy=()=>{const g=document.getElementById('game');return g&&!g.hidden};
+    const go=()=>{if(reloaded)return;reloaded=true;location.reload()};if(!busy())go();else{const iv=setInterval(()=>{if(!busy()){clearInterval(iv);go()}},1500)}})}
 </script>
 </body>
 </html>

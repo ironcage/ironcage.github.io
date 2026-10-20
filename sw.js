@@ -1,6 +1,6 @@
 /* 아이언 케이지 — 서비스 워커 (오프라인 실행)
    게임 파일을 바꿔 올릴 때는 아래 VERSION 숫자를 하나 올려 주세요. 그래야 폰에 있는 옛 버전이 새 버전으로 바뀝니다. */
-const VERSION = 'iron-cage-pwa-v12';
+const VERSION = 'iron-cage-pwa-v13';
 const FONT_CACHE = 'iron-cage-fonts';
 const APP_FILES = [
   './',
@@ -19,7 +19,7 @@ const APP_FILES = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(VERSION).then(c => c.addAll(APP_FILES)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(VERSION).then(c => c.addAll(APP_FILES.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {
