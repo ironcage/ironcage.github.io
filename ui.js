@@ -1817,7 +1817,17 @@ function showTitle(){
   el.querySelector('.tSkip').addEventListener('click',e=>{e.stopPropagation();finish()});
   el.addEventListener('pointerdown',()=>{if(phase!=='title')return;phase='belt';Sound.on=true;Sound.init();
     el.classList.add('belt');el.querySelector('.tSkip').hidden=false;
-    if(!has3d){setTimeout(finish,250);return}
+    if(!has3d){/* 2D: the championship belt ceremony plays right after TAP TO START */
+      const host=$('#tHost'),cvb=document.createElement('canvas');cvb.style.cssText='position:absolute;inset:0;width:100%;height:100%';host.appendChild(cvb);el.classList.remove('flat');el.classList.add('beltflat');
+      const c2=cvb.getContext('2d'),B=IC.Draw.BELT,d=C.a,cls=clsName(d.cls),t0=performance.now(),fired={},once=(k,f)=>{if(!fired[k]){fired[k]=1;try{f()}catch(e){}}},END=B.lift+170;
+      try{Sound.music(false)}catch(e){}
+      const fr=now=>{if(phase!=='belt')return;const t=(now-t0)/1000*60*1.35;
+        once('a',()=>Sound.roar(.3));if(t>=B.reveal)once('rv',()=>{Sound.sting(true);Sound.roar(.6);Sound.applause(4)});if(t>=B.close)once('cl',()=>Sound.play('reveal'));
+        if(t>=B.wrap)once('wr',()=>Sound.applause(5,.07));if(t>=B.lift)once('lf',()=>{Sound.noise(.9,'lowpass',220,1);Sound.roar(.7);Sound.applause(6,.08)});
+        const dpr=Math.min(2.5,devicePixelRatio||1),w=cvb.clientWidth,h=cvb.clientHeight;if(cvb.width!==Math.round(w*dpr)){cvb.width=Math.round(w*dpr);cvb.height=Math.round(h*dpr)}
+        c2.setTransform(cvb.width/800,0,0,cvb.width/800,0,0);try{IC.Draw.beltScene(c2,w,h,Math.min(t,END),d,cls,{})}catch(e){console.error(e);finish();return}
+        if(t>=END){finish();return}requestAnimationFrame(fr)};
+      requestAnimationFrame(fr);return}
     try{Sound.play('reveal');setTimeout(()=>{try{Sound.roar(.7);Sound.applause(5,.08)}catch(e){}},900)}catch(e){}
     const B={set:'belt',a:C.a,hype:true};startCine($('#tHost'),B,{keep:true,dur:330,onEnd:finish,tick:c=>{if(c.t>60&&!c.cap){c.cap=1;el.querySelector('.tTap').textContent=(DATA.career?'챔피언 ':'')+(c.a.nick||'')}}})});
 }
