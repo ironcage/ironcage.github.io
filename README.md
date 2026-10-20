@@ -13,6 +13,7 @@ Claude 아티팩트 **Iron Cage v48**을 바탕으로 만든 독립 실행 PWA�
 | engine.js | 전투 시스템, AI, 판정 |
 | draw.js | 2D 그래픽·HUD (3D 위에 겹쳐 그림, WebGL이 안 되는 기기에서는 2D로 자동 전환) |
 | r3d.js | **3D 렌더러** (경기장, 선수, 관중, 시네마틱) |
+| bodymesh.js | **조각된 인체 모델** (근육이 표현된 하나의 매끈한 몸 + 뼈대 스키닝, 머리·글러브 고해상도 메시) |
 | three.min.js / THREE-LICENSE.txt | 3D 엔진 three.js r128 (MIT 라이선스) |
 | gif.js | **KO 명장면 픽셀 GIF 녹화기 + 앨범 저장소** |
 | ui.js | 메뉴·모드·사운드·저장 |
@@ -53,5 +54,5 @@ Claude 아티팩트 **Iron Cage v48**을 바탕으로 만든 독립 실행 PWA�
 - 모바일: 왼쪽 아무 곳이나 엄지를 대면 생기는 조이스틱 + 오른쪽 버튼
 
 ## 업데이트 방법
-게임 파일을 바꿔 올릴 때는 `sw.js`의 `VERSION` 숫자를 하나 올려야 폰에 있는 옛 버전이 바뀝니다. (현재 v5)
+게임 파일을 바꿔 올릴 때는 `sw.js`의 `VERSION` 숫자를 하나 올려야 폰에 있는 옛 버전이 바뀝니다. (현재 v6)
 index.html 4번째 줄의 `google-site-verification` 태그는 구글 서치 콘솔 인증용이라 지우면 안 됩니다.

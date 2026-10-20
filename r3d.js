@@ -235,11 +235,8 @@ function build(canvas){
     gl_FragColor.rgb=gl_FragColor.rgb*vec3(1.0,0.93,0.88)+vec3(0.5,0.62,0.95)*fr*0.22;`)};
   const mats={skin,cloth:new T.MeshPhysicalMaterial({roughness:.72,sheen:new T.Color(0x666666),envMap,envMapIntensity:.25}),glove:new T.MeshPhysicalMaterial({roughness:.38,metalness:.05,clearcoat:.9,clearcoatRoughness:.22,envMap,envMapIntensity:.9}),
     hair:new T.MeshStandardMaterial({roughness:.75,envMap,envMapIntensity:.2}),eye:new T.MeshStandardMaterial({roughness:.12,envMap,envMapIntensity:.8}),pupil:new T.MeshStandardMaterial({roughness:.1,envMap}),blood:new T.MeshPhysicalMaterial({roughness:.2,clearcoat:1,envMap})};
-  const specs=partSpecs(),parts={hi:{},lo:{}};
-  for(const lv of ['hi','lo'])for(const [name,[fac,mk,per]] of Object.entries(specs)){
-    const g=fac(lv==='hi');const im=new T.InstancedMesh(g,mats[mk],MAXR*per);im.frustumCulled=false;im.visible=lv==='hi';im.castShadow=lv==='hi';
-    for(let i=0;i<MAXR*per;i++){im.setMatrixAt(i,ZERO);im.setColorAt(i,WHITE)}scene.add(im);parts[lv][name]={im,per,dirty:false}}
-  const st={key,spot,renderer,scene,camera,cage,floor,floorTex,panels,sectors,tiers,stainPool,flashPool,blobs,parts,lvl:'hi',jumboC,jumboT,jumboKey:'',
+  const parts=null;
+  const st={envMap,skinShader:skin.onBeforeCompile,sk:[],key,spot,renderer,scene,camera,cage,floor,floorTex,panels,sectors,tiers,stainPool,flashPool,blobs,parts,lvl:'hi',jumboC,jumboT,jumboKey:'',
     fence,rigs:new Map(),slots:new Array(MAXR).fill(null),camPos:new T.Vector3(400,260,900),camTgt:new T.Vector3(400,100,0),title:false,frustum:new T.Frustum(),stats:{calls:0,tris:0,fps:60,culled:0},q:0};
   return st;
 }
@@ -267,60 +264,125 @@ function getSlot(st,key,look,corner,kind,o){
   if(!r){const slot=st.slots.indexOf(null);if(slot<0)return null;r={slot,look,c:rigColors(look,corner,kind,o),kind};st.slots[slot]=key;st.rigs.set(key,r)}
   r.used=true;return r}
 function freeUnused(st){for(const [k,r] of st.rigs){if(!r.used){hideSlot(st,r.slot);st.slots[r.slot]=null;st.rigs.delete(k)}r.used=false}}
-function hideSlot(st,slot){for(const lv of ['hi','lo'])for(const p of Object.values(st.parts[lv])){for(let j=0;j<p.per;j++)p.im.setMatrixAt(slot*p.per+j,ZERO);p.dirty=true}}
-/* writers */
-const UP=new T.Vector3(0,1,0),XA=new T.Vector3(1,0,0),tv=new T.Vector3();
-function W(P,name,idx,m,col){const p=P[name];p.im.setMatrixAt(idx,m);if(col)p.im.setColorAt(idx,col);p.dirty=true}
-function seg(P,name,idx,a,b,sx,sz,col,base=true){tv.subVectors(b,a);const L=tv.length()||.01;_v.copy(a);if(!base)_v.addScaledVector(tv,.5);_q.setFromUnitVectors(UP,tv.multiplyScalar(1/L));_m.compose(_v,_q,_s.set(sx,L,sz));W(P,name,idx,_m,col)}
-function ball(P,name,idx,p,sx,sy,sz,col,q){_m.compose(p,q||_q.identity(),_s.set(sx,sy,sz));W(P,name,idx,_m,col)}
+function hideSlot(st,slot){const k=st.sk[slot];if(k)k.grp.visible=false}
+function flush(st){}
+function setLevel(st,lv){st.lvl=lv;for(const k of st.sk)if(k){k.hi.visible=lv==='hi';k.lo.visible=lv!=='hi'}}
+
+/* ================= sculpted skinned body (one smooth surface, real skeleton) ================= */
+let BG=null;
+function b64(s,Arr){const bin=atob(s),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Arr(u.buffer)}
+function geoFrom(o,skinned){const g=new T.BufferGeometry(),q=b64(o.pos,Int16Array),p=new Float32Array(q.length);for(let i=0;i<q.length;i++)p[i]=q[i]/100;
+  g.setAttribute('position',new T.BufferAttribute(p,3));g.setAttribute('normal',new T.BufferAttribute(b64(o.nor,Int8Array),3,true));
+  g.setIndex(new T.BufferAttribute(o.i32?b64(o.idx,Uint32Array):b64(o.idx,Uint16Array),1));
+  if(skinned){g.setAttribute('skinIndex',new T.BufferAttribute(b64(o.si,Uint8Array),4));g.setAttribute('skinWeight',new T.BufferAttribute(b64(o.sw,Uint8Array),4,true))}
+  g.computeBoundingSphere();g.boundingSphere.radius=400;g.userData.groups=o.groups;return g}
+/* region order: 0 head/forearms/hands · 1 upper arms · 2 torso · 3 waistband · 4 shorts · 5 legs · 6 feet */
+const VAR={fighter:[0,0,0,2,1,0,0],staff:[0,1,1,2,2,2,3],ref:[0,1,1,2,2,2,3]};
+function variant(g,map){const v=new T.BufferGeometry();for(const k in g.attributes)v.setAttribute(k,g.attributes[k]);v.setIndex(g.index);v.boundingSphere=g.boundingSphere;
+  let cur=null;g.userData.groups.forEach(([st,c],i)=>{if(!c)return;const m=map[i];if(cur&&cur.materialIndex===m&&cur.start+cur.count===st)cur.count+=c;else{v.addGroup(st,c,m);cur=v.groups[v.groups.length-1]}});
+  return v}
+function bodyGeos(){if(BG)return BG;const B=IC.BODY;if(!B)return null;
+  const bh=geoFrom(B.bodyHi,true),bl=geoFrom(B.bodyLo,true);
+  BG={bones:B.bones,hi:{},lo:{},headHi:geoFrom(B.headHi),headLo:geoFrom(B.headLo),gloveN:geoFrom(B.gloveN),gloveF:geoFrom(B.gloveF)};
+  for(const k in VAR){BG.hi[k]=variant(bh,VAR[k]);BG.lo[k]=variant(bl,VAR[k])}
+  /* face & hair, built in rest-pose world coordinates (face looks along +x) */
+  const at=(g,x,y,z,sx=1,sy=1,sz=1,rz=0)=>({g,m:M4(x,y,z,0,0,rz,sx,sy,sz)});
+  const capG=()=>new T.SphereGeometry(1,22,12,0,Math.PI*2,0,Math.PI*.5);
+  BG.face={
+    eyes:mergeGeos([at(sph(1.9,12,8),10.3,200.2,4.2),at(sph(1.9,12,8),10.3,200.2,-4.2)]),
+    pupil:mergeGeos([at(sph(1.02,8,6),12.05,200.3,4.3),at(sph(1.02,8,6),12.05,200.3,-4.3)]),
+    brow:mergeGeos([at(new T.BoxGeometry(5.6,1.3,3.4),11.7,204.2,4.5,1,1,1,-.12),at(new T.BoxGeometry(5.6,1.3,3.4),11.7,204.2,-4.5,1,1,1,-.12)]),
+    cap:mergeGeos([at(capG(),.3,201.4,0,12.4,13.6,10.9,.38)]),
+    buzz:mergeGeos([at(capG(),.5,201.2,0,12.05,13.2,10.55,.34)]),
+    bun:mergeGeos([at(capG(),.3,201.4,0,12.4,13.6,10.9,.38),at(sph(4.8,10,8),-10.5,210,0)]),
+    mohawk:mergeGeos([at(new T.BoxGeometry(19,6.5,3.2),-.5,212.5,0,1,1,1,.22)]),
+    long:mergeGeos([at(capG(),.3,201.4,0,12.6,13.8,11.1,.38),at(new T.BoxGeometry(6.5,22,19.5),-9,196,0)]),
+    beard:mergeGeos([at(new T.SphereGeometry(1,18,10,0,Math.PI*2,Math.PI*.44,Math.PI*.56),5.4,192.2,0,9.2,8.4,8.9)]),
+    cut:mergeGeos([0,1,2].map(i=>at(new T.BoxGeometry(3.4,.8,1.1),11.9,206.3-i*1.1,-1.8+i*2.2))),
+    blood:mergeGeos([at(new T.BoxGeometry(.8,8.5,1.3),12.9,198.5,-1.6)])};
+  return BG}
+function boneRest(B){const head={},tail={};for(const [n,h,t] of B)head[n]=new T.Vector3(...h),tail[n]=new T.Vector3(...t);return{head,tail}}
+const _X=new T.Vector3(1,0,0),_Y=new T.Vector3(0,1,0),_bm=new T.Matrix4();
+function basisQ(q,y,hint){const yy=y.clone().normalize();let x=hint.clone().addScaledVector(yy,-hint.dot(yy));if(x.lengthSq()<1e-5){x=Math.abs(yy.x)<.9?new T.Vector3(1,0,0):new T.Vector3(0,0,1);x.addScaledVector(yy,-x.dot(yy))}x.normalize();const z=new T.Vector3().crossVectors(x,yy);_bm.makeBasis(x,yy,z);return q.setFromRotationMatrix(_bm)}
+function makeRig(st){const G=bodyGeos();if(!G)return null;
+  const RB=boneRest(G.bones),bones=[],byName={};
+  G.bones.forEach(([n,h,t,p])=>{const b=new T.Bone();b.name=n;const hh=RB.head[n];if(p<0)b.position.copy(hh);else{b.position.copy(hh).sub(RB.head[G.bones[p][0]]);bones[p].add(b)}bones.push(b);byName[n]=b});
+  /* rest bases: Y along the bone, X forward (feet use up as the hint) */
+  const restInv=G.bones.map(([n])=>{const d=RB.tail[n].clone().sub(RB.head[n]);return basisQ(new T.Quaternion(),d,n.startsWith('foot')?_Y:_X).invert()});
+  const env=st.envMap,M=(o)=>{const c=o.color;delete o.color;const m=Object.assign(new T.MeshPhysicalMaterial({roughness:.6,envMap:env,envMapIntensity:.3}),o);if(c!=null)m.color.set(c);return m};
+  const skin=M({skinning:true,roughness:.55,clearcoat:.16,clearcoatRoughness:.6});skin.onBeforeCompile=st.skinShader;
+  const headSkin=M({roughness:.55,clearcoat:.16,clearcoatRoughness:.6});headSkin.onBeforeCompile=st.skinShader;
+  const cloth=()=>M({skinning:true,roughness:.74,sheen:new T.Color(0x555555),envMapIntensity:.2});
+  const mats={skin,headSkin,trunk:cloth(),band:cloth(),shirt:cloth(),pants:cloth(),shoes:M({skinning:true,roughness:.4,clearcoat:.6}),
+    glove:M({roughness:.36,clearcoat:.9,clearcoatRoughness:.2,envMapIntensity:.9}),hair:M({roughness:.78,envMapIntensity:.15}),
+    eye:M({roughness:.1,envMapIntensity:.9}),pupil:M({roughness:.08,color:0x1c120c}),blood:M({roughness:.15,clearcoat:1,color:0x7a0a12})};
+  const hi=new T.SkinnedMesh(G.hi.fighter,[skin,mats.trunk,mats.band]),lo=new T.SkinnedMesh(G.lo.fighter,[skin,mats.trunk,mats.band]);
+  for(const m of [hi,lo]){m.frustumCulled=false;m.castShadow=true;m.receiveShadow=true}
+  hi.add(bones[0]);hi.updateMatrixWorld(true);const skel=new T.Skeleton(bones);hi.bind(skel);lo.bind(skel);lo.visible=false;
+  const grp=new T.Group();grp.add(hi,lo);grp.visible=false;st.scene.add(grp);
+  const attach=(bone,geo,mat,shadow=true)=>{const m=new T.Mesh(geo,mat);m.position.copy(RB.head[bone]).negate();m.castShadow=shadow;m.frustumCulled=false;byName[bone].add(m);return m};
+  const hd={hi:attach('head',G.headHi,headSkin),lo:attach('head',G.headLo,headSkin)};hd.lo.visible=false;
+  const F=G.face,face={};for(const k of ['eyes','pupil','brow','cap','buzz','bun','mohawk','long','beard','cut','blood'])face[k]=attach('head',F[k],k==='eyes'?mats.eye:k==='pupil'?mats.pupil:k==='cut'||k==='blood'?mats.blood:mats.hair,k!=='eyes'&&k!=='pupil');
+  const gloves=[attach('handN',G.gloveN,mats.glove),attach('handF',G.gloveF,mats.glove)];
+  return{grp,hi,lo,bones,byName,restInv,RB,mats,hd,face,gloves,qw:G.bones.map(()=>new T.Quaternion()),kind:null}}
+function applyLook(st,k,r){const c=r.c,G=bodyGeos(),kind=c.kind==='fighter'?'fighter':'staff';
+  if(k.kind!==kind){k.kind=kind;const m=k.mats;k.hi.geometry=G.hi[kind];k.lo.geometry=G.lo[kind];
+    const arr=kind==='fighter'?[m.skin,m.trunk,m.band]:[m.skin,m.shirt,m.pants,m.shoes];k.hi.material=arr;k.lo.material=arr}
+  const m=k.mats;m.skin.color.copy(c.skin);m.headSkin.color.copy(c.skin);m.trunk.color.copy(c.trunk);m.band.color.copy(c.corner);
+  m.shirt.color.copy(c.top);m.pants.color.copy(c.leg);m.shoes.color.copy(c.shoe);m.hair.color.copy(c.hair);m.glove.color.copy(c.glove);
+  const hs=c.hairStyle;for(const [key,on] of [['cap',hs==='short'||hs==='crop'||hs==='fade'],['buzz',hs==='buzz'],['bun',hs==='bun'],['mohawk',hs==='mohawk'],['long',hs==='long'],['beard',c.beard]])k.face[key].visible=!!on;
+  for(const g of k.gloves)g.visible=true;k.look=r.look}
+const _q1=new T.Quaternion(),_q2=new T.Quaternion(),_pw=new T.Quaternion(),_t1=new T.Vector3(),_t2=new T.Vector3();
+const tint=new T.Color();
 function rot2(p,c,a){const s=Math.sin(a),co=Math.cos(a),x=p.x-c.x,y=p.y-c.y;return{x:c.x+x*co-y*s,y:c.y+x*s+y*co}}
-const tint=new T.Color(),tint2=new T.Color();
-/* frame: maps the 2D pose plane into world.  fx=origin x in pose space; o:world origin; dir: world axis for pose +x; z offsets go along perp */
+
+/* drive the skeleton from the 2D pose solver's joints */
 function poseRig(st,r,J,frame,F,o={}){
-  const P=st.parts[st.lvl],s=r.slot,c=r.c,ref=c.kind!=='fighter';
-  let j=J;if(o.ko){const piv=o.ko.p,a=o.ko.a;const n={};for(const k in j){const v=j[k];n[k]=v&&typeof v==='object'&&'x' in v?rot2(v,piv,a):v}n.hAng=j.hAng+a;j=n}
-  const {ox,origin,dir,perp}=frame;
+  if(!st.sk[r.slot])st.sk[r.slot]=makeRig(st);const k=st.sk[r.slot];if(!k)return;
+  if(k.look!==r.look||k.lc!==r.c){applyLook(st,k,r);k.lc=r.c}
+  k.grp.visible=true;k.hi.visible=st.lvl==='hi';k.lo.visible=st.lvl!=='hi';k.hd.hi.visible=st.lvl==='hi';k.hd.lo.visible=st.lvl!=='hi';
+  const c=r.c,ref=c.kind!=='fighter';
+  let j=J;if(o.ko){const piv=o.ko.p,a=o.ko.a;const n={};for(const kk in j){const v=j[kk];n[kk]=v&&typeof v==='object'&&'x' in v?rot2(v,piv,a):v}n.hAng=j.hAng+a;j=n}
+  const {ox,origin,dir,perp}=frame,f=j.f||1;
   const P3=(p,dz)=>new T.Vector3(origin.x+dir.x*(p.x-ox)+perp.x*dz,GY-p.y,origin.z+dir.z*(p.x-ox)+perp.z*dz);
-  const f=j.f,arm=o.arm??13,legS=o.leg??8.5,mir=o.mirror?-1:1; // southpaw stance mirrors which side is lead
-  const hip=P3(j.hip,0),chest=P3(j.chest,0),sd=chest.clone().sub(hip).normalize();
-  const fw2=new T.Vector3(sd.y*dir.x,-sd.x,sd.y*dir.z).multiplyScalar(f); // forward in world (approx)
-  const base=hip.clone().addScaledVector(sd,2),neckB=chest.clone().addScaledVector(sd,6);
-  // skin tint: bruising + hit flash
-  tint.copy(c.skin);if(F&&!ref){const hd=clamp((65-(F.head??100))/65,0,1);tint.lerp(LC(0x9a4a5a),hd*.35);if(F.flash>0)tint.lerp(LC(0xffd0b0),.35)}
-  tint2.copy(tint).multiplyScalar(.86);
-  const top=ref?c.top:tint,topD=ref?c.topD:tint2;
-  seg(P,'torso',s,base,neckB,.68*1.0,.62,top);
-  if(!ref){for(let i=0;i<2;i++){const z=i?1:-1;_v.copy(chest).addScaledVector(sd,-9).addScaledVector(fw2,8.6);_v.addScaledVector(perp,z*6.6);ball(P,'pec',s*2+i,_v,.62,.82,1,tint)}
-    _v.copy(hip).addScaledVector(sd,20).addScaledVector(fw2,6.6);ball(P,'abs',s,_v,.5,1.3,.95,tint);
-    _v.copy(chest).addScaledVector(sd,-2).addScaledVector(fw2,-3);_q.setFromUnitVectors(UP,sd);ball(P,'traps',s,_v,.9,.55,1.7,tint,_q)}
-  else{for(let i=0;i<2;i++)W(P,'pec',s*2+i,ZERO);W(P,'abs',s,ZERO);W(P,'traps',s,ZERO)}
-  seg(P,'pelvis',s,hip.clone().addScaledVector(sd,-10),hip.clone().addScaledVector(sd,7),.86,1.1,c.trunk,false);
-  seg(P,'band',s,hip.clone().addScaledVector(sd,6),hip.clone().addScaledVector(sd,9.5),.88,1.12,ref?c.trunk:c.corner,false);
-  const head=P3(j.head,0);
-  seg(P,'neck',s,chest.clone().addScaledVector(sd,-2),head.clone().addScaledVector(sd,-6),1,1,tint);
-  // head frame: yaw toward facing along dir, roll by head angle
-  const yaw=Math.atan2(-dir.z*f,dir.x*f);_e.set(0,yaw,0);_q.setFromEuler(_e);const qr=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),-(j.hAng||0)*1);_q.multiply(qr);
-  _m.compose(head,_q,_one);const Mh=_m.clone();
-  W(P,'head',s,Mh,tint);W(P,'eyes',s,Mh,c.eye);W(P,'pupil',s,Mh,c.pupil);W(P,'brow',s,Mh,c.hair);W(P,'mouth',s,Mh,LC(0x5a2e24));
-  const hs=c.hairStyle;W(P,'hcap',s,hs==='short'||hs==='buzz'||hs==='crop'||hs==='fade'?Mh:ZERO,c.hair);W(P,'hbun',s,hs==='bun'?Mh:ZERO,c.hair);W(P,'hmo',s,hs==='mohawk'?Mh:ZERO,c.hair);W(P,'hlong',s,hs==='long'?Mh:ZERO,c.hair);
-  W(P,'beard',s,c.beard?Mh:ZERO,c.hair);
-  const cuts=F&&!ref&&(F.head??100)<75?Math.min(3,F.cuts|0):0;W(P,'cut',s,cuts>=1?Mh:ZERO,c.blood);W(P,'blood',s,cuts>0&&(F.head??100)<55?Mh:ZERO,c.blood);
-  for(let i=0;i<2;i++){const sN=i===0,sg=(sN?1:-1)*mir,k=s*2+i;
-    const K=sN?'N':'F',col=sN?top:topD,sk=sN?tint:tint2,lg=ref?(sN?c.leg:c.legD):(sN?tint:tint2);
-    const sh=P3(j['sh'+K],sg*arm),el=P3(j['elb'+K],sg*(arm-1)),hd=P3(j['hand'+K],sg*(arm-4));(r.hands=r.hands||[])[i]=hd;
-    ball(P,'delt',k,sh,1,.95,1.05,col);seg(P,'uarm',k,sh,el,1,1,col);ball(P,'elbow',k,el,1,1,1,sk);seg(P,'farm',k,el,hd,1,1,sk);
-    const dv=hd.clone().sub(el).normalize();_v.copy(hd).addScaledVector(dv,4.5);_q.setFromUnitVectors(XA,dv);ball(P,'glove',k,_v,1.25,1,1.02,c.glove,_q);
-    seg(P,'cuff',k,hd.clone().addScaledVector(dv,-3.5),hd.clone().addScaledVector(dv,1),1,1,ref?c.glove:c.corner,false);
-    const hp=P3(j['hip'+K],sg*legS),kn=P3(j['knee'+K],sg*legS),ft=P3(j['foot'+K],sg*legS);
-    seg(P,'thigh',k,hp,kn,1,1,lg);ball(P,'knee',k,kn,1,1,1,lg);seg(P,'shin',k,kn,ft,1,1,lg);ball(P,'ankle',k,ft,1,1,1,sk);
-    const fd=(sN?j.footDirN:j.footDirF)||f;_e.set(0,Math.atan2(-dir.z*fd,dir.x*fd),0);_q.setFromEuler(_e);_m.compose(_v.set(ft.x,ft.y-1.5,ft.z),_q,_one);W(P,'foot',k,_m,c.shoe);
-    if(!ref)seg(P,'short',k,hp.clone().addScaledVector(sd,3),hp.clone().lerp(kn,.48),1,1,c.trunk,false);else W(P,'short',k,ZERO);
-  }
-  // pooled blob shadow
-  _m.compose(_v.set(hip.x,1.2,hip.z),_q.identity(),_s.set(70,1,46));st.blobs.setMatrixAt(s,_m);st.blobs.instanceMatrix.needsUpdate=true;
+  const arm=o.arm??13,legS=o.leg??8.5,mir=o.mirror?-1:1;
+  const fwd=new T.Vector3(dir.x*f,0,dir.z*f).normalize(),pv=new T.Vector3(perp.x,0,perp.z);
+  /* which pose side drives the +z bones: flips when facing the other way, and again for southpaw */
+  const zw=new T.Vector3().crossVectors(fwd,_Y);const swap=(zw.dot(pv)<0)!==(mir<0);
+  const sideOf=s=>(s==='N')!==swap?'N':'F',sgn=K=>(K==='N'?1:-1)*mir;
+  const hip=P3(j.hip,0),chest=P3(j.chest,0),head=P3(j.head,0);
+  const pt={};for(const K of ['N','F']){const sg=sgn(K);pt['sh'+K]=P3(j['sh'+K],sg*arm);pt['elb'+K]=P3(j['elb'+K],sg*(arm-1));pt['hand'+K]=P3(j['hand'+K],sg*(arm-4));
+    pt['hip'+K]=P3(j['hip'+K],sg*legS);pt['knee'+K]=P3(j['knee'+K],sg*legS);pt['foot'+K]=P3(j['foot'+K],sg*legS);pt['fd'+K]=(K==='N'?j.footDirN:j.footDirF)||f}
+  const up=chest.clone().sub(hip),neckV=head.clone().sub(chest),ha=-(j.hAng||0);
+  const headHint=fwd.clone().multiplyScalar(Math.cos(ha)).addScaledVector(_Y,Math.sin(ha));
+  const G=bodyGeos(),bl=G.bones;
+  for(let i=0;i<bl.length;i++){const [n,,,p]=bl[i];let d,hint=fwd;
+    const S=n.slice(-1),K=(S==='N'||S==='F')&&n!=='spine'?sideOf(S):null,b=n.replace(/[NF]$/,'');
+    if(n==='pelvis'){d=up.clone().normalize().add(_Y).normalize()}
+    else if(n==='spine'){d=up}
+    else if(n==='chest'||n==='neck'){d=neckV.clone().normalize().add(up.clone().normalize()).normalize()}
+    else if(n==='head'){d=neckV.clone().normalize().lerp(_Y,.35).normalize();hint=headHint}
+    else if(b==='clav'){d=pt['sh'+K].clone().sub(chest).setY(0);if(d.lengthSq()<1)d=pv.clone().multiplyScalar(S==='N'?1:-1);d.y=-.15*d.length()}
+    else if(b==='uarm'){d=pt['elb'+K].clone().sub(pt['sh'+K]);const fa=pt['hand'+K].clone().sub(pt['elb'+K]);hint=fa.lengthSq()>1?fa:fwd}
+    else if(b==='farm'){d=pt['hand'+K].clone().sub(pt['elb'+K])}
+    else if(b==='hand'){k.qw[i].copy(k.qw[p]);const bn=k.bones[i];_pw.copy(k.qw[p]).invert();bn.quaternion.copy(_pw).multiply(k.qw[i]);continue}
+    else if(b==='thigh'){d=pt['knee'+K].clone().sub(pt['hip'+K])}
+    else if(b==='shin'){d=pt['foot'+K].clone().sub(pt['knee'+K])}
+    else if(b==='foot'){const fd=pt['fd'+K];d=new T.Vector3(dir.x*fd,-.38,dir.z*fd);hint=_Y}
+    basisQ(_q1,d,hint);k.qw[i].copy(_q1).multiply(k.restInv[i]);
+    const bn=k.bones[i];if(p<0)bn.quaternion.copy(k.qw[i]);else{_pw.copy(k.qw[p]).invert();bn.quaternion.copy(_pw).multiply(k.qw[i])}}
+  /* root at the hips; keep standing fighters' feet on the mat */
+  const root=k.bones[0];root.position.copy(hip);k.grp.updateMatrixWorld(true);
+  const grounded=j.footN&&j.footF&&Math.min(GY-j.footN.y,GY-j.footF.y)<6&&!o.ko&&F&&F.state!=='ground';
+  if(grounded||ref){let mn=1e9;for(const s of ['N','F']){k.byName['ank'+s]?0:0;const bpos=_t1.setFromMatrixPosition(k.byName['foot'+s].matrixWorld);mn=Math.min(mn,bpos.y)}
+    const dy=clamp(8.5-mn,-14,14);if(Math.abs(dy)>.05){root.position.y+=dy;k.grp.updateMatrixWorld(true)}}
+  /* hit flash and bruising on the skin */
+  const m=k.mats;tint.copy(c.skin);if(F&&!ref){const hd=clamp((65-(F.head??100))/65,0,1);tint.lerp(LC(0x9a4a5a),hd*.35);if(F.flash>0)tint.lerp(LC(0xffd0b0),.35)}m.skin.color.copy(tint);m.headSkin.color.copy(tint);
+  const cuts=F&&!ref&&(F.head??100)<75?Math.min(3,F.cuts|0):0;k.face.cut.visible=cuts>=1;k.face.blood.visible=cuts>0&&(F.head??100)<55;
+  r.hands=k.gloves.map(g=>g.getWorldPosition(new T.Vector3()).add(new T.Vector3(0,0,0)));
+  for(let i=0;i<2;i++){const gw=k.byName[i?'handF':'handN'];r.hands[i]=_t2.setFromMatrixPosition(gw.matrixWorld).clone().add(new T.Vector3(0,-4,0))}
+  _m.compose(_v.set(hip.x,1.2,hip.z),_q.identity(),_s.set(70,1,46));st.blobs.setMatrixAt(r.slot,_m);st.blobs.instanceMatrix.needsUpdate=true;
 }
-function flush(st){for(const lv of ['hi','lo'])for(const p of Object.values(st.parts[lv]))if(p.dirty){p.im.instanceMatrix.needsUpdate=true;if(p.im.instanceColor)p.im.instanceColor.needsUpdate=true;p.dirty=false}}
-function setLevel(st,lv){if(st.lvl===lv)return;for(const p of Object.values(st.parts[st.lvl]))p.im.visible=false;st.lvl=lv;for(const p of Object.values(st.parts[lv]))p.im.visible=true}
 const FIGHT_FRAME=(z)=>({ox:0,origin:{x:0,z},dir:{x:1,z:0},perp:{x:0,z:1}});
 
 /* ================= per-frame systems ================= */
