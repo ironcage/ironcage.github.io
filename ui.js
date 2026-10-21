@@ -20,11 +20,11 @@ const Sound={ac:null,nb:null,on:true,
     else if(k==='block'){this.noise(.07,'highpass',1800,.25)}
     else if(k==='reveal'){this.tone(55,1.4,.9,'sine',38);this.noise(.6,'lowpass',180,.9);this.noise(2.4,'bandpass',900,.32);this.tone(220,1.2,.08,'sawtooth',110)}
     else if(k==='whoosh'){const ac=this.ac,t=ac.currentTime,sN=ac.createBufferSource();sN.buffer=this.nb;const fl=ac.createBiquadFilter();fl.type='bandpass';fl.Q.value=1.5;fl.frequency.setValueAtTime(700,t);fl.frequency.exponentialRampToValueAtTime(2600,t+.12);const a=ac.createGain();a.gain.setValueAtTime(.0001,t);a.gain.linearRampToValueAtTime(.22,t+.05);a.gain.exponentialRampToValueAtTime(.001,t+.16);sN.connect(fl).connect(a).connect(ac.destination);sN.start(t,Math.random()*.3);sN.stop(t+.18)}
-    else if(k==='slam'){this.noise(.35,'lowpass',300,1);this.tone(60,.3,.8,'sine',30)}
+    else if(k==='slam'){if(this.sample('body',.8,.8))this.tone(60,.3,.6,'sine',30);else{this.noise(.35,'lowpass',300,1);this.tone(60,.3,.8,'sine',30)}if(Math.random()<.5)this.sample('cage',.35,1,.05)}
     else if(k==='tick'){this.tone(520,.04,.05,'square')}
     else if(k==='coach'){this.tone(740,.07,.07,'square');setTimeout(()=>{try{this.tone(988,.09,.06,'square')}catch(e){}},80)}
     else if(k==='coachok'){this.tone(880,.18,.12,'triangle');setTimeout(()=>{try{this.tone(1320,.25,.1,'triangle')}catch(e){}},90)}
-    else if(k==='bell'){if(!this.sample('bell',.9)){this.tone(880,1.2,.25,'triangle');this.tone(1320,1,.12,'sine')}}
+    else if(k==='bell'){if(!this.sample('bell',.7)){this.tone(880,1.2,.25,'triangle');this.tone(1320,1,.12,'sine')}}
     else if(k==='crowd'){this.roar(.35)}
     else if(k==='heart'){this.heart()}else if(k==='boo'){this.boo()}else if(k==='applause'){this.applause()}
     else if(k==='ko'){[0,220,440].forEach(d=>setTimeout(()=>{try{this.tone(880,1.6,.3,'triangle')}catch(e){}},d));this.noise(1.8,'bandpass',800,.25)}
@@ -154,7 +154,7 @@ Sound.impact=function(kind,dmg){if(!this.ac||!this.on)return;try{const ac=this.a
   const thump=(f0,f1,d,g)=>{const o=ac.createOscillator(),a=ac.createGain();o.type='sine';o.frequency.setValueAtTime(f0*pr,t);o.frequency.exponentialRampToValueAtTime(f1*pr,t+d);a.gain.setValueAtTime(g*v,t);a.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(a).connect(out);o.start(t);o.stop(t+d+.02)};
   const nz=(type,f,q,d,g,dl=0)=>{const s=ac.createBufferSource();s.buffer=this.nb;const fl=ac.createBiquadFilter();fl.type=type;fl.frequency.value=f*pr;fl.Q.value=q;const a=ac.createGain();a.gain.setValueAtTime(g*v,t+dl);a.gain.exponentialRampToValueAtTime(.001,t+dl+d);s.connect(fl).connect(a).connect(out);s.start(t+dl,Math.random()*.3);s.stop(t+dl+d+.02)};
   {const key=kind==='block'?'block':kind==='body'||kind==='knee'?'body':kind==='kick'||dmg>7?'heavy':'punch';
-   if(this.sample(key,Math.min(1.4,.6+dmg*.08),pr)){thump(110,40,.16,kind==='block'?.15:.45);if(dmg>7&&this.bank.ooh)this.sample('ooh',.5,1,.08);return}}
+   if(this.sample(key,Math.min(.6,.25+dmg*.035),pr)){thump(110,40,.16,kind==='block'?.1:.32);if(dmg>7&&this.bank.ooh)this.sample('ooh',.5,1,.08);return}}
   if(kind==='block'){nz('bandpass',900,1.2,.07,.5);thump(180,90,.07,.35);nz('highpass',3000,.7,.03,.12);return}
   if(kind==='punch'){nz('highpass',1800,.8,.045,.55);nz('bandpass',650,1,.09,.5);thump(150,55,.13,.75)}
   else if(kind==='kick'){nz('bandpass',2200,.9,.07,.7);nz('lowpass',700,.7,.14,.5);thump(110,40,.2,.95)}

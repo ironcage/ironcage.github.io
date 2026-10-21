@@ -72,14 +72,14 @@ Claude 아티팩트 **Iron Cage v48**을 바탕으로 만든 독립 실행 PWA�
 - 모바일: 왼쪽 아무 곳이나 엄지를 대면 생기는 조이스틱 + 오른쪽 버튼
 
 ## 업데이트 방법
-게임 파일을 바꿔 올릴 때는 `sw.js`의 `VERSION` 숫자를 하나 올려야 폰에 있는 옛 버전이 바뀝니다. (현재 v38, data.js의 IC.VER도 같이 올리기)
+게임 파일을 바꿔 올릴 때는 `sw.js`의 `VERSION` 숫자를 하나 올려야 폰에 있는 옛 버전이 바뀝니다. (현재 v39, data.js의 IC.VER도 같이 올리기)
 index.html 4번째 줄의 `google-site-verification` 태그는 구글 서치 콘솔 인증용이라 지우면 안 됩니다.
 
 
 ## 그래픽 모드
 현재는 **2D 그래픽**으로 실행됩니다 (3D 렌더러는 꺼 둠). 3D 3종 파일(r3d.js, bodymesh.js, three.min.js)은 앱에서 빠졌고, 필요하면 다시 붙일 수 있습니다.
 
-## 실제 녹음 효과음 넣기 (선택)
+## 실제 녹음 효과음 (Kenney Impact Sounds, CC0 — sfx 폴더, 출처: kenney.nl)
 `sfx` 폴더에 파일을 넣고 `sfx/index.json`에 목록을 적으면 합성음 대신 그 소리를 씁니다. 없으면 지금처럼 합성음.
 ```json
 {"punch":["punch1.ogg"],"heavy":["heavy1.ogg"],"body":["body1.ogg"],"block":["block1.ogg"],"bell":["bell.ogg"],"cheer":["cheer1.ogg"],"ooh":["ooh1.ogg"]}

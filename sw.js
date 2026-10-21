@@ -1,6 +1,6 @@
 /* 아이언 케이지 — 서비스 워커 (오프라인 실행)
    게임 파일을 바꿔 올릴 때는 아래 VERSION 숫자를 하나 올려 주세요. 그래야 폰에 있는 옛 버전이 새 버전으로 바뀝니다. */
-const VERSION = 'iron-cage-pwa-v38';
+const VERSION = 'iron-cage-pwa-v39';
 const FONT_CACHE = 'iron-cage-fonts';
 const APP_FILES = [
   './',
@@ -15,7 +15,32 @@ const APP_FILES = [
   './apple-touch-icon.png',
   './icon-192.png',
   './icon-512.png',
-  './icon-maskable-512.png'
+  './icon-maskable-512.png',
+  './sfx/index.json',
+  './sfx/punch0.mp3',
+  './sfx/punch1.mp3',
+  './sfx/punch2.mp3',
+  './sfx/punch3.mp3',
+  './sfx/punch4.mp3',
+  './sfx/heavy0.mp3',
+  './sfx/heavy1.mp3',
+  './sfx/heavy2.mp3',
+  './sfx/heavy3.mp3',
+  './sfx/heavy4.mp3',
+  './sfx/body0.mp3',
+  './sfx/body1.mp3',
+  './sfx/body2.mp3',
+  './sfx/body3.mp3',
+  './sfx/body4.mp3',
+  './sfx/block0.mp3',
+  './sfx/block1.mp3',
+  './sfx/block2.mp3',
+  './sfx/block3.mp3',
+  './sfx/block4.mp3',
+  './sfx/bell0.mp3',
+  './sfx/bell1.mp3',
+  './sfx/cage0.mp3',
+  './sfx/cage1.mp3'
 ];
 
 self.addEventListener('install', event => {
