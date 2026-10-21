@@ -294,6 +294,8 @@ const ICO={
   hof:'<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>',
   roster:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2c3 .2 5.5 2.4 5.5 5.8"/>'};
 const ico=k=>`<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICO[k]}</svg>`;
+/* AI-painted portraits of the default division champions (art/ch_*.jpg); anyone else falls back to the drawn bust */
+const CHART={g_fly_1jbswcl:'fly',g_fw_192dyev:'fw',lw_0:'lw',ww_9:'ww',mw_17:'mw',g_lhw_4cpk49:'hw'};
 function champsOf(){const c=DATA.career;return CLASSES.map(C=>{let id=null;
   if(c&&((IC.CLSMAP||{})[c.cls]||c.cls)===C.id&&c.order&&c.order.length)id=c.order[0];
   if(!id){const l=ROSTER.filter(f=>((IC.CLSMAP||{})[f.cls]||f.cls)===C.id).sort((x,y)=>y.ovr-x.ovr);id=l[0]&&l[0].id}
@@ -318,7 +320,7 @@ V.home=()=>{
       <div class="qk"><button data-act="nav" data-to="wild">🔥 야생 리그</button><button data-act="tour">🏆 토너먼트</button><button data-act="nav" data-to="practice">🎯 연습</button></div></div>
     <div class="ticker"><div class="tkr">${tk}<i>◆</i>${tk}<i>◆</i></div></div></section>
   <div class="sech"><h3>현 챔피언</h3><span>6개 체급의 왕좌 · 벨트를 빼앗아 오세요</span></div>
-  <div class="chrow">${ch.map(x=>`<button class="chc${x.id==='me'?' me':''}" data-act="nav" data-to="roster"><canvas data-pid="${esc(x.id)}" data-mode="bust"></canvas><span class="chbelt"></span><span class="chk">${x.C.name}</span><span class="chn">"${esc(x.d.nick)}"</span><span class="chr">${(x.d.rec||[0,0,0]).join('-')}</span></button>`).join('')}</div>
+  <div class="chrow">${ch.map(x=>`<button class="chc${x.id==='me'?' me':''}" data-act="nav" data-to="roster">${CHART[x.id]?`<img class="chimg" src="art/ch_${CHART[x.id]}.jpg" alt="" loading="lazy">`:`<canvas data-pid="${esc(x.id)}" data-mode="bust"></canvas>`}<span class="chbelt"></span><span class="chk">${x.C.name}</span><span class="chn">"${esc(x.d.nick)}"</span><span class="chr">${(x.d.rec||[0,0,0]).join('-')}</span></button>`).join('')}</div>
   <div class="sech"><h3>게임 모드</h3><span>오늘은 어떤 싸움을?</span></div>
   <div class="modes2">
     ${T('nav','wild','wild','야생 리그','전직 조폭에서 지하의 왕까지',DATA.wildc?(DATA.wildc.king?'👑 지하의 왕':WTIERS[DATA.wildc.tier].n+' · '+DATA.wildc.rec[0]+'승'):'새 인생 시작','wildt','HOT')}
@@ -511,7 +513,7 @@ V.cpost=p=>{const c=DATA.career;
   if(p.belt&&!p.beltDone)return `<div class="panel"><div class="eyebrow">${p.cer&&p.cer.kc?'킹 오브 케이지 슈퍼파이트':esc(p.clsName)+' 타이틀전'}</div><h2 class="big"><span class="g">${p.cer&&p.cer.kc?'👑 킹 오브 케이지 수여식':p.cer&&p.cer.def?'타이틀 방어전':'챔피언 벨트 수여식'}</span></h2>
     <div class="stage" style="aspect-ratio:16/9;max-height:none"><canvas id="beltcv" aria-label="벨트 수여식"></canvas></div>
     <div class="beltstg" id="beltstg"><span class="on">발표</span><span>벨트 공개</span><span>착용</span><span>포효</span></div>
-    ${(()=>{const r=p.cer||{};return `<div class="champcard"><div class="cc-no">제${r.no||1}대</div><div><b>${r.kc?'킹 오브 케이지':esc(p.clsName)+' 챔피언'} · ${esc(c.name)}</b><span>${r.def?`${r.def}차 방어 성공`:r.kc?'체급을 넘어선 최강자':'새 챔피언 등극'} · 상대 ${esc(p.oppName)} · ${esc(r.how||'')}</span><span>${esc(r.ev||'')} · 전적 ${esc(r.rec||c.rec.join('-'))} · 커리어 벨트 ${(c.beltLog||[]).length}개</span></div></div>`})()}
+    ${(()=>{const r=p.cer||{};return `${r.kc?'':'<img class="ccbelt" src="art/belt.webp" alt="챔피언 벨트">'}<div class="champcard"><div class="cc-no">제${r.no||1}대</div><div><b>${r.kc?'킹 오브 케이지':esc(p.clsName)+' 챔피언'} · ${esc(c.name)}</b><span>${r.def?`${r.def}차 방어 성공`:r.kc?'체급을 넘어선 최강자':'새 챔피언 등극'} · 상대 ${esc(p.oppName)} · ${esc(r.how||'')}</span><span>${esc(r.ev||'')} · 전적 ${esc(r.rec||c.rec.join('-'))} · 커리어 벨트 ${(c.beltLog||[]).length}개</span></div></div>`})()}
     <div class="row"><button class="btn" data-act="beltAgain">↺ 다시 보기</button><button class="btn-go" data-act="postNext">승리 세리머니로</button></div></div>`;
   /* victory ceremony: pick a taunt, the winner performs it in the octagon */
   const opts=tauntOpts(c,p),ch=p.tk?opts.find(x=>x.k===p.tk)||{t:''}:null;

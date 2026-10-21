@@ -1773,6 +1773,7 @@ function weighin(c,cw,ch,st){
 }
 /* ---------- belt ceremony ---------- */
 const BELT={reveal:110,close:170,wrap:330,lift:540,end:900};
+const BELTIMG=(()=>{try{const i=new Image();i.src='art/belt.webp';return i}catch(e){return null}})();
 let CONF=null;
 const ez=k=>{k=clamp(k,0,1);return k*k*(3-2*k)};
 function drawBelt(x,y,s,o={}){
@@ -2042,7 +2043,9 @@ function beltScene(c,cw,ch,t,d,cls,o={}){
     // light rays behind
     ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<14;i++){const a=i/14*Math.PI*2+t*.004;ctx.fillStyle=`rgba(255,210,120,${.035+.02*Math.sin(t*.05+i)})`;ctx.beginPath();ctx.moveTo(400,225);ctx.lineTo(400+Math.cos(a)*700,225+Math.sin(a)*700);ctx.lineTo(400+Math.cos(a+.12)*700,225+Math.sin(a+.12)*700);ctx.fill()}ctx.restore();
     const z=1+.14*ez(k);ctx.save();ctx.translate(400,232);ctx.scale(z,z);
-    drawBelt(0,-6,2.55,{sx:.86+.14*Math.cos(k*Math.PI*1.2-.6),glint:((t-B.close)%90)/90,cls:o.clsEn,kc:o.kc});ctx.restore();
+    if(!o.kc&&BELTIMG&&BELTIMG.complete&&BELTIMG.naturalWidth){const sx=.86+.14*Math.cos(k*Math.PI*1.2-.6),bw=660,bh=bw*BELTIMG.naturalHeight/BELTIMG.naturalWidth;ctx.save();ctx.scale(sx,1);ctx.shadowColor='rgba(0,0,0,.7)';ctx.shadowBlur=30;ctx.shadowOffsetY=14;ctx.drawImage(BELTIMG,-bw/2,-6-bh/2,bw,bh);ctx.restore();
+      const g=((t-B.close)%90)/90,gx=-bw/2+g*bw*1.4-bw*.2;ctx.save();ctx.globalCompositeOperation='lighter';const lg=ctx.createLinearGradient(gx-60,0,gx+60,0);lg.addColorStop(0,'rgba(255,240,200,0)');lg.addColorStop(.5,'rgba(255,240,200,.22)');lg.addColorStop(1,'rgba(255,240,200,0)');ctx.fillStyle=lg;ctx.beginPath();ctx.ellipse(0,-6,bw*.2*sx,bh*.45,0,0,Math.PI*2);ctx.fill();ctx.restore();ctx.restore()}
+    else{drawBelt(0,-6,2.55,{sx:.86+.14*Math.cos(k*Math.PI*1.2-.6),glint:((t-B.close)%90)/90,cls:o.clsEn,kc:o.kc});ctx.restore()}
     for(let i=0;i<14;i++){const sx=150+((i*173)%500),sy=120+((i*97)%220),tw=Math.sin(t*.12+i*1.7);if(tw>.55)star(sx,sy,6+tw*6,(tw-.55)*2.2)}
     ctx.textAlign='center';ctx.textBaseline='middle';
     const ta=ez((t-B.close-25)/30)*ez((B.wrap-t)/20);ctx.globalAlpha=ta;ctx.font='700 14px "IBM Plex Sans KR",sans-serif';ctx.fillStyle='#e8b33a';ctx.fillText(o.kc?'IRON CAGE 슈퍼파이트':'IRON CAGE 월드 챔피언십',400,70);
