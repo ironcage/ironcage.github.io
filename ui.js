@@ -396,7 +396,12 @@ const WBACK={
   wrestler:{n:'국대 탈락 레슬러',ic:'🤼',d:'선발전에서 떨어진 날, 지하로 내려왔다.',style:'wrestler',b:{td:10,tdd:8,gnp:6},perk:'테이크다운·파운딩',dirty:1.05},
   boxer:{n:'영구제명 복서',ic:'🥊',d:'승부조작 누명. 증명할 건 주먹뿐이다.',style:'boxer',b:{pow:6,spd:7,sdef:5},perk:'손기술·카운터',dirty:1},
   youtuber:{n:'격투 유튜버',ic:'📹',d:'구독자 3만. 이 영상 하나면 떡상이다.',style:'kickboxer',b:{kick:6,spd:3,chin:-4},perk:'악명 획득 2배',dirty:1,fame:2}};
-const WTIERS=[{n:'동네 주차장',arena:5,ovr:[50,57],need:3},{n:'지하 클럽 레드룸',arena:6,ovr:[57,65],need:3},{n:'항구 창고',arena:7,ovr:[64,72],need:3},{n:'폐공장 데스매치',arena:8,ovr:[71,79],need:3},{n:'카지노 VIP 케이지',arena:9,ovr:[78,87],need:2}];
+const WTIERS=[{n:'동네 주차장',arena:5,ovr:[50,57],need:3,gim:'siren',rule:'🚨 경찰 단속 — 마지막 라운드 중반에 사이렌, 20초 안에 끝내라'},
+  {n:'지하 클럽 레드룸',arena:6,ovr:[57,65],need:3,gim:'blackout',rule:'💡 정전 — 수시로 불이 나간다, 어둠 속에서 싸워라'},
+  {n:'항구 창고',arena:7,ovr:[64,72],need:3,gim:'rain',rule:'🌧️ 빗물 바닥 — 킥을 차면 미끄러질 수 있다'},
+  {n:'폐공장 데스매치',arena:8,ovr:[71,79],need:3,gim:'shrink',rule:'⛓️ 조여 오는 철창 — 경기장이 점점 좁아진다'},
+  {n:'카지노 VIP 케이지',arena:9,ovr:[78,87],need:2,gim:'bet',rule:'🎰 VIP 베팅 — 끝내는 방법에 악명을 걸어라'}];
+const WBETS=[['none','베팅 안 함',''],['KO','KO에 건다','적중 시 악명 +15 · 실패 −6'],['서브미션','서브미션에 건다','적중 시 악명 +18 · 실패 −6'],['판정','판정에 건다','적중 시 악명 +10 · 실패 −6']];
 const WOB=[['사채업자 행동대장','빚 대신 뼈를 받아 간다.'],['전직 해병','악으로 깡으로 버틴다.'],['교도소 출신','7년 동안 운동만 했다.'],['동네 도장 사범','검은띠는 장식이 아니다.'],['불법 도박장 기도','도박장 문 앞에서 진 적이 없다.'],['폭주족 리더','겁이라는 걸 모른다.'],['부두 하역 노동자','컨테이너를 맨손으로 민다.'],['전직 경호원','VIP를 지키던 주먹.'],['재개발 철거 용역','문짝째로 뜯어낸다.'],['전직 씨름 장사','샅바만 놓았을 뿐이다.'],['야간 대리기사','밤의 도로를 다 안다.'],['격투 유튜버','구독자 앞에서 너를 밟겠다.']];
 const WNK=['독사','불도저','삼진','검은띠','망치','회칼','곰','철근','미친개','번개','바위','전갈','늑대','깡통','해골','도끼','들개','쇠사슬'];
 const WSN=['김','박','최','정','강','조','윤','장','임','한','오','서','신','권','황','마','방'],WGN=['태식','만수','용팔','철호','덕배','상철','두식','봉구','춘삼','기철','광수','재규','동팔','영철','칠성','판석'];
@@ -445,25 +450,28 @@ V.wild=()=>{const c=DATA.wildc;
     ${c.train?`<div class="eyebrow" style="margin-top:12px">경기 사이 · 무엇을 할까?</div><div class="tkopts">${c.train.map((x,i)=>`<button class="tko" data-act="wcTrain" data-i="${i}"><i>💪</i><b>${esc(x.n)}</b><span>${esc(x.d)}</span></button>`).join('')}</div>`
       :ev?`<div class="wev"><b>${esc(ev.q)}</b><div class="tkopts">${ev.a.map((x,i)=>`<button class="tko" data-act="wcEv" data-i="${i}"><i>${i?'🤔':'🔥'}</i><b>${esc(x[0])}</b></button>`).join('')}</div></div>`
       :c.king?`<div class="wking">👑 지하 세계를 정복했다. 그래도 도전자는 계속 온다.</div><div class="wnext">${wNextCard(o,T)}</div><div class="row"><button class="btn-go" data-act="wcFight">방어전 하러 간다</button></div>`
-      :`<div class="wnext">${wNextCard(o,T)}</div><div class="row"><button class="btn-go" data-act="wcFight">${o.boss?'👑 지하의 왕에게 도전':'싸우러 간다'}</button></div>`}
+      :`<div class="wnext">${wNextCard(o,T)}</div><div class="wrule">${T.rule}</div>${T.gim==='bet'?`<div class="tkopts">${WBETS.map(b=>`<button class="tko${(c.bet||'none')===b[0]?' on':''}" data-act="wcBet" data-v="${b[0]}"><i>${b[0]==='none'?'✋':'🎲'}</i><b>${b[1]}</b><span>${b[2]}</span></button>`).join('')}</div>`:''}<div class="row"><button class="btn-go" data-act="wcFight">${o.boss?'👑 지하의 왕에게 도전':'싸우러 간다'}</button></div>`}
     <div class="wstats">${stat('pow','파워')}${stat('spd','스피드')}${stat('kick','킥')}${stat('clinch','클린치')}${stat('td','레슬링')}${stat('chin','맷집')}${stat('car','체력')}</div>
     <div class="row" style="justify-content:flex-end"><button class="btn sm" data-act="wcReset">${c.resetArm?'정말 새 인생? 다시 누르면 삭제':'새 인생 시작'}</button></div></div>`};
 function wNextCard(o,T){return `<div class="wvs"><canvas data-pid="__wopp" data-side="b" data-mode="bust"></canvas><div><div class="eyebrow" style="color:#ff8b7f">${esc(T.n)} · 다음 상대${o.boss?' · 보스':''}</div><b>"${esc(o.nick)}" ${esc(o.name)}</b><span>${esc(o.back)} · ${STYLES[o.style].name} · 종합 ${o.ovr} · ${o.rec[0]}승 ${o.rec[1]}패</span><span>${esc(o.line)}</span><q>${esc(o.trash)}</q></div></div>`}
-A.wcBack=d=>{WCF.back=d.v;render()};A.wcCls=d=>{WCF.cls=d.v;render()};A.wcSkin=d=>{WCF.skin=d.v;render()};A.wcHs=d=>{WCF.hairStyle=d.v;render()};A.wcBeard=d=>{WCF.beard=d.v==='yes';render()};
+A.wcBet=d=>{DATA.wildc.bet=d.v;save();render()};A.wcBack=d=>{WCF.back=d.v;render()};A.wcCls=d=>{WCF.cls=d.v;render()};A.wcSkin=d=>{WCF.skin=d.v;render()};A.wcHs=d=>{WCF.hairStyle=d.v;render()};A.wcBeard=d=>{WCF.beard=d.v==='yes';render()};
 A.wcStart=()=>{const B=WBACK[WCF.back],seed=Date.now()%100000,r=IC.seeded(seed),s=IC.makeStats(B.style,54,r);for(const k in B.b)s[k]=clamp((s[k]||50)+B.b[k],20,99);
   const name=(WCF.name||'').trim()||pick(WSN)+pick(WGN);DATA.wildc={name,nick:(WCF.nick||'').trim()||pick(WNK),back:WCF.back,cls:WCF.cls,look:{skin:WCF.skin,hair:IC.HAIR[0],hairStyle:WCF.hairStyle,beard:WCF.beard,trunk:'#1a1a1a',tattoo:WCF.back==='gang'},s,rec:[0,0,0],infamy:B.fame?6:0,tier:0,tw:0,fights:0,seed,dirty:B.dirty,msg:`${B.n} ${name}, 동네 주차장에 첫발을 들였다. 구경꾼 마흔 명이 핸드폰을 들었다.`};save();render()};
 A.wcReset=()=>{const c=DATA.wildc;if(!c.resetArm){c.resetArm=true;render();return}DATA.wildc=null;save();render()};
 A.wcTrain=d=>{const c=DATA.wildc,x=c.train&&c.train[+d.i];if(!x)return;for(const k in x.k)c.s[k]=clamp(c.s[k]+x.k[k],20,99);if(x.dirty)c.dirty+=x.dirty;c.msg=`${x.n} — ${x.d}`;c.train=null;save();render()};
 A.wcEv=d=>{const c=DATA.wildc,ev=c.ev==='b'?WEVB[c.back]:WEV[c.ev];if(!ev)return;const out=ev.a[+d.i][1](c);for(const k in c.s)c.s[k]=clamp(c.s[k],20,99);c.msg=out;c.ev=null;c.next=null;save();render()};
 A.wcFight=()=>{const c=DATA.wildc,o=c.next||(c.next=wOpp(c)),T=WTIERS[Math.min(c.tier,WTIERS.length-1)],me=wFighter(c);
-  startFight({a:me,b:o,rounds:o.boss?5:3,wild:true,arena:T.arena,noWalk:true,dirtyA:c.dirty,label:`야생 리그 · ${T.n}${o.boss?' · 보스전':''}`,onResult:res=>{
-    const R=DATA.records;R.wild=R.wild||{w:0,l:0,d:0};const B=WBACK[c.back],fame=B.fame||1,won=res.winner==='a';c.fights++;c.hard=0;c.soft=0;c.next=null;c.resetArm=false;
+  startFight({a:me,b:o,rounds:o.boss?5:3,roundSec:T.gim==='siren'?90:undefined,wild:true,arena:T.arena,gim:T.gim,noWalk:true,dirtyA:c.dirty,label:`야생 리그 · ${T.n}${o.boss?' · 보스전':''}`,onResult:res=>{
+    const R=DATA.records;R.wild=R.wild||{w:0,l:0,d:0};const B=WBACK[c.back],fame=B.fame||1;let won=res.winner==='a';c.fights++;
+    if(T.gim==='siren'&&res.method==='판정'){res.winner=null;won=false}c.hard=0;c.soft=0;c.next=null;c.resetArm=false;
     if(won){c.rec[0]++;R.wild.w++;R.fin[res.method]=(R.fin[res.method]||0)+1;const g=(res.method==='판정'?3:res.method==='서브미션'?5:6)+(res.wildN||0)+(o.boss?10:0);c.infamy+=g*fame;c.tw++;
       let msg=`${o.nick} ${o.name}을 ${res.method}${res.method==='판정'?'으로':'로'} 꺾었다! 악명 +${g*fame}`;
       if(!c.king&&c.tw>=T.need){if(c.tier>=WTIERS.length-1){c.king=true;msg+=` · 👑 지하의 왕 등극! 이제 모두가 너를 노린다.`;c.nick=c.nick}else{c.tier++;c.tw=0;msg+=` · ${WTIERS[c.tier].n}(으)로 올라간다!`}}
+      if(T.gim==='bet'&&c.bet&&c.bet!=='none'){const hit=res.method===c.bet||(c.bet==='KO'&&res.method==='TKO');const v=hit?(c.bet==='서브미션'?18:c.bet==='KO'?15:10):-6;c.infamy=Math.max(0,c.infamy+v);msg+=hit?` · 🎰 베팅 적중! 악명 +${v}`:` · 베팅 실패 악명 ${v}`}
       c.msg=msg}
     else if(res.winner==='b'){c.rec[1]++;R.wild.l++;c.infamy=Math.max(0,c.infamy-3);c.tw=Math.max(0,c.tw-1);c.msg=`${o.nick}에게 졌다. 바닥에서 피 맛을 봤다. 악명 −3`}
-    else{R.wild.d++;c.msg='무승부. 구경꾼들이 야유를 퍼붓는다.'}
+    else{R.wild.d++;c.msg=T.gim==='siren'?'사이렌! 판정까지 가는 바람에 둘 다 경찰을 피해 도망쳤다. 무효.':'무승부. 구경꾼들이 야유를 퍼붓는다.'}
+    if(T.gim==='bet'&&c.bet&&c.bet!=='none'&&!won){c.infamy=Math.max(0,c.infamy-6);c.msg+=' · 베팅도 날렸다 (악명 −6)'}c.bet='none';
     const pool=WTRAIN.slice();c.train=[];for(let i=0;i<3;i++)c.train.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
     c.ev=Math.random()<.45?(WEVB[c.back]&&Math.random()<.5?'b':Math.floor(Math.random()*WEV.length)):null;
     save();go('result',{res,label:`야생 리그 · ${T.n}`,cont:[['야생 리그로','nav:wild'],['메인 메뉴','nav:home']]})}})};
@@ -835,7 +843,7 @@ function startFight(cfg){
   CFG=cfg;Sound.on=DATA.settings.sound;Sound.init();Crowd.start();if(IC.KO)IC.KO.reset();
   scr.hidden=true;game.hidden=false;between.hidden=true;pad.hidden=false;hintEl.hidden=false;
   $('#glabel').textContent=cfg.label||'';
-  stopDemo();IC.opts.nums=!!DATA.settings.nums;IC.opts.haptic=DATA.settings.haptic!==false;IC.Fight.start({walkout:!cfg.online&&!cfg.noWalk&&DATA.settings.walkout!==false,replay:!cfg.online&&DATA.settings.replay!==false,remote:cfg.online==='host',coach:DATA.settings.coach!==false,a:cfg.a,b:cfg.b,rounds:cfg.rounds||3,roundSec:cfg.roundSec||DATA.settings.roundSec,diff:cfg.diff||DATA.settings.diff,title:cfg.title,practice:cfg.practice,condition:cfg.condition,wild:!!cfg.wild,pat:cfg.pat||null,arena:cfg.arena!=null?cfg.arena:cfg.practice?0:cfg.title?3:cfg.online?2:cfg.wild?1:2,
+  stopDemo();IC.opts.nums=!!DATA.settings.nums;IC.opts.haptic=DATA.settings.haptic!==false;IC.Fight.start({walkout:!cfg.online&&!cfg.noWalk&&DATA.settings.walkout!==false,replay:!cfg.online&&DATA.settings.replay!==false,remote:cfg.online==='host',coach:DATA.settings.coach!==false,a:cfg.a,b:cfg.b,rounds:cfg.rounds||3,roundSec:cfg.roundSec||DATA.settings.roundSec,diff:cfg.diff||DATA.settings.diff,title:cfg.title,practice:cfg.practice,condition:cfg.condition,wild:!!cfg.wild,pat:cfg.pat||null,gim:cfg.gim||null,arena:cfg.arena!=null?cfg.arena:cfg.practice?0:cfg.title?3:cfg.online?2:cfg.wild?1:2,
     onRound:showBetween,onEnd:res=>{stopLoop();res.ach=checkFightAch(res,cfg);setTimeout(()=>cfg.onResult(res),30)}});
   const S=IC.Fight.S;
   try{if(!cfg.practice){const ov=f=>f.ovr!=null?f:Object.assign({},f,{ovr:IC.ovrOf(f.s,f.style)});S.odds=oddsOf(ov(cfg.a),ov(cfg.b))}}catch(e){S.odds=null}

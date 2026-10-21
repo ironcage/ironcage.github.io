@@ -1470,6 +1470,23 @@ function bannerDraw(S){
 
 /* ---------- main render ---------- */
 /* overlay for the 3D view: effects projected from the 3D camera, then the broadcast HUD */
+function venueFX(S){
+  /* underground venues: dirty colour grade, a swinging bare bulb, haze and a hard vignette */
+  if(S.arena&&S.arena.k==='under'){const tc=S.arena.tint||'#c88a3a',fl=Math.sin(S.frame*.9)>.92?.55:1,sw=Math.sin(S.frame*.03)*.18;
+    ctx.save();ctx.globalCompositeOperation='multiply';ctx.fillStyle='rgba(205,175,140,.55)';ctx.fillRect(0,0,W,VH);ctx.restore();
+    ctx.save();ctx.globalCompositeOperation='lighter';const bx=W/2+Math.sin(sw)*90,by=VH*.06+Math.cos(sw)*6;const lg=ctx.createRadialGradient(bx,by,2,bx,by,VH*.9);lg.addColorStop(0,rgba(tc,.32*fl));lg.addColorStop(.35,rgba(tc,.1*fl));lg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=lg;ctx.fillRect(0,0,W,VH);ctx.restore();
+    ctx.strokeStyle='rgba(20,20,20,.9)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(bx,by);ctx.stroke();ctx.fillStyle=`rgba(255,240,200,${fl})`;ctx.beginPath();ctx.arc(bx,by+4,6,0,7);ctx.fill();
+    for(let i=0;i<6;i++){const hx=(i*173+S.frame*.3)%(W+200)-100,hy=VH*(.35+.1*Math.sin(i+S.frame*.01)),r=W*.18;const g=ctx.createRadialGradient(hx,hy,0,hx,hy,r);g.addColorStop(0,'rgba(180,170,160,.06)');g.addColorStop(1,'rgba(180,170,160,0)');ctx.fillStyle=g;ctx.fillRect(hx-r,hy-r,r*2,r*2)}
+    const v2=ctx.createRadialGradient(W/2,VH*.55,Math.min(W,VH)*.3,W/2,VH*.55,Math.max(W,VH)*.6);v2.addColorStop(0,'rgba(0,0,0,0)');v2.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=v2;ctx.fillRect(0,0,W,VH)}
+  /* 항구 창고: rain through the broken roof */
+  if(S.gim==='rain'){ctx.save();ctx.strokeStyle='rgba(180,210,255,.35)';ctx.lineWidth=1.2;ctx.beginPath();for(let i=0;i<140;i++){const x=((i*97.3+S.frame*3.2)%(W+80))-40,y=((i*53.7+S.frame*14)%(VH+40))-20;ctx.moveTo(x,y);ctx.lineTo(x-4,y+16)}ctx.stroke();
+    for(let i=0;i<10;i++){const x=(i*173)%W,y=VH*.82+(i%3)*14,k=((S.frame+i*13)%30)/30;ctx.strokeStyle=`rgba(180,210,255,${.4*(1-k)})`;ctx.beginPath();ctx.ellipse(x,y,4+k*16,1+k*4,0,0,7);ctx.stroke()}ctx.restore()}
+  /* 레드룸: blackout — pitch dark, only phone flashes and the fighters' eyes of light */
+  if(S.dark>0){const a=S.dark>140?(150-S.dark)/10:S.dark<12?S.dark/12:1,fl=Math.random()<.03;ctx.save();ctx.fillStyle=`rgba(0,0,0,${.93*a*(fl?.4:1)})`;ctx.fillRect(0,0,W,VH);
+    for(let i=0;i<5;i++){if(Math.sin(S.frame*.3+i*2.7)>.85){const x=(i*211+S.frame)%W,y=VH*(.25+.1*(i%3));const g=ctx.createRadialGradient(x,y,0,x,y,120);g.addColorStop(0,`rgba(255,255,255,${.25*a})`);g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.fillRect(x-120,y-120,240,240)}}ctx.restore()}
+  /* 폐공장: the closing cage */
+  if(S.gim==='shrink'&&S.arenaR0){const k=1-S.arena.r/S.arenaR0;if(k>.02){ctx.save();ctx.strokeStyle=`rgba(255,120,40,${.25+.25*Math.sin(S.frame*.2)})`;ctx.lineWidth=6;ctx.strokeRect(3,3,W-6,VH-6);ctx.restore()}}
+}
 function renderOverlay(S0,c,cssW,cssH,o3d){
   VH=cssW&&cssH?clamp(W*cssH/cssW,300,1100):H;
   const S=S0.mode==='replay'&&S0.rp?IC.Fight.replayView():S0;
@@ -1482,15 +1499,9 @@ function renderOverlay(S0,c,cssW,cssH,o3d){
   for(const t of S.texts){if(t.num&&!OPT.nums)continue;const p=P(t.x,t.y,zOf(t.x));ctx.globalAlpha=Math.min(1,t.l/20);ctx.font=`${t.num?22:19}px "Black Han Sans",sans-serif`;ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.65)';ctx.strokeText(t.t,p.x,p.y);ctx.fillStyle=t.col;ctx.fillText(t.t,p.x,p.y)}
   ctx.globalAlpha=1;
   const vg=ctx.createRadialGradient(W/2,VH/2,Math.min(W,VH)*.4,W/2,VH/2,Math.max(W,VH)*.65);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.18)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,VH);
-  /* underground venues: dirty colour grade, a swinging bare bulb, haze and a hard vignette */
-  if(S.arena&&S.arena.k==='under'){const tc=S.arena.tint||'#c88a3a',fl=Math.sin(S.frame*.9)>.92?.55:1,sw=Math.sin(S.frame*.03)*.18;
-    ctx.save();ctx.globalCompositeOperation='multiply';ctx.fillStyle='rgba(205,175,140,.55)';ctx.fillRect(0,0,W,VH);ctx.restore();
-    ctx.save();ctx.globalCompositeOperation='lighter';const bx=W/2+Math.sin(sw)*90,by=VH*.06+Math.cos(sw)*6;const lg=ctx.createRadialGradient(bx,by,2,bx,by,VH*.9);lg.addColorStop(0,rgba(tc,.32*fl));lg.addColorStop(.35,rgba(tc,.1*fl));lg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=lg;ctx.fillRect(0,0,W,VH);ctx.restore();
-    ctx.strokeStyle='rgba(20,20,20,.9)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(bx,by);ctx.stroke();ctx.fillStyle=`rgba(255,240,200,${fl})`;ctx.beginPath();ctx.arc(bx,by+4,6,0,7);ctx.fill();
-    for(let i=0;i<6;i++){const hx=(i*173+S.frame*.3)%(W+200)-100,hy=VH*(.35+.1*Math.sin(i+S.frame*.01)),r=W*.18;const g=ctx.createRadialGradient(hx,hy,0,hx,hy,r);g.addColorStop(0,'rgba(180,170,160,.06)');g.addColorStop(1,'rgba(180,170,160,0)');ctx.fillStyle=g;ctx.fillRect(hx-r,hy-r,r*2,r*2)}
-    const v2=ctx.createRadialGradient(W/2,VH*.55,Math.min(W,VH)*.3,W/2,VH*.55,Math.max(W,VH)*.6);v2.addColorStop(0,'rgba(0,0,0,0)');v2.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=v2;ctx.fillRect(0,0,W,VH)}
   if(S0.flashScr>0){ctx.fillStyle=`rgba(255,255,255,${S0.flashScr/7*.2})`;ctx.fillRect(0,0,W,VH)}
   if(S.slow>0||S.replay){ctx.fillStyle='rgba(255,215,140,.06)';ctx.fillRect(0,0,W,VH)}
+  if(!S.walk||!/Aisle$/.test(S.walk.k||''))venueFX(S);
   HS=clamp(600/(cssW||800),1,1.75);WH=W/HS;HH=VH/HS;
   ctx.save();ctx.scale(HS,HS);
   {const g=(OPT.topGap||0)*W/(cssW||800)/HS;if(g>0){ctx.fillStyle='#07080b';ctx.fillRect(0,0,WH,g);ctx.translate(0,g);HH-=g}}
@@ -1540,6 +1551,7 @@ function render(S0,c,cssW,cssH,o3d){
     const vg2=ctx.createRadialGradient(W/2,VH/2,VH*.2,W/2,VH/2,Math.max(W,VH)*.6);vg2.addColorStop(0,'rgba(0,0,0,0)');vg2.addColorStop(1,`rgba(0,0,0,${.45*k*(.7+.3*Math.sin(S.frame*.14))})`);ctx.fillStyle=vg2;ctx.fillRect(0,0,W,VH)}
   if(S.mode==='doc'||S.mode==='foul'){ctx.fillStyle='rgba(120,10,10,.12)';ctx.fillRect(0,0,W,VH)}
   // HUD
+  if(!S.walk||!/Aisle$/.test(S.walk.k||''))venueFX(S);
   HS=clamp(600/(cssW||800),1,1.75);WH=W/HS;HH=VH/HS;
   ctx.save();ctx.scale(HS,HS);
   {const g=(OPT.topGap||0)*W/(cssW||800)/HS;if(g>0){ctx.fillStyle='#07080b';ctx.fillRect(0,0,WH,g);ctx.translate(0,g);HH-=g}}

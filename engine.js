@@ -242,7 +242,15 @@ function finish(Wn,method,detail){
 const fmt=f=>{const s=Math.floor(f/60);return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`};
 
 /* ---------- standing ---------- */
+/* underground venue rules */
+function gimStep(){const g=S.gim;
+  if(g==='blackout'){if(S.dark>0)S.dark--;else if(Math.random()<1/420){S.dark=150;banner('정전!','#ff5a4a',40);say('레드룸 조명이 나갔습니다! 아무것도 안 보여요!');sfx('slam')}}
+  if(g==='shrink'){const r0=S.arenaR0||(S.arenaR0=S.arena.r),tot=S.roundFrames*S.rounds,el=(S.round-1)*S.roundFrames+(S.roundFrames-S.timer),k=clamp(el/tot,0,1),nr=r0*(1-.38*k);
+    if(Math.floor(S.arena.r/12)!==Math.floor(nr/12)){if(nr<r0-4&&Math.random()<.5)say('철창이 조여 옵니다! 도망칠 곳이 줄어들어요!');sfx('slam');S.shake=Math.max(S.shake,4)}S.arena.r=nr}
+  if(g==='siren'&&!S.sirenOn&&S.round===S.rounds&&S.timer<=S.roundFrames*.5){S.sirenOn=1;S.timer=Math.min(S.timer,20*60);banner('경찰 출동!','#4aa0ff',60);say('사이렌 소리! 20초 안에 끝내야 합니다! 판정까지 가면 둘 다 도망쳐요!');sfx('bell')}}
 function startStrike(F,A0){
+  /* 항구 창고: wet concrete — kicks can slip out from under you */
+  if(S.gim==='rain'&&A0.kick&&S.mode==='fight'&&!S.gr&&!S.cl&&Math.random()<.14){F.state='hit';F.stun=34;F.A=null;F.vx=-F.f*2;F.st=Math.max(0,F.st-6);floatText(F.x,170+zy(F),'미끄러짐!','#7fc8ff');sfx('slam');say(`${F.nick}, 젖은 바닥에 킥을 차다 미끄러집니다!`);return true}
   const sm=(1.15-sv(F,'spd')*.003)*(F.st<25?1.2:1)*(F.rocked?1.15:1)*(F.exh?1.18:1)/F.cp.spd;
   const cost=(A0.st||0)*(1.3-sv(F,'car')*.005)*(F.plan==='press'?1.12:F.plan==='safe'?.9:1)*F.cp.st;
   if(F.st<cost*.35&&!F.exh){if(F===S.p)floatText(F.x,166,'지침','#8e97a6');return false}
@@ -817,7 +825,7 @@ function start(o){
   S={o,D,diffKey:o.diff||'normal',rounds:o.rounds||3,roundFrames:Math.round((o.roundSec||120)*60),round:1,timer:0,
     mode:'intro',phaseT:110,frame:0,sparks:[],texts:[],feed:[],banner:null,shake:0,slow:0,gr:null,cl:null,sub:null,
     held:{left:false,right:false,block:false},rounds_:[],paused:false,practice:o.practice||null,events:{},pbf:0,title:!!o.title,label:o.label||'',
-    arena:ARENAS[o.arena!=null?o.arena:o.practice?0:o.title?3:2],pat:{...(o.pat||{})},wild:!!o.wild,lean:0,cardLead:0,zoomKick:0,
+    arena:{...ARENAS[o.arena!=null?o.arena:o.practice?0:o.title?3:2]},gim:o.gim||null,dark:0,pat:{...(o.pat||{})},wild:!!o.wild,lean:0,cardLead:0,zoomKick:0,
     demo:!!o.demo,rings:[],stains:[],cage:{x:400,z:0,ang:0},camTheta:0,hitstop:0,flashScr:0,rec:[],ref:{x:400,f:1,state:'start',walk:0},camFocus:null,winSide:null,replayOn:o.replay!==false};
   S.a=mkRun(o.a,'a');S.b=mkRun(o.b,'b');S.p=S.a;S.e=S.b;S.b.mul=D.mul;
   S.remote=!!o.remote;S.mirror=!!o.mirror;S.spec=!!o.spec;S.net=S.remote;S.nl=[];S.nseq=0;S.rin={};if(S.remote){S.b.mul=1;S.replayOn=false}
@@ -979,6 +987,7 @@ function step(){
       S.remote?remoteCtl(E,P):aiStand(E,P);upStand(P,E);if(S.mode==='fight'&&!S.gr&&!S.cl)upStand(E,P);if(!S.gr&&!S.cl){separate();camFrame()}
     }
     if(S.mode==='fight'&&S.frame%30===0){const cur={a:rpts(S.a.r),b:rpts(S.b.r)},prev=S.rounds_.reduce((t,r)=>{const c=r.cards[0];return t+(c[1]-c[0])},0);S.lean=cur.a-cur.b;S.cardLead=prev+(S.lean<0?1:S.lean>0?-1:0)}
+    if(S.mode==='fight'&&S.gim)gimStep();
     if(S.mode==='fight'&&!S.inf&&--S.timer<=0){S.timer=0;endRound()}
     coachTick();
     S.rec.push(snap());if(S.rec.length>240)S.rec.shift();
