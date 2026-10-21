@@ -1,6 +1,6 @@
 /* 아이언 케이지 — 서비스 워커 (오프라인 실행)
    게임 파일을 바꿔 올릴 때는 아래 VERSION 숫자를 하나 올려 주세요. 그래야 폰에 있는 옛 버전이 새 버전으로 바뀝니다. */
-const VERSION = 'iron-cage-pwa-v29';
+const VERSION = 'iron-cage-pwa-v30';
 const FONT_CACHE = 'iron-cage-fonts';
 const APP_FILES = [
   './',
@@ -48,12 +48,10 @@ self.addEventListener('fetch', event => {
 
   // 게임 파일: 이번 VERSION으로 저장해 둔 파일을 사용 (인터넷 없이도 실행).
   // 새 버전은 sw.js의 VERSION을 바꿔 올리면 다음 실행 때 통째로 교체됩니다.
-  if (req.mode === 'navigate') {
-    event.respondWith(caches.match('./index.html').then(hit => hit || fetch(req)));
-    return;
-  }
-  event.respondWith(caches.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req).then(res => {
-    if (res && res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
+  // 온라인이면 항상 최신 파일(네트워크 우선), 오프라인이면 저장해 둔 파일 사용
+  const key = req.mode === 'navigate' ? './index.html' : req;
+  event.respondWith(fetch(req, { cache: 'no-store' }).then(res => {
+    if (res && res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(key, copy)); }
     return res;
-  })));
+  }).catch(() => caches.match(key, { ignoreSearch: true }).then(hit => hit || caches.match('./index.html'))));
 });
