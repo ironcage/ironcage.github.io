@@ -1641,6 +1641,48 @@ function pyro(x,t,t0){if(t<t0)return;ctx.save();ctx.globalCompositeOperation='li
   for(let i=0;i<90;i++){const h=((i*2654435761)>>>0)/4294967296,h2=((i*40503+17)%997)/997,age=((t-t0)*1.1+i*6.7)%62;const v=8+h*5,dx=(h2-.5)*34;
     const px=x+dx*age/22,py=GY-(v*age-.11*age*age);if(py>GY)continue;const a=1-age/62;ctx.fillStyle=`rgba(255,${170+(h*80|0)},${60+(h2*90|0)},${a})`;ctx.beginPath();ctx.arc(px,py,1.2+a*2.2,0,7);ctx.fill()}
   ctx.restore()}
+/* ---------- post-win taunt: the winner performs in the octagon, the loser still on the canvas ---------- */
+const TAUNTS={climb:'케이지 위로!',chest:'쓰러진 상대 앞 포효',flip:'백플립!',belt:'벨트는 내 거다',cut:'목 긋기 도발',respect:'존중의 포옹',ear:'더 크게!'};
+function tauntScene(c,cw,ch,t,d,opp,kind,kt){
+  ctx=c;const VHw=800*ch/cw;ctx.save();ctx.clearRect(0,0,800,VHw);const oy=(VHw-450)/2;
+  const lift=kind&&kt>=0;ctx.save();beltArena(t,VHw,oy,{pre:true,zoom:1.2,flash:lift?3:1});ctx.translate(0,22);
+  const ft=(dd,side,x,f)=>({d:dd,look:dd.look,corner:side==='b'?'#e04a3a':'#3d7ff0',head:100,body:100,legs:100,cuts:side==='b'?3:1,rocked:0,flash:0,state:'idle',st:70,side,x,f,z:0,_t:t,kind:'fighter',t:0,A:null,react:null,walk:0,stance:'orth'});
+  const W=ft(d,'a',350,1),Lr=ft(opp,'b',505,-1),SS={frame:t,cl:null},k=kt||0;
+  let wx=350,wy=0,rot=0,loserUp=0,ghostBelt=0,slash=-1;
+  if(!kind){W.state='idle'}
+  else if(kind==='climb'){const p1=clamp(k/30,0,1),p2=clamp((k-30)/30,0,1);wx=lerp(350,262,p1);W.f=-1;W.state=p1<1?'walk':p2<1?'clinch':'celebrate';W.walk=k*.25;wy=-(GY-238)*(p2*p2*(3-2*p2));if(p2>=1)W.f=1}
+  else if(kind==='chest'){const p1=clamp(k/24,0,1);wx=lerp(350,440,p1);W.state=p1<1?'walk':'perf';W.perfK='chest';W.perfT=k-24;W.walk=k*.25}
+  else if(kind==='flip'){const p=clamp((k-10)/34,0,1);W.state=k<10?'idle':p<1?'celebrate':'celebrate';wy=-Math.sin(p*Math.PI)*120;rot=-Math.PI*2*(p*p*(3-2*p))}
+  else if(kind==='belt'){W.state='perf';W.perfK='taunt';W.perfT=k;ghostBelt=clamp((k-8)/20,0,1)}
+  else if(kind==='cut'){W.state='perf';W.perfK='taunt';W.perfT=k;slash=clamp((k-14)/14,0,1)}
+  else if(kind==='respect'){const p1=clamp(k/26,0,1);wx=lerp(350,448,p1);W.state=p1<1?'walk':'idle';W.walk=k*.25;loserUp=clamp((k-20)/24,0,1)}
+  else if(kind==='ear'){W.state='perf';W.perfK='taunt';W.perfT=k*1.6}
+  W.x=wx;
+  /* the loser: flat on the canvas, or helped up for the respect hug */
+  if(loserUp<1){ctx.save();const a=(1-loserUp)*Math.PI/2*.94;Lr.state=loserUp>0?'idle':'ko';Lr.koT=40;ctx.translate(Lr.x+22,GY-4);ctx.rotate(a);ctx.translate(-(Lr.x+22),-(GY-4));shadowAt(Lr.x,52);const J=poseStand(Lr,W,SS);J.mood=loserUp>0?'hurt':'ko';drawBody(Lr,J);ctx.restore()}
+  else{Lr.x=lerp(505,490,clamp((k-44)/10,0,1));shadowAt(Lr.x,52);const J=poseStand(Lr,W,SS);J.nearHand={x:Lr.x-30,y:220};J.farHand={x:Lr.x-24,y:226};drawBody(Lr,J)}
+  if(kind==='climb'){ctx.save();const x0=226,x1=300,top=238;ctx.strokeStyle='rgba(160,170,185,.55)';ctx.lineWidth=1;ctx.beginPath();for(let x=x0-40;x<x1+40;x+=10){ctx.moveTo(Math.max(x0,x),top);ctx.lineTo(Math.min(x1,x+60),GY);ctx.moveTo(Math.min(x1,x+60),top);ctx.lineTo(Math.max(x0,x),GY)}ctx.stroke();
+    for(const px of [x0,x1]){ctx.fillStyle='#171a20';ctx.fillRect(px-5,top-4,10,GY-top+4);ctx.fillStyle='#2e333d';ctx.fillRect(px-5,top-4,3,GY-top+4)}ctx.fillStyle='#0d0f13';ctx.fillRect(x0-6,top-8,x1-x0+12,9);ctx.fillStyle='#e8b33a';ctx.fillRect(x0-6,top-8,x1-x0+12,2);ctx.restore()}
+  /* the winner */
+  shadowAt(wx,wy<-40?30:52);ctx.save();
+  if(rot){ctx.translate(wx,GY-70+wy);ctx.rotate(rot);ctx.translate(-wx,-(GY-70))}else ctx.translate(0,wy);
+  const J=poseStand(W,Lr,SS);if(kind==='chest'||kind==='climb'||kind==='ear'||kind==='belt'||kind==='cut')J.mood='yell';
+  if(kind==='ear'&&k>6){const s=Math.sin(k*.2)*4;J.nearHand={x:wx+f2(W)*10,y:198+s};J.farHand={x:wx-12,y:200-s};J.elbN='up';J.elbF='up'}
+  if(kind==='respect'&&loserUp>=1){J.nearHand={x:wx+34,y:222};J.farHand={x:wx+28,y:228};J.elbN='fwd';J.elbF='fwd'}
+  if(slash>=0&&slash<1){J.nearHand={x:wx+lerp(-6,22,slash),y:206};J.elbN='up'}
+  if(ghostBelt>0){J.nearHand={x:wx+8,y:268};J.farHand={x:wx-6,y:270}}
+  const r=drawBody(W,J);
+  if(ghostBelt>0){ctx.globalAlpha=ghostBelt;drawBelt(wx+4,GY-1.3*(GY-290),.33*ghostBelt+.05,{glint:(t%100)/100});ctx.globalAlpha=1}
+  ctx.restore();ctx.restore();
+  /* hype marks: crowd noise lines and a big caption */
+  ctx.save();ctx.translate(0,oy);
+  if(kind&&k>4){const q=clamp((k-4)/12,0,1),s=lerp(2.2,1,1-Math.pow(1-q,3));ctx.save();ctx.translate(400,74);ctx.scale(s*.7,s*.7);ctx.globalAlpha=q;ctx.font='58px "Black Han Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=10;ctx.strokeStyle='rgba(0,0,0,.75)';ctx.strokeText(TAUNTS[kind],0,0);
+    const g=ctx.createLinearGradient(0,-30,0,24);g.addColorStop(0,'#fff6d0');g.addColorStop(.55,kind==='chest'||kind==='cut'?'#ff6b5e':'#f0b93a');g.addColorStop(1,kind==='chest'||kind==='cut'?'#a8201a':'#a8741a');ctx.fillStyle=g;ctx.fillText(TAUNTS[kind],0,0);ctx.restore()}
+  if(!kind){ctx.globalAlpha=.6+.4*Math.sin(t*.12);ctx.font='700 15px "IBM Plex Sans KR",sans-serif';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText('관중이 당신을 보고 있습니다 — 아래에서 세리머니를 고르세요',400,64);ctx.globalAlpha=1}
+  ctx.restore();
+  const vg=ctx.createRadialGradient(400,VHw/2,VHw*.35,400,VHw/2,720);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.5)');ctx.fillStyle=vg;ctx.fillRect(0,0,800,VHw);
+  ctx.restore()}
+function f2(F){return F.f||1}
 /* ---------- portrait gate: a fighter head-kicks the phone sideways ---------- */
 const GATE={loop:200,hit:79};
 function gateScene(c,cw,ch,t,d){
@@ -1855,5 +1897,5 @@ function solve(J){
   const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
   return{f,hip:J.hip,chest:J.chest,head,hAng:Math.atan2(sd.y,sd.x)+Math.PI/2+(J.tilt||0)*f,shN,shF,hipN,hipF,kneeN:legN.j,kneeF:legF.j,footN:legN.end,footF:legF.end,elbN:armN.j,elbF:armF.j,handN:armN.end,handF:armF.end,footDirN:J.footN||f,footDirF:J.footF||f,mood:J.mood};
 }
-IC.Draw={render,portrait,weighin,beltScene,koScene,KOI,gateScene,GATE,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
+IC.Draw={render,portrait,weighin,beltScene,koScene,KOI,gateScene,GATE,tauntScene,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
 })(window.IC);

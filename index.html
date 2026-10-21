@@ -541,6 +541,14 @@ body.titling{overflow:hidden}
 .mt.wildt{--ac:#ff6b5e}.mt.gpt{--ac:#b48cff}.mt.prt{--ac:#5fd3ff}.mt.gymt{--ac:#7fe0a0}.mt.albt{--ac:#9fe0a8}.mt.hoft{--ac:#e8b33a}
 .mt.locked{opacity:.5;filter:saturate(.3)}
 @media (max-height:460px) and (orientation:landscape){.hero2{height:calc(100vh - 70px);min-height:280px}.h2main{gap:6px;top:calc(50% - 14px);transform:translateY(-50%)}.lgo span{font-size:clamp(40px,7.4vw,74px)}.cta{padding:10px 18px 9px}}
+.tkopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px}
+.tko{position:relative;text-align:left;display:flex;flex-direction:column;gap:3px;padding:12px 14px 12px 50px;border-radius:14px;border:1px solid rgba(232,179,58,.35);background:linear-gradient(160deg,rgba(232,179,58,.14),rgba(13,15,20,.9) 70%);color:#fff;cursor:pointer;transition:transform .12s}
+.tko:active{transform:scale(.97)}.tko i{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-style:normal;font-size:26px}
+.tko b{font-family:var(--display);font-weight:400;font-size:17px;line-height:1.15}.tko span{font-size:11.5px;color:rgba(230,225,210,.7)}
+.tko.bad{border-color:rgba(255,107,94,.45);background:linear-gradient(160deg,rgba(255,107,94,.16),rgba(13,15,20,.9) 70%)}
+.tkout{margin-top:10px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:4px;animation:tkin .5s 1.2s both}
+.tkout b{font-family:var(--display);font-weight:400;font-size:18px;color:#e8b33a}.tkout span{font-size:13px;color:#d6dbe4}
+.tkdone{margin-top:10px;animation:tkin .4s 2s both}@keyframes tkin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 </style>
 
 <div class="app">
