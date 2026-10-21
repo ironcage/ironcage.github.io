@@ -11,7 +11,7 @@ const DIFFS=IC.Fight.DIFF;
 
 /* ---------- sound ---------- */
 const Sound={ac:null,nb:null,on:true,
-  init(){if(this.ac||!this.on)return;try{const ac=new (window.AudioContext||window.webkitAudioContext)();const b=ac.createBuffer(1,ac.sampleRate*.5,ac.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;this.ac=ac;this.nb=b;const b2=ac.createBuffer(2,ac.sampleRate*4,ac.sampleRate);for(let c=0;c<2;c++){const e=b2.getChannelData(c);let l=0;for(let i=0;i<e.length;i++){l=l*.6+(Math.random()*2-1)*.4;e[i]=l*1.6}}this.nb2=b2}catch(e){}},
+  init(){if(this.ac||!this.on)return;setTimeout(()=>{try{Sound.loadBank()}catch(e){}},50);try{const ac=new (window.AudioContext||window.webkitAudioContext)();const b=ac.createBuffer(1,ac.sampleRate*.5,ac.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;this.ac=ac;this.nb=b;const b2=ac.createBuffer(2,ac.sampleRate*4,ac.sampleRate);for(let c=0;c<2;c++){const e=b2.getChannelData(c);let l=0;for(let i=0;i<e.length;i++){l=l*.6+(Math.random()*2-1)*.4;e[i]=l*1.6}}this.nb2=b2}catch(e){}},
   noise(dur,type,freq,vol){const ac=this.ac,s=ac.createBufferSource();s.buffer=this.nb;const f=ac.createBiquadFilter();f.type=type;f.frequency.value=freq;const g=ac.createGain(),t=ac.currentTime;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);s.connect(f).connect(g).connect(ac.destination);s.start(t);s.stop(t+dur)},
   tone(fr,dur,vol,type='sine',to){const ac=this.ac,o=ac.createOscillator();o.type=type;const g=ac.createGain(),t=ac.currentTime;o.frequency.setValueAtTime(fr,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)},
   play(k){if(!this.ac||!this.on)return;try{
@@ -24,7 +24,7 @@ const Sound={ac:null,nb:null,on:true,
     else if(k==='tick'){this.tone(520,.04,.05,'square')}
     else if(k==='coach'){this.tone(740,.07,.07,'square');setTimeout(()=>{try{this.tone(988,.09,.06,'square')}catch(e){}},80)}
     else if(k==='coachok'){this.tone(880,.18,.12,'triangle');setTimeout(()=>{try{this.tone(1320,.25,.1,'triangle')}catch(e){}},90)}
-    else if(k==='bell'){this.tone(880,1.2,.25,'triangle');this.tone(1320,1,.12,'sine')}
+    else if(k==='bell'){if(!this.sample('bell',.9)){this.tone(880,1.2,.25,'triangle');this.tone(1320,1,.12,'sine')}}
     else if(k==='crowd'){this.roar(.35)}
     else if(k==='heart'){this.heart()}else if(k==='boo'){this.boo()}else if(k==='applause'){this.applause()}
     else if(k==='ko'){[0,220,440].forEach(d=>setTimeout(()=>{try{this.tone(880,1.6,.3,'triangle')}catch(e){}},d));this.noise(1.8,'bandpass',800,.25)}
@@ -129,7 +129,7 @@ Sound.music=function(on,song){const genre=song&&song.g||'rock',K=song&&song.key|
   const sched=()=>{while(next<ac.currentTime+.4){const i=step%16,sw=T.swing&&i%2?beat/4*T.swing:0;try{T.f(i,step,next+sw,beat)}catch(e){if(!Sound._merr){Sound._merr=String(e);console.warn('music',e)}}next+=beat/4;step++}if(Math.random()<.22)cheer()};
   sched();this._mus={g,crowd,timer:setInterval(sched,100)};
 };
-Sound.roar=function(v=.4){if(!this.ac||!this.on)return;try{const ac=this.ac,t=ac.currentTime;
+Sound.roar=function(v=.4){if(!this.ac||!this.on)return;if(this.sample('cheer',Math.min(1.2,v*1.1)))return;try{const ac=this.ac,t=ac.currentTime;
   for(const [f,q,k] of [[450,.8,1],[1100,1.2,.6],[2400,1.5,.25]]){const s=ac.createBufferSource();s.buffer=this.nb2||this.nb;const fl=ac.createBiquadFilter();fl.type='bandpass';fl.frequency.value=f;fl.Q.value=q;const g=ac.createGain();
     g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v*k,t+.35);g.gain.exponentialRampToValueAtTime(.001,t+2.8);s.connect(fl).connect(g).connect(ac.destination);s.start(t,Math.random()*2);s.stop(t+2.9)}
   for(let i=0;i<6;i++)this.whoo(t+Math.random()*.9,v*.35)}catch(e){}};
@@ -146,9 +146,15 @@ Sound.sting=function(ok=true){if(!this.ac||!this.on)return;try{const ac=this.ac,
   for(const f of (ok?[220,277.2,329.6,440]:[207.7,246.9,311.1])){const o=ac.createOscillator(),fl=ac.createBiquadFilter(),a=ac.createGain();o.type='sawtooth';o.frequency.value=f;fl.type='lowpass';fl.frequency.setValueAtTime(3000,t);fl.frequency.exponentialRampToValueAtTime(500,t+1.2);a.gain.setValueAtTime(.06,t);a.gain.exponentialRampToValueAtTime(.001,t+1.4);o.connect(fl).connect(a).connect(ac.destination);o.start(t);o.stop(t+1.5)}}catch(e){}};
 Sound.heart=function(){if(!this.ac||!this.on)return;try{this.tone(62,.18,.6,'sine',40);const ac=this.ac,t=ac.currentTime+.2,o=ac.createOscillator(),a=ac.createGain();o.frequency.setValueAtTime(56,t);o.frequency.exponentialRampToValueAtTime(36,t+.2);a.gain.setValueAtTime(.45,t);a.gain.exponentialRampToValueAtTime(.001,t+.22);o.connect(a).connect(ac.destination);o.start(t);o.stop(t+.25)}catch(e){}};
 /* layered impact sounds: every landed or blocked strike gets its own thud, slap and crack */
+/* real recorded sound pack (optional): sfx/index.json lists files per sound; anything missing falls back to the synth */
+Sound.bank={};Sound.loadBank=function(){if(this._bankLoading||!this.ac)return;this._bankLoading=1;const ac=this.ac;
+  fetch('sfx/index.json').then(r=>r.ok?r.json():null).then(M=>{if(!M)return;for(const k in M)for(const f of M[k])fetch('sfx/'+f).then(r=>r.arrayBuffer()).then(b=>ac.decodeAudioData(b)).then(buf=>{(this.bank[k]=this.bank[k]||[]).push(buf)}).catch(()=>{})}).catch(()=>{})};
+Sound.sample=function(k,vol=1,rate=1,when=0){const L=this.bank[k];if(!L||!L.length||!this.ac)return false;const ac=this.ac,s=ac.createBufferSource();s.buffer=L[Math.floor(Math.random()*L.length)];s.playbackRate.value=rate;const g=ac.createGain();g.gain.value=vol;s.connect(g).connect(this._fx||ac.destination);s.start(ac.currentTime+when);return true};
 Sound.impact=function(kind,dmg){if(!this.ac||!this.on)return;try{const ac=this.ac;if(!this._fx||this._fx.context!==ac){const g=ac.createGain();g.gain.value=1.8;const c=ac.createDynamicsCompressor();c.threshold.value=-6;c.ratio.value=4;c.knee.value=6;c.attack.value=.002;c.release.value=.15;g.connect(c).connect(ac.destination);this._fx=g}const out=this._fx,t=ac.currentTime,v=Math.min(1.25,.55+dmg*.07),pr=.9+Math.random()*.2;
   const thump=(f0,f1,d,g)=>{const o=ac.createOscillator(),a=ac.createGain();o.type='sine';o.frequency.setValueAtTime(f0*pr,t);o.frequency.exponentialRampToValueAtTime(f1*pr,t+d);a.gain.setValueAtTime(g*v,t);a.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(a).connect(out);o.start(t);o.stop(t+d+.02)};
   const nz=(type,f,q,d,g,dl=0)=>{const s=ac.createBufferSource();s.buffer=this.nb;const fl=ac.createBiquadFilter();fl.type=type;fl.frequency.value=f*pr;fl.Q.value=q;const a=ac.createGain();a.gain.setValueAtTime(g*v,t+dl);a.gain.exponentialRampToValueAtTime(.001,t+dl+d);s.connect(fl).connect(a).connect(out);s.start(t+dl,Math.random()*.3);s.stop(t+dl+d+.02)};
+  {const key=kind==='block'?'block':kind==='body'||kind==='knee'?'body':kind==='kick'||dmg>7?'heavy':'punch';
+   if(this.sample(key,Math.min(1.4,.6+dmg*.08),pr)){thump(110,40,.16,kind==='block'?.15:.45);if(dmg>7&&this.bank.ooh)this.sample('ooh',.5,1,.08);return}}
   if(kind==='block'){nz('bandpass',900,1.2,.07,.5);thump(180,90,.07,.35);nz('highpass',3000,.7,.03,.12);return}
   if(kind==='punch'){nz('highpass',1800,.8,.045,.55);nz('bandpass',650,1,.09,.5);thump(150,55,.13,.75)}
   else if(kind==='kick'){nz('bandpass',2200,.9,.07,.7);nz('lowpass',700,.7,.14,.5);thump(110,40,.2,.95)}
