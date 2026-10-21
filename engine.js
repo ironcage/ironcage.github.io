@@ -849,7 +849,7 @@ function stepWalkout(){
   const aisle=(F,song,corner)=>{
     if(W.t===1){W.ax=AISLE0;F.walkShirt=F.corner;F.walk=0;if(!S.demo&&IC.Sound&&IC.Sound.music){IC.Sound.music(false);IC.Sound.music(true,song)}
       ann(corner,`${corner==='blue'?'블루':'레드'} 코너, ${F.nick} ${F.name}! 입장곡 '${song.n}'과 함께 관중 사이로 걸어 나옵니다!`);sfx('crowd')}
-    const pause=W.t>70&&W.t<125;F.perfK=PERF[F.d.style]||'taunt';
+    const pause=W.t>70&&W.t<112;F.perfK=PERF[F.d.style]||'taunt';
     if(!pause){W.ax+=(AISLE1-AISLE0)/(st.d-40);F.walk+=.16}
     W.ax=Math.min(W.ax,AISLE1);
     F.state=pause?'perf':W.ax>=AISLE1?'idle':'stroll';F.f=1;if(pause)F.perfT=W.t-70;

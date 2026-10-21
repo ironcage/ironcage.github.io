@@ -860,8 +860,8 @@ function computeCam(S){
   if(VH>470)z*=Math.min(1.35,Math.sqrt(VH/450)*.95);
   z*=1+(S.zoomKick||0);
   /* keep every head below the HUD band (plates + commentary line): cap the zoom and lift the framing */
-  if(!S.gr&&!S.replay&&!S.demo&&(S.mode==='fight'||S.mode==='pause'||S.mode==='between')){const hb=128*HS,headTop=165;
-    const zc=(VH+12-hb)/(GY-headTop);if(z>zc)z=zc;const fyMax=headTop+(VH/2-hb)/z;if(fy>fyMax)fy=fyMax}
+  if(!S.gr&&!S.replay&&!S.demo&&(S.mode==='fight'||S.mode==='pause'||S.mode==='between')){const hb=94*HS,headTop=165;
+    const zc=(VH-hb-4)/(GY+6-headTop);if(z>zc)z=zc;const fyMax=headTop+(VH/2-hb)/z;if(fy>fyMax)fy=fyMax}
   const k=S.replay?.12:.07;
   cam.x+=(fx-cam.x)*k;cam.y+=(fy-cam.y)*k*.7;cam.z+=(z-cam.z)*k*.4;
   const zMin=Math.max(1,VH/(H+80));if(cam.z<zMin)cam.z=zMin;
@@ -1010,7 +1010,7 @@ function hud(S){
   // commentary lower third
   /* commentary ticker: one line, tucked under the HUD between the two plates so it never covers a face */
   {const f=S.feed[S.feed.length-1],stc=S.stCall&&S.frame-S.stCall.f>=0&&S.frame-S.stCall.f<=80;if(f&&f.t>40&&!stc){const wideV=VH/W<.56,a=Math.min(1,(f.t-40)/20,f.t/30);
-    const fw=Math.min(WH*(wideV?.44:.86),420),fx=WH/2-fw/2,fy=wideV?100:HH-34,h=22;
+    const TB=OPT.tickBand,fw=wideV&&TB?Math.max(150,Math.min(420,TB.r-TB.l)):Math.min(WH*(wideV?.34:.86),420),fx=wideV&&TB?TB.l+((TB.r-TB.l)-fw)/2:WH/2-fw/2,fy=HH-30,h=22;
     ctx.save();ctx.globalAlpha=a;frost(fx,fy,fw,h,11,.62);chrome(fx,fy,fw,h,11);
     const lab=f.who==='color'?'해설':'캐스터',lc=f.who==='color'?'#e8b33a':'#7fb2ff';ctx.textBaseline='middle';
     ctx.fillStyle=f.who==='color'?'#e8b33a':'#ff5a4a';ctx.beginPath();ctx.arc(fx+11,fy+h/2,3,0,7);ctx.fill();
@@ -1079,40 +1079,59 @@ function burstFW(x,y,t,col,r){if(t<0||t>70)return;const k=t/70;ctx.save();ctx.gl
   ctx.restore()}
 /* front-facing stage reveal: truss, LED walls, smoking tunnel, runway and spark fountains */
 function stageReveal(S,F,t){
-  const W0=WH,H0=HH,cx=W0/2,AR=S.arena||{k:'main'},L=TIERL[AR.k]??2,col=F.corner,horizon=H0*.6;
-  const bg=ctx.createLinearGradient(0,0,0,H0);bg.addColorStop(0,'#030407');bg.addColorStop(1,'#0b0d13');ctx.fillStyle=bg;ctx.fillRect(0,0,W0,H0);
-  /* crowd silhouettes left and right */
-  for(let i=0;i<70;i++){const side=i%2?1:-1,row=(i*7)%5,px=cx+side*(W0*.28+((i*37)%100)/100*W0*.25),py=horizon+12+row*10+((i*13)%7);ctx.fillStyle=`rgba(20,22,30,${.9})`;ctx.beginPath();ctx.arc(px,py,5+row,0,7);ctx.fill();ctx.fillRect(px-6-row,py+3,12+row*2,14)}
-  /* truss + blinking bulbs */
-  const tw=W0*.66,tx=cx-tw/2,ty=H0*.1,th=horizon-ty;ctx.fillStyle='#14171d';ctx.fillRect(tx-8,ty-8,tw+16,10);ctx.fillRect(tx-8,ty,10,th);ctx.fillRect(tx+tw-2,ty,10,th);
-  for(let i=0;i<=24;i++){const bx=tx+tw*i/24,on=((i+Math.floor(t/6))%3)!==0;ctx.fillStyle=on?(i%4?'#fff8e6':rgba(col,1)):'#3a3d44';ctx.beginPath();ctx.arc(bx,ty-3,3,0,7);ctx.fill();if(on){const g=ctx.createRadialGradient(bx,ty-3,0,bx,ty-3,14);g.addColorStop(0,i%4?'rgba(255,248,230,.5)':rgba(col,.6));g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(bx-14,ty-17,28,28)}}
-  for(let j=1;j<=6;j++){for(const sx of [tx-3,tx+tw+3]){const by=ty+th*j/7,on=((j+Math.floor(t/5))%2)===0;ctx.fillStyle=on?rgba(col,1):'#2c3038';ctx.beginPath();ctx.arc(sx,by,2.6,0,7);ctx.fill()}}
-  /* LED walls with the fighter flexing, and the event logo in the middle */
-  const sw=tw*.27,sh=th*.86,sy=ty+8;
-  for(const sx of [tx+10,tx+tw-10-sw]){ctx.fillStyle='#070a12';ctx.fillRect(sx,sy,sw,sh);const g=ctx.createLinearGradient(sx,sy,sx,sy+sh);g.addColorStop(0,rgba(col,.35));g.addColorStop(1,'rgba(8,10,16,.9)');ctx.fillStyle=g;ctx.fillRect(sx,sy,sw,sh);
-    ctx.save();ctx.beginPath();ctx.rect(sx,sy,sw,sh);ctx.clip();const sc=sh/300;ctx.translate(sx+sw/2,sy+sh+20*sc);ctx.scale(sc,sc);ctx.translate(-400,-GY);
-    const P={...F,x:400,f:sx<cx?1:-1,state:'celebrate',A:null,t:0,react:null,rocked:0};P._t=t;drawBody(P,poseStand(P,P,{frame:t,cl:null}));ctx.restore();
-    ctx.fillStyle='rgba(0,0,0,.18)';for(let y=sy;y<sy+sh;y+=3)ctx.fillRect(sx,y,sw,1)}
-  ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`${Math.round(th*.15)}px "Black Han Sans",sans-serif`;
-  const lg=ctx.createLinearGradient(0,ty+th*.2,0,ty+th*.38);lg.addColorStop(0,'#ffffff');lg.addColorStop(.5,'#9aa3b2');lg.addColorStop(1,'#e9edf3');ctx.fillStyle=lg;ctx.fillText('IRON CAGE',cx,ty+th*.28);
-  ctx.font=`700 ${Math.round(th*.06)}px "Rajdhani",sans-serif`;ctx.fillStyle='#e8b33a';ctx.fillText((AR.name||'').toUpperCase?AR.name:'',cx,ty+th*.4);
-  /* tunnel door: backlit haze, the fighter walking out of it */
-  const dw=tw*.26,dh=th*.42,dx=cx-dw/2,dy=horizon-dh;ctx.fillStyle='#000';ctx.fillRect(dx-6,dy-6,dw+12,dh+6);
-  const tg=ctx.createRadialGradient(cx,dy+dh*.6,4,cx,dy+dh*.6,dw*.8);tg.addColorStop(0,rgba(col,.75));tg.addColorStop(.5,'rgba(120,110,160,.35)');tg.addColorStop(1,'rgba(10,10,20,.9)');ctx.fillStyle=tg;ctx.fillRect(dx,dy,dw,dh);
+  const W0=WH,H0=HH,cx=W0/2,AR=S.arena||{k:'main'},L=TIERL[AR.k]??2,col=F.corner,horizon=H0*.58,d=F.d||{};
+  const on=k=>clamp((t-k)/10,0,1);
+  const bg=ctx.createLinearGradient(0,0,0,H0);bg.addColorStop(0,'#020306');bg.addColorStop(1,'#0a0c12');ctx.fillStyle=bg;ctx.fillRect(0,0,W0,H0);
+  /* truss + bulbs that switch on left to right */
+  const tw=W0*.7,tx=cx-tw/2,ty=H0*.08,th=horizon-ty;ctx.fillStyle='#14171d';ctx.fillRect(tx-8,ty-8,tw+16,10);ctx.fillRect(tx-8,ty,10,th);ctx.fillRect(tx+tw-2,ty,10,th);
+  for(let i=0;i<=26;i++){const bx=tx+tw*i/26,lit=t>i*1.2&&((i+Math.floor(t/6))%3)!==0;ctx.fillStyle=lit?(i%4?'#fff8e6':rgba(col,1)):'#2a2d34';ctx.beginPath();ctx.arc(bx,ty-3,3,0,7);ctx.fill();
+    if(lit){const g=ctx.createRadialGradient(bx,ty-3,0,bx,ty-3,15);g.addColorStop(0,i%4?'rgba(255,248,230,.5)':rgba(col,.6));g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(bx-15,ty-18,30,30)}}
+  /* moving beams from the truss */
+  ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<4;i++){const bx=tx+tw*(.12+i*.25),a=Math.sin(t*.03+i*1.7)*.35;ctx.save();ctx.translate(bx,ty);ctx.rotate(a);const g=ctx.createLinearGradient(0,0,0,H0);g.addColorStop(0,i%2?rgba(col,.22):'rgba(255,240,210,.16)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-5,0);ctx.lineTo(5,0);ctx.lineTo(60,H0);ctx.lineTo(-60,H0);ctx.fill();ctx.restore()}ctx.restore();
+  /* LED walls: a big close-up of the fighter pounding the chest, nickname underneath */
+  const sw=tw*.28,sh=th*.84,sy=ty+8;
+  for(const sx of [tx+12,tx+tw-12-sw]){const fl=on(6)*(t<16&&t%4<2?.4:1);ctx.save();ctx.globalAlpha=fl;
+    const g=ctx.createLinearGradient(sx,sy,sx,sy+sh);g.addColorStop(0,shade(col,.45));g.addColorStop(1,'#05070c');ctx.fillStyle=g;ctx.fillRect(sx,sy,sw,sh);
+    ctx.save();ctx.beginPath();ctx.rect(sx,sy,sw,sh);ctx.clip();const sc=sh/120;ctx.translate(sx+sw/2,sy+sh*.5);ctx.scale(sc,sc);ctx.translate(-400,-218);
+    const P={...F,x:400,f:sx<cx?1:-1,state:'perf',perfK:'chest',perfT:t,A:null,t:0,react:null,rocked:0,walkShirt:null};P._t=t;drawBody(P,poseStand(P,P,{frame:t,cl:null}));ctx.restore();
+    const ng=ctx.createLinearGradient(0,sy+sh*.7,0,sy+sh);ng.addColorStop(0,'rgba(0,0,0,0)');ng.addColorStop(1,'rgba(0,0,0,.75)');ctx.fillStyle=ng;ctx.fillRect(sx,sy+sh*.7,sw,sh*.3);
+    disp(`"${F.nick}"`,sx+sw/2,sy+sh-12,Math.min(18,sw*.13),'#fff','center');ctx.fillStyle=col;ctx.fillRect(sx,sy+sh-3,sw,3);
+    ctx.fillStyle='rgba(0,0,0,.2)';for(let y=sy;y<sy+sh;y+=3)ctx.fillRect(sx,y,sw,1);ctx.restore()}
+  /* logo */
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.globalAlpha=on(10);ctx.font=`${Math.round(th*.15)}px "Black Han Sans",sans-serif`;
+  const lg=ctx.createLinearGradient(0,ty+th*.2,0,ty+th*.38);lg.addColorStop(0,'#ffffff');lg.addColorStop(.5,'#9aa3b2');lg.addColorStop(1,'#e9edf3');ctx.fillStyle=lg;ctx.fillText('IRON CAGE',cx,ty+th*.26);
+  ctx.font=`700 ${Math.round(th*.06)}px "IBM Plex Sans KR",sans-serif`;ctx.fillStyle='#e8b33a';ctx.fillText(AR.name||'',cx,ty+th*.38);ctx.globalAlpha=1;
+  /* tunnel */
+  const dw=tw*.26,dh=th*.44,dx=cx-dw/2,dy=horizon-dh;ctx.fillStyle='#000';ctx.fillRect(dx-6,dy-6,dw+12,dh+6);
+  const tg=ctx.createRadialGradient(cx,dy+dh*.6,4,cx,dy+dh*.6,dw*.8);tg.addColorStop(0,rgba(col,.9));tg.addColorStop(.5,'rgba(140,130,180,.4)');tg.addColorStop(1,'rgba(10,10,20,.9)');ctx.fillStyle=tg;ctx.fillRect(dx,dy,dw,dh);
   for(let i=0;i<=8;i++){const bx=dx+dw*i/8;ctx.fillStyle=((i+Math.floor(t/4))%2)?'#fff':'#555';ctx.beginPath();ctx.arc(bx,dy-3,2,0,7);ctx.fill()}
-  const walk=clamp((t-12)/60,0,1),fs=lerp(.42,.9,walk),fy=lerp(horizon,horizon+H0*.1,walk);
-  ctx.save();ctx.translate(cx,fy);ctx.scale(fs*dh/300,fs*dh/300);ctx.translate(-400,-GY);const P={...F,x:400,f:1,state:walk<1?'walk':'idle',walk:t*.2,A:null,react:null,rocked:0};P._t=t;
-  ctx.filter='brightness(.35)';drawBody(P,poseStand(P,P,{frame:t,cl:null}));ctx.filter='none';ctx.restore();
-  /* runway in corner colour with LED edge lights, receding to the door */
-  ctx.beginPath();ctx.moveTo(cx-dw*.42,horizon);ctx.lineTo(cx+dw*.42,horizon);ctx.lineTo(cx+W0*.2,H0);ctx.lineTo(cx-W0*.2,H0);ctx.closePath();
-  const rg=ctx.createLinearGradient(0,horizon,0,H0);rg.addColorStop(0,shade(col,.35));rg.addColorStop(1,shade(col,.6));ctx.fillStyle=rg;ctx.fill();
-  for(let i=0;i<9;i++){const k=((i/9)+t*.012)%1,yy=lerp(horizon,H0,k*k),half=lerp(dw*.42,W0*.2,k*k)+8;ctx.fillStyle='rgba(255,250,235,.9)';ctx.fillRect(cx-half-3,yy,5*(.4+k),2*(.4+k));ctx.fillRect(cx+half-2,yy,5*(.4+k),2*(.4+k))}
+  /* runway */
+  ctx.beginPath();ctx.moveTo(cx-dw*.42,horizon);ctx.lineTo(cx+dw*.42,horizon);ctx.lineTo(cx+W0*.24,H0);ctx.lineTo(cx-W0*.24,H0);ctx.closePath();
+  const rg=ctx.createLinearGradient(0,horizon,0,H0);rg.addColorStop(0,shade(col,.3));rg.addColorStop(1,shade(col,.55));ctx.fillStyle=rg;ctx.fill();
+  const rs=ctx.createLinearGradient(0,horizon,0,H0);rs.addColorStop(0,'rgba(255,255,255,0)');rs.addColorStop(1,'rgba(255,255,255,.12)');ctx.fillStyle=rs;ctx.fill();
+  for(let i=0;i<10;i++){const k=((i/10)+t*.014)%1,yy=lerp(horizon,H0,k*k),half=lerp(dw*.42,W0*.24,k*k)+8;ctx.fillStyle='rgba(255,250,235,.9)';ctx.fillRect(cx-half-3,yy,5*(.4+k),2*(.4+k));ctx.fillRect(cx+half-2,yy,5*(.4+k),2*(.4+k))}
+  /* crowd: silhouettes with raised arms and phone lights */
+  for(let i=0;i<80;i++){const side=i%2?1:-1,row=(i*7)%5,px=cx+side*(W0*.29+((i*37)%100)/100*W0*.24),jump=Math.max(0,Math.sin(t*.25+i))*3,py=horizon+18+row*13+((i*13)%7)-jump,r=6+row*1.3;
+    ctx.fillStyle=`rgb(${14+row*3},${15+row*3},${21+row*3})`;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();ctx.fillRect(px-r-2,py+r-1,r*2+4,22);
+    if((i*11)%5===0){ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(px+side*-r,py+r);ctx.lineTo(px+side*-r*1.4,py-r*1.8);ctx.stroke();if(Math.sin(t*.05+i)>.2){ctx.fillStyle='rgba(225,238,255,.9)';ctx.fillRect(px+side*-r*1.4-1.5,py-r*2.4,3,4)}}
+    ctx.strokeStyle=rgba(col,.25);ctx.lineWidth=1;ctx.beginPath();ctx.arc(px,py,r,Math.PI*1.1,Math.PI*1.9);ctx.stroke()}
+  /* the fighter walks out of the tunnel down the runway toward the camera, then performs */
+  const wk=clamp((t-12)/58,0,1),e2=1-Math.pow(1-wk,2),bodyH=GY-165,s0=dh*.8/bodyH,s1=H0*.5/bodyH,fs=lerp(s0,s1,e2),fy=lerp(horizon,H0*.97,e2);
+  const sp=ctx.createRadialGradient(cx,fy-bodyH*fs*.5,4,cx,fy-bodyH*fs*.5,bodyH*fs*.8);sp.addColorStop(0,rgba(col,.35*on(14)));sp.addColorStop(1,rgba(col,0));ctx.fillStyle=sp;ctx.fillRect(cx-bodyH*fs,fy-bodyH*fs*1.4,bodyH*fs*2,bodyH*fs*1.5);
+  ctx.save();ctx.translate(cx,fy);ctx.scale(fs,fs);ctx.translate(-400,-GY);
+  const perf=F.state==='perf';const P={...F,x:400,f:1,state:perf?'perf':wk<1?'walk':'idle',walk:t*.2,A:null,react:null,rocked:0};P._t=t;
+  const br=lerp(.35,1,e2);if(br<.98)ctx.filter=`brightness(${br.toFixed(2)})`;drawBody(P,poseStand(P,P,{frame:t,cl:null}));ctx.filter='none';ctx.restore();
   /* haze */
-  for(let i=0;i<10;i++){const hx=cx+Math.sin(t*.02+i)*W0*.3,hy=horizon+Math.sin(t*.017+i*2)*20,r=W0*.12;const g=ctx.createRadialGradient(hx,hy,0,hx,hy,r);g.addColorStop(0,'rgba(200,205,225,.08)');g.addColorStop(1,'rgba(200,205,225,0)');ctx.fillStyle=g;ctx.fillRect(hx-r,hy-r,r*2,r*2)}
-  /* spark fountains: more and taller the bigger the event */
-  if(L>=1){const n=L>=3?4:L>=2?2:2,hh=H0*(L>=3?.9:L>=2?.7:.45);const xs=n===4?[W0*.04,W0*.24,W0*.76,W0*.96]:[W0*.1,W0*.9];for(const gx of xs)gerb(gx,H0+4,hh,t,L>=3?140:90)}
+  for(let i=0;i<10;i++){const hx=cx+Math.sin(t*.02+i)*W0*.3,hy=horizon+Math.sin(t*.017+i*2)*20,r=W0*.12;const g=ctx.createRadialGradient(hx,hy,0,hx,hy,r);g.addColorStop(0,'rgba(200,205,225,.07)');g.addColorStop(1,'rgba(200,205,225,0)');ctx.fillStyle=g;ctx.fillRect(hx-r,hy-r,r*2,r*2)}
+  /* spark fountains by tier */
+  if(L>=1){const n=L>=3?4:2,hh=H0*(L>=3?.9:L>=2?.7:.45);const xs=n===4?[W0*.04,W0*.22,W0*.78,W0*.96]:[W0*.1,W0*.9];for(const gx of xs)gerb(gx,H0+4,hh,t,L>=3?140:90)}
   if(L>=3&&t%46<4){ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(0,0,W0,H0)}
-  ctx.textAlign='center';ctx.textBaseline='alphabetic';ctx.globalAlpha=clamp((t-20)/15,0,1);disp(`"${F.nick}"`,cx,H0-22,Math.min(30,W0*.05),'#ffffff','center');ctx.globalAlpha=1}
+  /* broadcast lower third */
+  const lk=clamp((t-26)/14,0,1),le=1-Math.pow(1-lk,3);if(lk>0){const bw=Math.min(300,W0*.34),bh=58,bx=lerp(-bw-20,Math.max(14,W0*.04),le),by=H0-bh-16;
+    ctx.save();ctx.globalAlpha=lk;frost(bx,by,bw,bh,12,.82);chrome(bx,by,bw,bh,12,col);ctx.fillStyle=col;ctx.fillRect(bx,by+8,4,bh-16);
+    ctx.textBaseline='middle';disp(`"${F.nick}"`,bx+16,by+20,22,'#fff','left');const st=(IC.STYLES[d.style]||{}).name||'';
+    txt(`${d.name||''} · ${d.from||''} · ${st}`,bx+16,by+42,10.5,'rgba(225,230,238,.85)','left','700');num((d.rec||[0,0,0]).join('-'),bx+bw-14,by+20,16,'#e8b33a','right');ctx.restore()}
+}
 /* cage-side pyro when a fighter steps into the octagon / is announced */
 function cagePyro(S,P){if(!P)return;const AR=S.arena||{k:'main'},L=TIERL[AR.k]??2,t=P.t;if(L<1||t>110)return;
   const hh=HH*(L>=3?.8:L>=2?.6:.38);gerb(WH*.06,HH+4,hh,t,L>=3?120:70);gerb(WH*.94,HH+4,hh,t,L>=3?120:70);if(L>=3){gerb(WH*.3,HH+4,hh*.8,t+9,80);gerb(WH*.7,HH+4,hh*.8,t+9,80)}
@@ -1147,7 +1166,7 @@ function liveBug(S){const AR=S.arena||{};const x=12,y=12;ctx.save();frost(x,y,0,
   ctx.fillStyle=Math.floor(S.frame/30)%2?'#ff3b2e':'#b0201a';ctx.beginPath();ctx.arc(x0+11,y+10,3.5,0,7);ctx.fill();ctx.textBaseline='middle';num('LIVE',x0+18,y+10.5,10,'#fff','left');txt(lab,x0+48,y+10.5,10,'#e9edf3','left','700');ctx.restore()}
 function walkOverlay(S){
   const W=S.walk,k=W.k||'',F=/^blue/.test(k)?S.a:/^red/.test(k)?S.b:null,t=W.t,isA=/Aisle$/.test(k),isAnn=/Ann$/.test(k);
-  if(isA&&t<80){stageReveal(S,F,t);liveBug(S);return}
+  if(isA&&t<112){stageReveal(S,F,t);liveBug(S);return}
   if(F&&!isA){
     // spotlight: dark everywhere except a soft pool on the walking fighter
     const g=ctx.createRadialGradient(WH/2,HH*.55,HH*.12,WH/2,HH*.55,HH*.85);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.72)');ctx.fillStyle=g;ctx.fillRect(0,0,WH,HH);

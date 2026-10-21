@@ -716,7 +716,12 @@ const ctx=cv.getContext('2d');
 function fit(){const dpr=Math.min(2.5,window.devicePixelRatio||1),w=cv.clientWidth||800,h=cv.clientHeight||450;
   const pw=Math.round(Math.min(w*dpr,2600)),ph=Math.round(pw*h/w);
   IC.opts.topGap=0;IC.opts.hudBottom=false;
-  if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph}const k=pw/800;ctx.setTransform(k,0,0,k,0,0);ctx.imageSmoothingQuality='high'}
+  if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph}const k=pw/800;ctx.setTransform(k,0,0,k,0,0);ctx.imageSmoothingQuality='high';
+  /* HUD unit in CSS px (the canvas HUD is drawn in 800-wide units scaled by HS); lets the DOM exit/pause buttons sit beside the clock,
+     and tells the renderer where the free strip between the two control clusters is for the commentary line */
+  const hs=clamp(600/w,1,1.75),u=w/800*hs;game.style.setProperty('--hu',u+'px');
+  requestAnimationFrame(()=>{const cr=cv.getBoundingClientRect(),Lc=document.querySelector('.game .cl.l'),Rc=document.querySelector('.game .cl.r');
+    if(Lc&&Rc&&Lc.offsetParent&&Rc.offsetParent){const a=Lc.getBoundingClientRect(),b=Rc.getBoundingClientRect();IC.opts.tickBand={l:(a.right-cr.left)/u+6,r:(b.left-cr.left)/u-6}}else IC.opts.tickBand=null})}
 fit();addEventListener('resize',()=>{autoImmersive();fit()});
 try{new ResizeObserver(()=>fit()).observe(cv)}catch(e){}
 /* immersive (full-viewport) mode; real fullscreen and landscape lock are attempted but optional */
