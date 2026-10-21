@@ -458,7 +458,7 @@ function poseStand(F,O,S){
   if(st==='dejected'){near={x:hip.x+f*13,y:hip.y-10};far={x:hip.x-f*13,y:hip.y-10};elbN='fwd';elbF='back'}
   if(st==='ko'){near={x:x+f*22,y:276};far={x:x-f*8,y:282}}
   /* stamina_exhaustion_idle: hunched over, hands on the thighs, chest heaving */
-  if(F.exh&&(st==='idle'||st==='walk'||st==='block')){const br=Math.sin(t*.17+(F.side==='a'?0:1))*3.4;chest.x+=f*9;chest.y+=16+br;hip.y+=3;tilt+=.38;
+  if(F.exh&&(st==='idle'||st==='walk')){const br=Math.sin(t*.17+(F.side==='a'?0:1))*3.4;chest.x+=f*9;chest.y+=16+br;hip.y+=3;tilt+=.38;
     near={x:x+f*20,y:266+br};far={x:x+f*12,y:272+br};elbN='down';elbF='down';mood=mood||'hurt'}
   /* athletic stance: sink the hips so the knees bend */
   const cr=(st==='ko'||an==='shoot'||st==='sprawl'||st==='stuffed')?0:st==='celebrate'?4:9;

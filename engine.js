@@ -80,9 +80,9 @@ const Haptic={el:null,last:0,
 IC.Haptic=Haptic;
 function buzz(p){if(!S||S.demo||S.spec)return;Haptic.play(p)}
 const STRONG=new Set([/* escapes (get up, re-guard) stay allowed when exhausted */'cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','tornado','lowblow','headbutt','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub']);
-function exhausted(F,id){if(!F.exh||!STRONG.has(id))return false;if(F===S.p)floatText(F.x,166,'탈진! 강공격·그랩 불가','#8e97a6');return true}
+function exhausted(F,id){return false}
 function upExh(F){if(!F.exh&&F.st<=1&&S.mode==='fight'){F.exh=true;floatText(F.x,150+zy(F),'탈진','#c0c6d0');if(Math.random()<.6)say(`${F.nick}, 완전히 지쳤습니다! 숨을 헐떡입니다`);sweat(F.x,200,10)}
-  else if(F.exh&&F.st>=15){F.exh=false;if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
+  else if(F.exh&&F.st>=10){F.exh=false;if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
 const ZY=.35,LANE=28,zy=F=>(F.z||0)*ZY;
 /* dynamic arena scaling: the higher the stakes, the bigger the octagon, the denser the crowd and the louder the roar */
 const ARENAS=[
@@ -243,7 +243,7 @@ const fmt=f=>{const s=Math.floor(f/60);return `${Math.floor(s/60)}:${String(s%60
 
 /* ---------- standing ---------- */
 function startStrike(F,A0){
-  const sm=(1.15-sv(F,'spd')*.003)*(F.st<25?1.2:1)*(F.rocked?1.15:1)*(F.exh?1.3:1)/F.cp.spd;
+  const sm=(1.15-sv(F,'spd')*.003)*(F.st<25?1.2:1)*(F.rocked?1.15:1)*(F.exh?1.18:1)/F.cp.spd;
   const cost=(A0.st||0)*(1.3-sv(F,'car')*.005)*(F.plan==='press'?1.12:F.plan==='safe'?.9:1)*F.cp.st;
   if(F.st<cost*.35&&!F.exh){if(F===S.p)floatText(F.x,166,'지침','#8e97a6');return false}
   if(F.swT>0)return false;
@@ -392,13 +392,13 @@ function upStand(F,O){
   const blocking=F.blockHeld;if(blocking&&!F.wasBlock)F.blockStart=S.frame;F.wasBlock=blocking;
   if(blocking&&(F.moveZ||0)>.4&&!F.sprawlArm){F.sprawlArm=true;F.sprawlAt=S.frame}else if(!(blocking&&(F.moveZ||0)>.4))F.sprawlArm=false;
   const mz=F.moveZ||0;F.state=blocking?'block':(F.moveDir||mz?'walk':'idle');
-  const spd=(2.1+sv(F,'spd')*.012)*legF(F)*(F.rocked?.6:1)*(blocking?.5:1)*(F.inj&&F.inj.knee?.8:1)*(weakLeg(F)?.65:1)*(F.exh?.6:1)*F.cp.spd;
+  const spd=(2.1+sv(F,'spd')*.012)*legF(F)*(F.rocked?.6:1)*(blocking?.5:1)*(F.inj&&F.inj.knee?.8:1)*(weakLeg(F)?.65:1)*(F.exh?.82:1)*F.cp.spd;
   F.x+=F.moveDir*spd;
   if(mz){/* lateral input circles around the opponent at the current distance */
     const O=other(F);let vx=F.x-O.x,vz=(F.z||0)-(O.z||0);const d0=Math.hypot(vx,vz)||1;let tx=-vz/d0,tz=vx/d0;if(tz*mz<0){tx=-tx;tz=-tz}
     const st=Math.abs(mz)*spd*.85;F.x+=tx*st;F.z=(F.z||0)+tz*st;vx=F.x-O.x;vz=F.z-(O.z||0);const d1=Math.hypot(vx,vz)||1;F.x=O.x+vx*d0/d1;F.z=(O.z||0)+vz*d0/d1}
   if(F.moveDir||mz)F.walk+=.24;
-  F.st=Math.min(stMax(F),F.st+(blocking?.035:F.moveDir?.06:.085)*(.55+sv(F,'car')*.006)*(F.body<40?.7:1)*(F.inj&&F.inj.rib?.7:1));
+  F.st=Math.min(stMax(F),F.st+(blocking?.035:F.moveDir?.06:.085)*(.55+sv(F,'car')*.006)*(F.body<40?.7:1)*(F.inj&&F.inj.rib?.7:1)*(F.exh?1.6:1));
   if(F.st<18&&F.st>16.5&&F===S.e)color('tired',F,other(F));
   if(S.frame-(F.lastHit||0)>180&&F.head<100)F.head=Math.min(100,F.head+.008);
 }
@@ -1116,7 +1116,7 @@ function context(){
     grid=Array.from({length:6},()=>I('mash','연타!',{mash:true}));
     hint=att?`${S.sub.name}! 버튼이나 화면을 빠르게 연타해서 조이세요.`:`${S.sub.name}에 걸렸습니다! 연타해서 빠져나오세요.`;
   }else if(S.gr){
-    const gr=S.gr,top=gr.top===P,pos=gr.pos,X=!!P.exh,wd=!!S.wild;key=(top?'t':'b')+pos+full+g+X+wd;
+    const gr=S.gr,top=gr.top===P,pos=gr.pos,X=false,wd=!!S.wild;key=(top?'t':'b')+pos+full+g+X+wd;
     if(top){
       const subs=TOP_SUBS[pos];
       left=[off(),I('block','포스처',{hold:true})];
@@ -1131,7 +1131,7 @@ function context(){
       hint=X?'탈진 상태 — 커버로 버티며 숨을 고르고, 일어나기·리가드로 빠져나오세요.':pos===5?'터틀 자세로 눌렸어요! 가드 당기기·싱글렉 역전·일어나기로 빠져나오세요.':`하위 · 상대가 ${POSN[pos]}. 커버로 파운딩을 막고, 리가드·스윕·일어나기로 빠져나오세요.`;
     }
   }else if(S.cl){
-    const ctrl=S.cl.ctrl===P,X=!!P.exh,wd=!!S.wild;key='c'+ctrl+S.cl.cage+g+X+wd;
+    const ctrl=S.cl.ctrl===P,X=false,wd=!!S.wild;key='c'+ctrl+S.cl.cage+g+X+wd;
     left=[off(),I('block','프레임',{hold:true})];
     grid=[I('@cp',g?'엘보':'숏 펀치',{dim:X&&g}),I('@ck',g?(wd?'헤드버트':'헤드 니킥'):'니킥',{dim:X&&g}),I('c_trip','클린치 TD',{dim:X,tone:'g'}),
       I('@cpos',ctrl?'케이지 압박':'포지션 역전',{dim:ctrl&&S.cl.cage||X,tone:'g'}),I('c_brk','브레이크',{tone:'g'}),I('c_thigh','허벅지 니킥')];
@@ -1139,12 +1139,12 @@ function context(){
   }else{
     const E=S.e,shooting=E.state==='attack'&&E.A&&E.A.kind==='shoot'&&E.t<=E.A.w+E.A.a,dist=Math.abs(E.x-P.x);
     const kick=g?'카프킥':dist>110?'하이킥':dist>92?'미들킥':'로킥';
-    const X=!!P.exh,wd=!!S.wild;key='s'+full+P.d.special+shooting+g+kick+(dist<=86)+X+wd+P.stance;
+    const X=false,XH=!!P.exh,wd=!!S.wild;key='s'+XH+full+P.d.special+shooting+g+kick+(dist<=86)+X+wd+P.stance;
     left=[I('move','이동',{hold:true}),I('block','가드',{hold:true})];
     grid=wd?[I('@jab',g?'잽':'로블로',{tone:g?null:'s'}),I('@cross',g?'크로스':'박치기',{dim:X&&!g,tone:g?null:'s'}),I('@hook',g?'훅':'눈 찌르기',{dim:X,tone:g?null:'s'}),
       I('@kick',g?'카프킥':kick,{dim:X&&kick!=='로킥'&&kick!=='카프킥'}),I('@grap',shooting?'길로틴!':(g||dist<=86)?'클린치':'테이크다운',{tone:'g',ready:shooting,dim:X}),I('special',SPM[P.d.special].name,{dim:!full||X,ready:full,tone:'s'})]:[I('@jab',g?'바디샷':'잽'),I('@cross',g?'회피':'크로스',{dim:X&&!g}),I('@hook',g?'어퍼컷':'훅',{dim:X}),
       I('@kick',kick,{dim:X&&kick!=='로킥'&&kick!=='카프킥'}),I('@grap',shooting?'길로틴!':(g||dist<=86)?'클린치':'테이크다운',{tone:'g',ready:shooting,dim:X}),I('special',SPM[P.d.special].name,{dim:!full||X,ready:full,tone:'s'})];
-    hint=shooting?'태클이 들어와요! 가드 + 아래(S)를 누르면 스프롤 → 프론트 헤드락':X?'탈진! 강공격과 그래플이 막혔어요. 거리를 벌리고 숨을 고르세요.':wd?'야생 리그: 버튼이 곧 반칙이다 — 로블로·박치기·눈 찌르기. 가드를 누른 채 누르면 잽·크로스·훅. 클린치 가드+니킥 = 헤드버트, 그라운드 가드+엘보 = 사커킥.':'가드를 누른 채 누르면: 잽→바디샷, 크로스→회피, 훅→어퍼컷, 킥→카프킥(앞다리 집중). 킥은 거리에 따라 로·미들·하이킥, 그래플은 멀면 태클·가까우면 클린치.';
+    hint=shooting?'태클이 들어와요! 가드 + 아래(S)를 누르면 스프롤 → 프론트 헤드락':XH?'숨이 가빠요! 공격이 느리고 약해집니다. 거리를 벌리면 금방 숨이 돌아와요.':false?'세요.':wd?'야생 리그: 버튼이 곧 반칙이다 — 로블로·박치기·눈 찌르기. 가드를 누른 채 누르면 잽·크로스·훅. 클린치 가드+니킥 = 헤드버트, 그라운드 가드+엘보 = 사커킥.':'가드를 누른 채 누르면: 잽→바디샷, 크로스→회피, 훅→어퍼컷, 킥→카프킥(앞다리 집중). 킥은 거리에 따라 로·미들·하이킥, 그래플은 멀면 태클·가까우면 클린치.';
   }
   if(dim)key+='dim';
   return{key,left,grid,hint,dim};
