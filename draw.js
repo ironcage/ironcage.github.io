@@ -1529,6 +1529,39 @@ function pyro(x,t,t0){if(t<t0)return;ctx.save();ctx.globalCompositeOperation='li
   for(let i=0;i<90;i++){const h=((i*2654435761)>>>0)/4294967296,h2=((i*40503+17)%997)/997,age=((t-t0)*1.1+i*6.7)%62;const v=8+h*5,dx=(h2-.5)*34;
     const px=x+dx*age/22,py=GY-(v*age-.11*age*age);if(py>GY)continue;const a=1-age/62;ctx.fillStyle=`rgba(255,${170+(h*80|0)},${60+(h2*90|0)},${a})`;ctx.beginPath();ctx.arc(px,py,1.2+a*2.2,0,7);ctx.fill()}
   ctx.restore()}
+/* ---------- portrait gate: a fighter head-kicks the phone sideways ---------- */
+const GATE={loop:200,hit:79};
+function gateScene(c,cw,ch,t,d){
+  ctx=c;const T=t%GATE.loop,H=GATE.hit;ctx.save();ctx.clearRect(0,0,cw,ch);
+  const k=Math.min(cw/300,ch/300);ctx.translate(cw/2,ch*.5);ctx.scale(k,k);
+  const sh=T>=H&&T<H+12?(H+12-T)*.6:0;ctx.translate(Math.sin(T*7)*sh,Math.cos(T*5)*sh);
+  /* spotlight floor */
+  const fl=ctx.createRadialGradient(0,95,4,0,95,150);fl.addColorStop(0,'rgba(232,179,58,.22)');fl.addColorStop(1,'rgba(232,179,58,0)');ctx.fillStyle=fl;ctx.beginPath();ctx.ellipse(0,95,150,26,0,0,7);ctx.fill();
+  const bm=ctx.createLinearGradient(0,-170,0,95);bm.addColorStop(0,'rgba(255,230,170,.0)');bm.addColorStop(1,'rgba(255,230,170,.10)');ctx.fillStyle=bm;ctx.beginPath();ctx.moveTo(-30,-170);ctx.lineTo(30,-170);ctx.lineTo(140,95);ctx.lineTo(-140,95);ctx.closePath();ctx.fill();
+  /* fighter (world coords scaled into the card) */
+  ctx.save();ctx.scale(.66,.66);ctx.translate(-462,-GY+150);
+  const F={d,look:d.look,corner:'#3d7ff0',head:100,body:100,legs:100,cuts:0,rocked:0,flash:0,state:'idle',st:100,side:'a',x:400,f:1,z:0,_t:T,kind:'fighter',t:0,A:null,react:null,walk:0,stance:'orth'};
+  const kt=T-70;if(kt>=0&&kt<26){F.state='attack';F.A={anim:'highkick',w:8,a:4,r:14,kick:true};F.t=kt}else if(T>112&&T<175)F.state='celebrate';
+  shadowAt(F.x,52);const J=poseStand(F,F,{frame:T,cl:null});const r=drawBody(F,J);
+  if(F.state==='attack'&&kt>4&&kt<14){const p=r.footF;ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<5;i++){ctx.globalAlpha=.14*(5-i);ctx.fillStyle='#fff6e0';ctx.beginPath();ctx.arc(p.x-i*9,p.y+i*7,10-i,0,7);ctx.fill()}ctx.restore()}
+  ctx.restore();
+  /* the phone */
+  const ease=x=>{x=clamp(x,0,1);const c1=1.9,c3=c1+1;return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2)};
+  const rk=T<H?0:T<175?ease((T-H)/24):1-clamp((T-175)/20,0,1),wob=T<H?Math.sin(T*.35)*.07*(T>40?1:.4):0;
+  const px=32+(T>=H&&T<175?18*ease((T-H)/24):0),py=10+(T>=H&&T<H+24?-Math.sin((T-H)/24*Math.PI)*18:0);
+  ctx.save();ctx.translate(px,py);ctx.rotate(wob-Math.PI/2*rk);
+  const w=46,h=84;ctx.shadowColor='rgba(232,179,58,.55)';ctx.shadowBlur=rk>.9?24:10;ctx.fillStyle='rgba(10,12,16,.9)';ctx.strokeStyle='#e8b33a';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,9);ctx.fill();ctx.stroke();ctx.shadowBlur=0;
+  ctx.fillStyle='#e8b33a';ctx.beginPath();ctx.roundRect(-5,h/2-8,10,3,1.5);ctx.fill();
+  if(rk>.85){/* landscape: the cage lights up inside the phone */ctx.save();ctx.rotate(Math.PI/2);ctx.globalAlpha=clamp((rk-.85)/.15,0,1);
+    const g=ctx.createLinearGradient(0,-18,0,18);g.addColorStop(0,'#ffffff');g.addColorStop(.5,'#e8b33a');g.addColorStop(1,'#a8741a');ctx.fillStyle=g;ctx.font='11px "Black Han Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('IRON CAGE',0,1);ctx.restore()}
+  else if(T<H&&Math.floor(T/14)%2){ctx.fillStyle='#e8b33a';ctx.font='26px "Black Han Sans",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('?',0,0)}
+  ctx.restore();
+  /* impact star + speed arcs */
+  if(T>=H&&T<H+16){const q=(T-H)/16,ix=px-22,iy=py+14;ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle=`rgba(255,250,225,${1-q})`;ctx.beginPath();for(let i=0;i<16;i++){const a=i/16*Math.PI*2,rr=i%2?6:26*(1-q*.4);ctx.lineTo(ix+Math.cos(a)*rr,iy+Math.sin(a)*rr)}ctx.fill();
+    ctx.strokeStyle=`rgba(255,240,200,${1-q})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(ix,iy,10+q*50,0,7);ctx.stroke();ctx.restore();
+    ctx.font='22px "Black Han Sans",sans-serif';ctx.textAlign='center';ctx.lineWidth=5;ctx.strokeStyle='rgba(0,0,0,.7)';ctx.strokeText('팍!',ix-6,iy-34-q*10);ctx.fillStyle='#ffe08a';ctx.fillText('팍!',ix-6,iy-34-q*10)}
+  if(T>=H+4&&T<H+30){ctx.save();ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=2;ctx.lineCap='round';for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(px,py,52+i*8,-Math.PI*.9+i*.1,-Math.PI*.55+i*.1);ctx.stroke()}ctx.restore()}
+  ctx.restore()}
 /* ---------- intro prelude: the last 10 seconds of a title fight — the player taps to throw the finishing overhand ---------- */
 const KOI={hit:9,end:170};
 function koScene(c,cw,ch,p,d,opp,hit,o={}){
@@ -1710,5 +1743,5 @@ function solve(J){
   const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
   return{f,hip:J.hip,chest:J.chest,head,hAng:Math.atan2(sd.y,sd.x)+Math.PI/2+(J.tilt||0)*f,shN,shF,hipN,hipF,kneeN:legN.j,kneeF:legF.j,footN:legN.end,footF:legF.end,elbN:armN.j,elbF:armF.j,handN:armN.end,handF:armF.end,footDirN:J.footN||f,footDirF:J.footF||f,mood:J.mood};
 }
-IC.Draw={render,portrait,weighin,beltScene,koScene,KOI,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
+IC.Draw={render,portrait,weighin,beltScene,koScene,KOI,gateScene,GATE,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
 })(window.IC);

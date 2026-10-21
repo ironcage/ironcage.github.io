@@ -467,6 +467,10 @@ body.titling{overflow:hidden}
 /* 세로 화면 안내 · 제작사 푸터 */
 #rotateGate{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:rgba(6,7,9,.86);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#f3f4f6;text-align:center;padding:24px}
 #rotateGate[hidden]{display:none}
+#gateCv{width:min(78vw,330px);height:min(78vw,330px);display:block}
+#rotateGate .gtx{display:flex;flex-direction:column;align-items:center;gap:8px}#rotateGate em{font-style:normal;color:#e8b33a}
+#rotateGate .gtap{font-style:normal;font-size:11px;letter-spacing:.06em;color:rgba(232,179,58,.75);margin-top:6px;animation:blink 1.6s ease-in-out infinite}
+#rotateGate span{min-height:1.4em;transition:opacity .35s}
 #rotateGate .ph{width:58px;height:100px;border:4px solid #e8b33a;border-radius:12px;position:relative;animation:rotPhone 2.2s ease-in-out infinite}
 #rotateGate .ph::after{content:"";position:absolute;left:50%;bottom:6px;width:14px;height:4px;margin-left:-7px;border-radius:2px;background:#e8b33a}
 #rotateGate b{font-family:var(--display);font-size:clamp(20px,6vw,26px);letter-spacing:.02em;word-break:keep-all}
@@ -555,7 +559,7 @@ body.titling{overflow:hidden}
     <p>제작사: 박시후</p>
   </footer>
 </div>
-<div id="rotateGate" hidden role="dialog" aria-modal="true" aria-labelledby="rotT"><div class="ph" aria-hidden="true"></div><b id="rotT">가로로 플레이하면 재미있습니다</b><span>휴대폰을 옆으로 돌려 주세요</span></div>
+<div id="rotateGate" hidden role="dialog" aria-modal="true" aria-labelledby="rotT"><canvas id="gateCv" aria-hidden="true"></canvas><div class="gtx"><b id="rotT">케이지는 <em>가로</em>로 넓다</b><span id="gateTip">휴대폰을 옆으로 돌리면 경기가 시작됩니다</span><i class="gtap">화면을 탭하면 한 번 더 찬다</i></div></div>
 <script src="data.js"></script>
 <script src="engine.js"></script>
 <script src="draw.js"></script>

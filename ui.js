@@ -1937,7 +1937,20 @@ function showTitle(){
 }
 /* ---------- 가로 화면 안내 · 첫 터치 전체화면 ---------- */
 const gate=$('#rotateGate');
-function checkOrient(){const portrait=window.innerHeight>window.innerWidth;if(!gate)return;const was=!gate.hidden;gate.hidden=!portrait;
+/* animated gate: a fighter kicks the phone into landscape; tap to replay the kick; tips rotate underneath */
+let gateRaf=0,gateT=0,gateLast=0,gateF=null,gateTipI=0,gateTipT=0;
+const GTIPS=['휴대폰을 옆으로 돌리면 경기가 시작됩니다','넓은 화면에서 거리 싸움이 보입니다','양손으로 잡으면 조이스틱과 버튼이 딱 맞습니다','세로는 기자회견용, 경기는 가로로','상대가 기다리고 있습니다. 돌려 주세요'];
+function gateLoop(now){if(gate.hidden){gateRaf=0;return}const cv=$('#gateCv');if(!cv){gateRaf=0;return}
+  const dt=gateLast?Math.min(50,now-gateLast):16;gateLast=now;gateT+=dt/16.67;
+  const dpr=Math.min(2.5,devicePixelRatio||1),w=cv.clientWidth,h=cv.clientHeight;if(cv.width!==Math.round(w*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr)}
+  const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
+  const T=gateT%IC.Draw.GATE.loop,prevT=(gateT-dt/16.67)%IC.Draw.GATE.loop;if(prevT<IC.Draw.GATE.hit&&T>=IC.Draw.GATE.hit){try{if(Sound.ac)Sound.play('hit')}catch(e){}}
+  try{IC.Draw.gateScene(c,w,h,gateT,gateF||(gateF=heroFighter()))}catch(e){console.error(e);gateRaf=0;return}
+  gateTipT+=dt;if(gateTipT>3200){gateTipT=0;const s=$('#gateTip');if(s){s.style.opacity=0;setTimeout(()=>{gateTipI=(gateTipI+1)%GTIPS.length;s.textContent=GTIPS[gateTipI];s.style.opacity=1},350)}}
+  gateRaf=requestAnimationFrame(gateLoop)}
+gate&&gate.addEventListener('pointerdown',()=>{const T=gateT%IC.Draw.GATE.loop;gateT=gateT-T+62;try{Sound.init();if(IC.Haptic)IC.Haptic.tap()}catch(e){}});
+function gateStart(){if(!gateRaf&&gate&&!gate.hidden){gateLast=0;gateT=20;gateF=null;gateRaf=requestAnimationFrame(gateLoop)}}
+function checkOrient(){const portrait=window.innerHeight>window.innerWidth;if(!gate)return;const was=!gate.hidden;gate.hidden=!portrait;if(portrait)gateStart();
   if(portrait&&!was){if(JOY)JOY.reset();heldKeys={};
     const S=IC.Fight.S;if(!game.hidden&&S&&between.hidden&&!(CFG&&CFG.online)&&['fight','intro'].includes(S.mode))openPause()}}
 addEventListener('resize',checkOrient);addEventListener('orientationchange',()=>setTimeout(checkOrient,120));checkOrient();
