@@ -8,7 +8,7 @@ const {MV,SPM,TD,SUBS,STYLES}=IC;
 const DMG=.5,GDMG=.3;
 /* wild match only: hold guard + jab = eye poke, hold guard + kick = low blow */
 const XM={calf:{id:'calf',name:'카프킥',anim:'lowkick',target:'leg',kick:true,w:8,a:5,r:13,range:98,dmg:6,st:7,kb:2}};
-const WILDM={eyepoke:{...MV.jab,id:'eyepoke',name:'눈 찌르기',anim:'jab',dmg:1.5,st:5,foulK:'poke'},lowblow:{...MV.lowkick,id:'lowblow',name:'로블로',anim:'lowkick',target:'body',dmg:3,st:9,foulK:'groin'}};
+const WILDM={headbutt:{...MV.cross,id:'headbutt',name:'박치기',anim:'headbutt',target:'head',range:70,dmg:2.2,st:8,kb:6,foulK:'head'},eyepoke:{...MV.jab,id:'eyepoke',name:'눈 찌르기',anim:'jab',dmg:1.5,st:5,foulK:'poke'},lowblow:{...MV.lowkick,id:'lowblow',name:'로블로',anim:'lowkick',target:'body',dmg:3,st:9,foulK:'groin'}};
 const DIFF={
   easy:{label:'루키',think:22,react:.16,mash:.058,mul:.9},
   normal:{label:'프로',think:15,react:.36,mash:.085,mul:1.06},
@@ -79,7 +79,7 @@ const Haptic={el:null,last:0,
     const P=Array.isArray(p)?p:[p];let t=0;for(let k=0;k<P.length&&k<6;k+=2){const d=t;setTimeout(()=>this.tap(),d);if(P[k]>=60)setTimeout(()=>this.tap(),d+45);t+=P[k]+(P[k+1]||0)}}};
 IC.Haptic=Haptic;
 function buzz(p){if(!S||S.demo||S.spec)return;Haptic.play(p)}
-const STRONG=new Set([/* escapes (get up, re-guard) stay allowed when exhausted */'cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','tornado','lowblow','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub']);
+const STRONG=new Set([/* escapes (get up, re-guard) stay allowed when exhausted */'cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','tornado','lowblow','headbutt','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub']);
 function exhausted(F,id){if(!F.exh||!STRONG.has(id))return false;if(F===S.p)floatText(F.x,166,'탈진! 강공격·그랩 불가','#8e97a6');return true}
 function upExh(F){if(!F.exh&&F.st<=1&&S.mode==='fight'){F.exh=true;floatText(F.x,150+zy(F),'탈진','#c0c6d0');if(Math.random()<.6)say(`${F.nick}, 완전히 지쳤습니다! 숨을 헐떡입니다`);sweat(F.x,200,10)}
   else if(F.exh&&F.st>=15){F.exh=false;if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
@@ -90,7 +90,13 @@ const ARENAS=[
   {k:'regional',name:'지역 대회장',r:286,crowd:.16,rows:5,beams:2,beamA:.07,roar:.4,flash:0,att:'관중 300명'},
   {k:'main',name:'IRON CAGE 넘버링 이벤트',r:318,crowd:.82,rows:9,beams:3,beamA:.1,roar:1,flash:2,att:'관중 9,500명'},
   {k:'title',name:'타이틀전 메인이벤트',r:356,crowd:1,rows:12,beams:5,beamA:.15,roar:1.7,flash:5,att:'관중 19,800명 · 매진'},
-  {k:'prelim',name:'IRON CAGE 언더카드',r:306,crowd:.42,rows:7,beams:2,beamA:.09,roar:.7,flash:1,att:'관중 3,500명'}];
+  {k:'prelim',name:'IRON CAGE 언더카드',r:306,crowd:.42,rows:7,beams:2,beamA:.09,roar:.7,flash:1,att:'관중 3,500명'},
+  /* wild league: underground venues */
+  {k:'under',name:'동네 주차장',r:262,crowd:.1,rows:3,beams:1,beamA:.04,roar:.45,flash:0,att:'구경꾼 40명'},
+  {k:'under',name:'지하 클럽 레드룸',r:268,crowd:.18,rows:5,beams:2,beamA:.08,roar:.7,flash:1,att:'관중 150명',tint:'#ff2a3a'},
+  {k:'under',name:'항구 창고',r:280,crowd:.24,rows:6,beams:1,beamA:.05,roar:.8,flash:1,att:'관중 400명',tint:'#4aa0ff'},
+  {k:'under',name:'폐공장 데스매치',r:286,crowd:.32,rows:7,beams:2,beamA:.06,roar:1,flash:1,att:'관중 800명',tint:'#ff8a2a'},
+  {k:'under',name:'카지노 VIP 케이지',r:300,crowd:.48,rows:8,beams:3,beamA:.12,roar:1.3,flash:3,att:'VIP 1,200명',tint:'#e8b33a'}];
 const cageR=()=>(S&&S.arena?S.arena.r:318)-36;
 /* keep fighters inside the octagon's flat walls (apothem 294) with room for the body, not inside a circle that pokes past the fence */
 const cageApo=()=>(S&&S.arena?S.arena.r:318)*Math.cos(Math.PI/8)-30;
@@ -205,6 +211,7 @@ function foul(F,O,k){if(S.mode!=='fight'||S.practice||S.demo)return;
 /* wild match: no stoppage, no warning, no point deduction */
 function wildHit(F,O,k){
   const W={groin:['로블로!',60,6,'body'],poke:['눈 찌르기!',46,2,'head'],head:['헤드버트!',30,0,'head'],soccer:['사커킥!',36,0,'head'],fence:['케이지 잡기',0,0,null]}[k]||['반칙!',30,2,'body'];
+  const dm=F.dirtyMul||1;if(dm!==1){W[1]=Math.round(W[1]*dm);W[2]=W[2]*dm}
   floatText(O.x,150+zy(O),W[0],'#ff6b5e');if(W[1]){O.stun=Math.max(O.stun||0,W[1]);if(!S.gr&&!S.cl){O.state='hit';O.A=null;O.queue=[]}}
   if(W[2])deal(F,O,W[2],W[3],{name:W[0],src:'stand',blocked:false,x:O.x,y:W[3]==='head'?212:300});
   if(k==='poke'&&Math.random()<.35)injure(O,'eye');
@@ -429,6 +436,7 @@ function aiStand(E,P){
   if(Math.random()<.12*T.counter&&Math.abs(dzA)<20){E.sideT=16+Math.floor(Math.random()*14);E.sideDir=(E.z||0)>20?-1:(E.z||0)<-20?1:(Math.random()<.5?-1:1)}
   if(E.blockT>0)return;
   if(pr&&pr.ai==='defend'){E.moveDir=dist>110?toward:0;return}
+  if(S.wild&&dist<92&&Math.random()<.2){E.slot=pick(['lowblow','headbutt','eyepoke','lowblow']);E.moveDir=0;return}
   const sp=SPM[E.d.special];
   if(E.meter>=100&&dist<=sp.range-6&&Math.random()<.45){E.slot='special';E.moveDir=0;return}
   if(P.state==='hit'&&dist<100&&Math.random()<.2+T.agg*.3){E.queue=[...pick(CLOSE_COMBOS)];E.slot=E.queue.shift();E.moveDir=0;return}
@@ -1082,10 +1090,10 @@ function resolve(id){return resolveFor(S.p,S.e,!!S.held.block,id)}
 function resolveFor(P,E,g,id){
   const dist=Math.abs(E.x-P.x);
   switch(id){
-    case '@jab':return g?(S.wild?'eyepoke':'bodyshot'):'jab';
-    case '@cross':return g?'slip':'cross';
-    case '@hook':return g?'upper':'hook';
-    case '@kick':return g?(S.wild?'lowblow':'calf'):dist>110?'highkick':dist>92?'midkick':'lowkick';
+    case '@jab':return S.wild?(g?'jab':'lowblow'):g?'bodyshot':'jab';
+    case '@cross':return S.wild?(g?'cross':'headbutt'):g?'slip':'cross';
+    case '@hook':return S.wild?(g?'hook':'eyepoke'):g?'upper':'hook';
+    case '@kick':return g?'calf':dist>110?'highkick':dist>92?'midkick':'lowkick';
     case '@grap':{const sh=E.state==='attack'&&E.A&&E.A.kind==='shoot'&&E.t<=E.A.w+E.A.a;return sh?'clinch':(g||dist<=86)?'clinch':'td'}
     case '@cp':return g?'c_elbow':'c_short';
     case '@ck':return g?(S.wild?'c_hbutt':'c_kneeH'):'c_knee';
@@ -1133,9 +1141,10 @@ function context(){
     const kick=g?'카프킥':dist>110?'하이킥':dist>92?'미들킥':'로킥';
     const X=!!P.exh,wd=!!S.wild;key='s'+full+P.d.special+shooting+g+kick+(dist<=86)+X+wd+P.stance;
     left=[I('move','이동',{hold:true}),I('block','가드',{hold:true})];
-    grid=[I('@jab',g?(wd?'눈 찌르기':'바디샷'):'잽'),I('@cross',g?'회피':'크로스',{dim:X&&!g}),I('@hook',g?'어퍼컷':'훅',{dim:X}),
-      I('@kick',g&&wd?'로블로':kick,{dim:X&&kick!=='로킥'&&kick!=='카프킥'}),I('@grap',shooting?'길로틴!':(g||dist<=86)?'클린치':'테이크다운',{tone:'g',ready:shooting,dim:X}),I('special',SPM[P.d.special].name,{dim:!full||X,ready:full,tone:'s'})];
-    hint=shooting?'태클이 들어와요! 가드 + 아래(S)를 누르면 스프롤 → 프론트 헤드락':X?'탈진! 강공격과 그래플이 막혔어요. 거리를 벌리고 숨을 고르세요.':wd?'야생 매치: 가드를 누른 채 잽 = 눈 찌르기, 킥 = 로블로. 클린치 가드+니킥 = 헤드버트, 그라운드 가드+엘보 = 사커킥.':'가드를 누른 채 누르면: 잽→바디샷, 크로스→회피, 훅→어퍼컷, 킥→카프킥(앞다리 집중). 킥은 거리에 따라 로·미들·하이킥, 그래플은 멀면 태클·가까우면 클린치.';
+    grid=wd?[I('@jab',g?'잽':'로블로',{tone:g?null:'s'}),I('@cross',g?'크로스':'박치기',{dim:X&&!g,tone:g?null:'s'}),I('@hook',g?'훅':'눈 찌르기',{dim:X,tone:g?null:'s'}),
+      I('@kick',g?'카프킥':kick,{dim:X&&kick!=='로킥'&&kick!=='카프킥'}),I('@grap',shooting?'길로틴!':(g||dist<=86)?'클린치':'테이크다운',{tone:'g',ready:shooting,dim:X}),I('special',SPM[P.d.special].name,{dim:!full||X,ready:full,tone:'s'})]:[I('@jab',g?'바디샷':'잽'),I('@cross',g?'회피':'크로스',{dim:X&&!g}),I('@hook',g?'어퍼컷':'훅',{dim:X}),
+      I('@kick',kick,{dim:X&&kick!=='로킥'&&kick!=='카프킥'}),I('@grap',shooting?'길로틴!':(g||dist<=86)?'클린치':'테이크다운',{tone:'g',ready:shooting,dim:X}),I('special',SPM[P.d.special].name,{dim:!full||X,ready:full,tone:'s'})];
+    hint=shooting?'태클이 들어와요! 가드 + 아래(S)를 누르면 스프롤 → 프론트 헤드락':X?'탈진! 강공격과 그래플이 막혔어요. 거리를 벌리고 숨을 고르세요.':wd?'야생 리그: 버튼이 곧 반칙이다 — 로블로·박치기·눈 찌르기. 가드를 누른 채 누르면 잽·크로스·훅. 클린치 가드+니킥 = 헤드버트, 그라운드 가드+엘보 = 사커킥.':'가드를 누른 채 누르면: 잽→바디샷, 크로스→회피, 훅→어퍼컷, 킥→카프킥(앞다리 집중). 킥은 거리에 따라 로·미들·하이킥, 그래플은 멀면 태클·가까우면 클린치.';
   }
   if(dim)key+='dim';
   return{key,left,grid,hint,dim};
