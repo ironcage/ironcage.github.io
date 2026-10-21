@@ -1076,8 +1076,20 @@ function gerb(x,y,h,t,n,col){ctx.save();ctx.globalCompositeOperation='lighter';
     const px=x+vx*age,py=y+vy*age+.5*(h*.0045)*age*age;ctx.globalAlpha=(1-k)*.9;ctx.fillStyle=k<.3?'#fff4c8':k<.6?'#ffb347':col||'#ff6a1a';ctx.fillRect(px,py,1.6,3+4*(1-k))}
   ctx.restore()}
 /* firework shell bursting at (x,y) */
+/* flame jet: a roaring column of fire from a floor cannon (t = frames since ignition) */
+function flameJet(x,y,h,t,dur=34){if(t<0||t>dur+18)return;const up=Math.min(1,t/5),fade=t>dur?1-(t-dur)/18:1,H=h*up*(.9+.1*Math.sin(t*1.7));if(fade<=0)return;
+  ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=fade;
+  for(let i=0;i<14;i++){const k=i/14,yy=y-H*k,w=(10+k*26)*(1+.25*Math.sin(t*.9+i*1.3)),xx=x+Math.sin(t*.6+i*2.1)*k*10;const g=ctx.createRadialGradient(xx,yy,0,xx,yy,w);
+    g.addColorStop(0,k<.25?'rgba(255,250,220,.9)':k<.6?'rgba(255,190,70,.7)':'rgba(255,110,30,.45)');g.addColorStop(1,'rgba(255,60,10,0)');ctx.fillStyle=g;ctx.fillRect(xx-w,yy-w,w*2,w*2)}
+  const gl=ctx.createRadialGradient(x,y,0,x,y,h*.9);gl.addColorStop(0,'rgba(255,160,60,.35)');gl.addColorStop(1,'rgba(255,120,40,0)');ctx.fillStyle=gl;ctx.fillRect(x-h,y-h,h*2,h*1.2);
+  ctx.fillStyle='#1a1a1e';ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.fillRect(x-7,y-4,14,8);ctx.restore()}
+/* spark waterfall: a curtain of sparks pouring from the truss */
+function sparkFall(x0,x1,y,h,t,n){ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<n;i++){const s=((i*0.618)%1),x=x0+(x1-x0)*s,life=40+(i*7)%24,age=(t+i*5)%life,k=age/life,py=y+k*k*h;
+  ctx.globalAlpha=(1-k)*.9;ctx.fillStyle=k<.3?'#fff8dc':'#ffb347';ctx.fillRect(x+Math.sin(i+t*.05)*2,py,1.6,4+6*(1-k))}ctx.restore()}
 function burstFW(x,y,t,col,r){if(t<0||t>70)return;const k=t/70;ctx.save();ctx.globalCompositeOperation='lighter';
-  for(let i=0;i<28;i++){const a=i/28*Math.PI*2,d=r*Math.sqrt(k)*(1+((i*7)%3)*.08),px=x+Math.cos(a)*d,py=y+Math.sin(a)*d+k*k*40;ctx.globalAlpha=(1-k);ctx.fillStyle=i%3?col:'#fff6d8';ctx.beginPath();ctx.arc(px,py,2.2*(1-k*.5),0,7);ctx.fill()}
+  r*=1.45;if(t<10){const g=ctx.createRadialGradient(x,y,0,x,y,r*.6);g.addColorStop(0,`rgba(255,250,230,${.5*(1-t/10)})`);g.addColorStop(1,'rgba(255,250,230,0)');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2)}
+  for(let ring=0;ring<2;ring++)for(let i=0;i<40;i++){const a=i/40*Math.PI*2+ring*.08,rr=ring?.62:1,d=r*rr*Math.sqrt(k)*(1+((i*7)%3)*.06),px=x+Math.cos(a)*d,py=y+Math.sin(a)*d+k*k*46;ctx.globalAlpha=(1-k);ctx.fillStyle=ring?'#fff6d8':(i%3?col:'#ffe08a');
+    ctx.beginPath();ctx.arc(px,py,2.4*(1-k*.5),0,7);ctx.fill();if(!ring&&k<.7){ctx.globalAlpha=(1-k)*.35;ctx.fillRect(px-Math.cos(a)*8,py-Math.sin(a)*8-1,Math.cos(a)*8,2)}}
   ctx.restore()}
 /* front-facing stage reveal: truss, LED walls, smoking tunnel, runway and spark fountains */
 /* ---------- front view: a fighter walking straight at the camera (entrance runway) ---------- */
@@ -1197,7 +1209,11 @@ function stageReveal(S,F,t){
   /* haze */
   for(let i=0;i<10;i++){const hx=cx+Math.sin(t*.02+i)*W0*.3,hy=horizon+Math.sin(t*.017+i*2)*20,r=W0*.12;const g=ctx.createRadialGradient(hx,hy,0,hx,hy,r);g.addColorStop(0,'rgba(200,205,225,.07)');g.addColorStop(1,'rgba(200,205,225,0)');ctx.fillStyle=g;ctx.fillRect(hx-r,hy-r,r*2,r*2)}
   /* spark fountains by tier */
-  if(L>=1){const n=L>=3?4:2,hh=H0*(L>=3?.9:L>=2?.7:.45);const xs=n===4?[W0*.04,W0*.22,W0*.78,W0*.96]:[W0*.1,W0*.9];for(const gx of xs)gerb(gx,H0+4,hh,t,L>=3?140:90)}
+  {const hh=H0*(L>=3?.95:L>=2?.8:L>=1?.65:.5),xs=[W0*.03,W0*.17,W0*.83,W0*.97];for(const gx of xs)gerb(gx,H0+4,hh,t,L>=3?150:110);
+   /* flame cannons along both sides of the runway, firing in waves as the fighter passes */
+   const fh=H0*(L>=3?.62:L>=2?.52:.4);for(let r=0;r<3;r++){const k=(r+1)/4,yy=lerp(horizon,H0,k*k),half=lerp(dw*.42,W0*.24,k*k)+16,sc=.45+k*.7;for(const s of [-1,1])for(const t0 of [16+r*7,58+r*7])flameJet(cx+s*half,yy,fh*sc,t-t0-(s>0?3:0),20)}
+   sparkFall(tx,tx+tw,ty,th*.9,t,L>=2?140:80);
+   burstFW(W0*.2,H0*.16,t-30,col,80);burstFW(W0*.8,H0*.14,t-44,'#e8b33a',90);burstFW(W0*.5,H0*.08,t-62,'#ffffff',100);if(L>=2){burstFW(W0*.32,H0*.2,t-76,col,70);burstFW(W0*.68,H0*.22,t-84,'#ff6a3a',80)}}
   if(L>=3&&t%46<4){ctx.fillStyle='rgba(255,255,255,.12)';ctx.fillRect(0,0,W0,H0)}
   /* broadcast lower third */
   const lk=clamp((t-26)/14,0,1),le=1-Math.pow(1-lk,3);if(lk>0){const bw=Math.min(300,W0*.34),bh=58,bx=lerp(-bw-20,Math.max(14,W0*.04),le),by=H0-bh-16;
@@ -1206,9 +1222,13 @@ function stageReveal(S,F,t){
     txt(`${d.name||''} · ${d.from||''} · ${st}`,bx+16,by+42,10.5,'rgba(225,230,238,.85)','left','700');num((d.rec||[0,0,0]).join('-'),bx+bw-14,by+20,16,'#e8b33a','right');ctx.restore()}
 }
 /* cage-side pyro when a fighter steps into the octagon / is announced */
-function cagePyro(S,P){if(!P)return;const AR=S.arena||{k:'main'},L=TIERL[AR.k]??2,t=P.t;if(L<1||t>110)return;
-  const hh=HH*(L>=3?.8:L>=2?.6:.38);gerb(WH*.06,HH+4,hh,t,L>=3?120:70);gerb(WH*.94,HH+4,hh,t,L>=3?120:70);if(L>=3){gerb(WH*.3,HH+4,hh*.8,t+9,80);gerb(WH*.7,HH+4,hh*.8,t+9,80)}
-  if(L>=2&&(P.at==='ann'||P.at==='cage')){const c=S.walk&&/^blue/.test(S.walk.k)?S.a.corner:S.b.corner;burstFW(WH*.25,HH*.22,t-6,c,90);burstFW(WH*.75,HH*.18,t-18,'#e8b33a',110);if(L>=3){burstFW(WH*.5,HH*.12,t-28,'#ffffff',130);burstFW(WH*.15,HH*.3,t-38,c,80);burstFW(WH*.85,HH*.28,t-44,c,80)}}
+function cagePyro(S,P){if(!P)return;const AR=S.arena||{k:'main'},L=TIERL[AR.k]??2,t=P.t;if(t>130)return;
+  const hh=HH*(L>=3?.9:L>=2?.75:L>=1?.6:.45),n=L>=3?150:L>=2?120:90;
+  gerb(WH*.05,HH+4,hh,t,n);gerb(WH*.95,HH+4,hh,t,n);gerb(WH*.28,HH+4,hh*.85,t+9,n*.7);gerb(WH*.72,HH+4,hh*.85,t+9,n*.7);if(L>=2){gerb(WH*.5,HH+4,hh*.7,t+4,n*.6)}
+  /* flame cannons fire in a left-right-left rhythm */
+  const fh=HH*(L>=3?.75:L>=2?.6:.45);for(const [x,d] of [[WH*.14,0],[WH*.86,8],[WH*.38,16],[WH*.62,24],[WH*.14,40],[WH*.86,48]])flameJet(x,HH+2,fh,t-d,22);
+  if(L>=1)sparkFall(WH*.08,WH*.92,-4,HH*.7,t,L>=3?160:90);
+  if(P.at==='ann'||P.at==='cage'||P.at==='perf'){const c=S.walk&&/^blue/.test(S.walk.k)?S.a.corner:S.b.corner;burstFW(WH*.25,HH*.22,t-6,c,90);burstFW(WH*.75,HH*.18,t-18,'#e8b33a',110);burstFW(WH*.5,HH*.16,t-30,'#ff6a3a',100);burstFW(WH*.35,HH*.1,t-52,'#ffffff',90);burstFW(WH*.65,HH*.12,t-60,c,100);if(L>=3){burstFW(WH*.5,HH*.12,t-28,'#ffffff',130);burstFW(WH*.15,HH*.3,t-38,c,80);burstFW(WH*.85,HH*.28,t-44,c,80)}}
   if(t<6){ctx.fillStyle=`rgba(255,200,120,${.25*(1-t/6)})`;ctx.fillRect(0,0,WH,HH)}}
 /* broadcast "tale of the tape" slide */
 function koRate(d){const r=d.rec||[0,0,0],w=r[0]||0;return clamp(Math.round(25+((d.s&&d.s.pow)||70)*.5-20+(IC.hash?IC.hash(d.name||'')%15:0)),10,88)}
