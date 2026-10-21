@@ -296,6 +296,19 @@ const ICO={
 const ico=k=>`<svg class="mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICO[k]}</svg>`;
 /* AI-painted portraits of the default division champions (art/ch_*.jpg); anyone else falls back to the drawn bust */
 const CHART={g_fly_1jbswcl:'fly',g_fw_192dyev:'fw',lw_0:'lw',ww_9:'ww',mw_17:'mw',g_lhw_4cpk49:'hw'};
+/* ===== photo pool: 40 AI portraits shared by look (ethnicity group × hair × beard) ===== */
+const POOL_ETH={'대한민국':'asian','일본':'asian','중국':'asian','태국':'asian','다게스탄':'cauc','체첸':'cauc','카자흐스탄':'cauc','조지아':'cauc','브라질':'latin','멕시코':'latin','뉴질랜드':'latin','사모아':'latin','나이지리아':'black','카메룬':'black','모로코':'latin'};
+function skinLum(h){h=(h||'#d2a07a').replace('#','');const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return .299*r+.587*g+.114*b}
+function photoKey(d){if(!d||!d.look)return null;const L=d.look,lum=skinLum(L.skin);
+  let e=lum<120?'black':POOL_ETH[d.from]||'white';if(e==='asian'&&lum<150)e='latin';if(e==='white'&&lum<160)e='latin';
+  const hs=L.hairStyle,h=hs==='bald'||hs==='buzz'?'shaved':hs==='long'||hs==='bun'?'long':hs==='mohawk'?'mohawk':'short';
+  return `${e}_${h}_${L.beard?'b':'n'}`}
+const POOL=new Set([]);/* keys of art/pool/<key>.jpg that exist */
+function photoOf(id,d){if(CHART[id])return `art/ch_${CHART[id]}.jpg`;const k=photoKey(d);return k&&POOL.has(k)?`art/pool/${k}.jpg`:null}
+/* <img> when a photo exists, otherwise the drawn canvas */
+function fpic(id,d,o={}){const src=photoOf(id,d);return src?`<img class="fph ${o.cls||''}" src="${src}" alt="" loading="lazy"${o.flip?' style="transform:scaleX(-1)"':''}>`:`<canvas class="${o.cls||''}" data-pid="${esc(id)}"${o.side?` data-side="${o.side}"`:''} data-mode="${o.mode||'bust'}"></canvas>`}
+
+IC.facePath=d=>{if(!d)return null;const id=d.id==='__tmp'?null:d.id;if(id&&CHART[id])return `art/face/ch_${CHART[id]}.png`;const k=photoKey(d);return k&&POOL.has(k)?`art/face/${k}.png`:null};
 function champsOf(){const c=DATA.career;return CLASSES.map(C=>{let id=null;
   if(c&&((IC.CLSMAP||{})[c.cls]||c.cls)===C.id&&c.order&&c.order.length)id=c.order[0];
   if(!id){const l=ROSTER.filter(f=>((IC.CLSMAP||{})[f.cls]||f.cls)===C.id).sort((x,y)=>y.ovr-x.ovr);id=l[0]&&l[0].id}
