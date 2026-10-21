@@ -907,7 +907,7 @@ const KR=['J','U','H','K','I','O']; // J 펀치 · K 킥 · I 클린치/테이�
 function itemAt(side,i){return CUR?(side==='l'?CUR.left[i]:CUR.grid[i]):null}
 function mkBtn(side,i){
   const b=document.createElement('button');b.className='pb';b.type='button';
-  b.addEventListener('pointerdown',e=>{e.preventDefault();Sound.init();const it=itemAt(side,i);if(!it||(it.dim&&!it.mash))return;b.classList.add('on');if(IC.opts.haptic!==false&&IC.Haptic&&!navigator.vibrate)IC.Haptic.tap();
+  b.addEventListener('pointerdown',e=>{e.preventDefault();Sound.init();const it=itemAt(side,i);if(!it||(it.dim&&!it.mash))return;b.classList.add('on');
     if(it.hold){IC.Fight.hold(it.id,true);b._hold=it.id;b._pid=e.pointerId;try{b.setPointerCapture(e.pointerId)}catch(_){}}else IC.Fight.press(it.id)});
   const up=()=>{b.classList.remove('on');if(b._hold){IC.Fight.hold(b._hold,false);b._hold=null}};
   b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('lostpointercapture',up);

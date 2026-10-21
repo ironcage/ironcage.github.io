@@ -72,11 +72,23 @@ const weakLeg=F=>Math.min(F.lgL??100,F.lgR??100)<30;
 /* haptics: only for the person holding the phone (navigator.vibrate is not available on iPhone Safari; Android vibrates) */
 /* iPhone: Safari has no vibrate API, but toggling a native <input switch> fires the Taptic Engine (iOS 18+).
    A hidden switch is clicked once per pulse; Android uses real vibration patterns. */
-const Haptic={el:null,last:0,
-  ios(){if(this.el)return this.el;try{const l=document.createElement('label'),i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');l.appendChild(i);l.setAttribute('aria-hidden','true');l.style.cssText='position:fixed;left:-99px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';document.body.appendChild(l);this.el=l}catch(e){}return this.el},
-  tap(){const n=performance.now();if(n-this.last<38)return;this.last=n;const l=this.ios();try{l&&l.click()}catch(e){}},
-  play(p){if(IC.opts&&IC.opts.haptic===false)return;try{if(navigator.vibrate){navigator.vibrate(p);return}}catch(e){}
-    const P=Array.isArray(p)?p:[p];let t=0;for(let k=0;k<P.length&&k<6;k+=2){const d=t;setTimeout(()=>this.tap(),d);if(P[k]>=60)setTimeout(()=>this.tap(),d+45);t+=P[k]+(P[k+1]||0)}}};
+/* Haptics.
+   Android: navigator.vibrate patterns.
+   iPhone (iOS 18+): Safari has no vibrate API, but toggling a native <input type=checkbox switch> fires the Taptic Engine —
+   only while the page has *transient user activation*, which on touch screens comes from touchend / pointerup (NOT touchstart/pointerdown)
+   and lasts about a second. So every finger lift refreshes the activation window, pulses inside the window fire immediately,
+   and pulses outside it wait for the next finger lift. */
+const Haptic={el:null,last:0,act:-1e9,queue:0,iosOK:/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document,
+  ios(){if(this.el)return this.el;try{const l=document.createElement('label'),i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');l.appendChild(i);l.setAttribute('aria-hidden','true');l.style.cssText='position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:.01;overflow:hidden;z-index:-1';document.body.appendChild(l);this.el=l}catch(e){}return this.el},
+  tick(){const n=performance.now();if(n-this.last<30)return false;this.last=n;const l=this.ios();try{l&&l.click()}catch(e){}return true},
+  tap(){if(IC.opts&&IC.opts.haptic===false)return;if(navigator.vibrate&&!this.iosOK){try{navigator.vibrate(12)}catch(e){}return}if(performance.now()-this.act<900)this.tick();else this.queue=Math.max(this.queue,1)},
+  lift(){this.act=performance.now();if(this.queue>0){const q=this.queue;this.queue=0;this.tick();if(q>1)setTimeout(()=>this.tick(),45);if(q>2)setTimeout(()=>this.tick(),95)}},
+  play(p){if(IC.opts&&IC.opts.haptic===false)return;
+    if(navigator.vibrate&&!this.iosOK){try{navigator.vibrate(p)}catch(e){}return}
+    const P=Array.isArray(p)?p:[p],strong=P.reduce((a,b,i)=>i%2?a:a+b,0),n=strong>=90?3:strong>=40?2:1;
+    if(performance.now()-this.act<900){this.tick();if(n>1)setTimeout(()=>this.tick(),45);if(n>2)setTimeout(()=>this.tick(),95)}else this.queue=Math.max(this.queue,n)}};
+addEventListener('touchend',()=>Haptic.lift(),{capture:true,passive:true});
+addEventListener('pointerup',e=>{if(e.pointerType!=='mouse')Haptic.lift()},{capture:true,passive:true});
 IC.Haptic=Haptic;
 function buzz(p){if(!S||S.demo||S.spec)return;Haptic.play(p)}
 const STRONG=new Set([/* escapes (get up, re-guard) stay allowed when exhausted */'cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','tornado','lowblow','headbutt','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub']);
