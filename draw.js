@@ -2111,6 +2111,9 @@ function portrait(canvas,d,side,mode){
   const F={d,noBuild:mode==='bust',look:d.look,corner,head:100,body:100,legs:100,cuts:0,rocked:0,flash:0,state:'idle',st:100,side,_t:0};
   const f=side==='b'?-1:1,x=0;
   const bu=mode==='bust',J={f,hip:{x,y:300},chest:{x:x+f*2,y:234},tilt:.05,nearHand:bu?{x:x+f*24,y:262}:{x:x+f*30,y:221},farHand:bu?{x:x+f*12,y:264}:{x:x+f*15,y:216},nearFoot:{x:x+f*26,y:GY},farFoot:{x:x-f*24,y:GY},kneeN:'fwd',kneeF:'fwd'};
+  if(mode==='front'){const k=Math.min(ch/252,cw/120);ctx.save();ctx.translate(cw/2,ch-4);ctx.scale(k,k);
+    const sh=ctx.createRadialGradient(0,0,2,0,0,60);sh.addColorStop(0,'rgba(0,0,0,.55)');sh.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=sh;ctx.save();ctx.scale(1,.18);ctx.beginPath();ctx.arc(0,0,60,0,Math.PI*2);ctx.fill();ctx.restore();
+    drawFront(F,0,{dmg:{head:100,cuts:0},t:0});ctx.restore();return}
   ctx.save();
   if(mode==='bust'){const k=cw/62;ctx.translate(cw/2,0);ctx.scale(k,k);ctx.translate(-2,-182)}
   else{const k=ch/215;ctx.translate(cw/2,0);ctx.scale(k,k);ctx.translate(0,-178)}
