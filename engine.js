@@ -246,7 +246,7 @@ function finish(Wn,method,detail){
   S.mode='ko';S.phaseT=200;S.sub=null;S.koRefIn=0;
   const el=S.roundFrames-S.timer;
   S.result={winner:Wn.side,method,detail,round:S.round,time:fmt(el)};if(Wn===S.p||L===S.p)buzz(method==='서브미션'?[60,40,60]:[90,60,180,60,90]);
-  if(!S.gr){L.state='ko';L.koT=0;S.slow=90;S.cl=null}
+  if(!S.gr){L.state='ko';L.koT=0;L.koK=pick(['back','face','crumple','fence','spin']);S.slow=90;S.cl=null}
   S.camFocus=L.side;S.winSide=Wn.side;
   banner(method==='서브미션'?'탭 아웃!':method==='TKO'?'TKO!':'K.O.!','#ffd75e',170);sfx('ko');
   say(method==='서브미션'?`${L.nick} 탭! ${Wn.nick}의 ${detail} 승리!`:method==='TKO'?`레퍼리가 막아섭니다! ${Wn.nick} TKO 승!`:`${Wn.nick}의 ${detail}! ${L.nick} 그대로 쓰러집니다!`);
@@ -529,8 +529,13 @@ function resolveC(F,O,id){
   const c=S.cl,A=CA[id],isCtrl=F===c.ctrl;c.idle=0;
   if(A.dmg){
     const pw=A.kick?sv(F,'kick'):sv(F,'pow');
-    const blocked=O.blockHeld;
-    const dmg=DMG*A.dmg*(.55+pw*.0075)*F.stMul*F.mul*F.cp.pow*(isCtrl?1:.75)*(blocked?.5:1)*(1+sv(F,'clinch')*.002)*rnd(.88,1.12);
+    /* spam control: repeating clinch strikes loses power, burns gas, the other man frames up and eventually shoves out */
+    const now=S.frame;F.cChain=(now-(F.cLast||-999)<55)?(F.cChain||0)+1:0;F.cLast=now;const ch=F.cChain;
+    const blocked=O.blockHeld||(O!==S.p&&ch>=2&&Math.random()<Math.min(.6,.17*ch));
+    if(ch>=2)F.st=Math.max(0,F.st-ch*1.2);
+    if(ch>=4&&Math.random()<Math.min(.45,.09*ch)){F.cChain=0;floatText(O.x,180,'프레임 · 이탈','#9fe0a8');say(`${O.nick}, 단조로운 공격을 읽고 밀어내며 빠져나옵니다!`);exitClinch();return}
+    const dmg=DMG*A.dmg*(.55+pw*.0075)*F.stMul*F.mul*F.cp.pow*(isCtrl?1:.75)*(blocked?.5:1)*(1+sv(F,'clinch')*.002)*Math.max(.25,1-.18*ch)*rnd(.88,1.12);
+    if(ch>=3&&F===S.p&&ch%3===0)floatText(F.x,150,'단조로운 공격 — 위력 감소','#8e97a6');
     if(id==='c_hbutt'&&!blocked)wildHit(F,O,'head');
     ev(F,'land:'+id);
     if(deal(F,O,dmg,A.target,{name:A.name,src:'clinch',blocked:false,knee:!!A.kick,x:O.x-O.f*-10,y:(A.target==='head'?212:262)+zy(O)}))return;
@@ -614,7 +619,7 @@ function startG(F,id){
 function gStrike(F,O,A,top){
   const gr=S.gr;
   /* spam control: back-to-back ground strikes lose power, cost more gas, and the bottom man learns to cover and tie up the arms */
-  const now=S.frame;F.gChain=(now-(F.gLast||-999)<44)?(F.gChain||0)+1:0;F.gLast=now;const ch=F.gChain;
+  const now=S.frame;F.gChain=(now-(F.gLast||-999)<55)?(F.gChain||0)+1:0;F.gLast=now;const ch=F.gChain;
   let blocked=O.blockHeld||(O!==S.p&&ch>=2&&Math.random()<Math.min(.65,.18*ch));
   if(ch>=2)F.st=Math.max(0,F.st-ch*1.1);
   if(top&&ch>=4&&Math.random()<Math.min(.4,.08*ch)){F.gChain=0;
@@ -622,7 +627,7 @@ function gStrike(F,O,A,top){
     else{floatText(gr.cx,190,'팔 묶임','#9fe0a8');say(`${O.nick}, 팔을 묶어 파운딩을 끊습니다`)}
     return}
   if(A.wild&&!blocked)wildHit(F,O,'soccer');
-  const spam=Math.max(.3,1-.14*ch);
+  const spam=Math.max(.25,1-.18*ch);
   const dmg=GDMG*A.dmg*(top?GNP[gr.pos]:1)*(.55+sv(F,top?'gnp':'pow')*.0075)*F.mul*F.cp.pow*(blocked?(top?.4:.5):1)*(O.rocked?1.2:1)*(.6+.4*F.stMul)*spam*rnd(.88,1.12);
   if(ch>=3&&F===S.p&&ch%3===0)floatText(F.x,150,'단조로운 파운딩 — 위력 감소','#8e97a6');
   gr.idle=0;
@@ -1056,7 +1061,7 @@ function step(){
 }
 const lerp=(a,b,t)=>a+(b-a)*t;
 let slowTick=0;
-const SNAPK=['x','z','moveZ','f','state','t','vx','walk','blockHeld','rocked','flash','koT','head','body','legs','lgL','lgR','stance','exh','cuts','st','stun','moveDir'];
+const SNAPK=['koK','x','z','moveZ','f','state','t','vx','walk','blockHeld','rocked','flash','koT','head','body','legs','lgL','lgR','stance','exh','cuts','st','stun','moveDir'];
 function snapF(F){const o={};for(const k of SNAPK)o[k]=F[k];o.A=F.A?{anim:F.A.anim,w:F.A.w,a:F.A.a,r:F.A.r,special:F.A.special,kind:F.A.kind,id:F.A.id}:null;o.g={act:F.g.act,t:F.g.t,A:F.g.A?{w:F.g.A.w,r:F.g.A.r,dmg:F.g.A.dmg,target:F.g.A.target}:null};return o}
 function snap(){return{a:snapF(S.a),b:snapF(S.b),gr:S.gr?{top:S.gr.top.side,pos:S.gr.pos,cx:S.gr.cx,hd:S.gr.hd,cz:S.gr.cz}:null,cl:S.cl?{ctrl:S.cl.ctrl.side,cage:S.cl.cage,cx:S.cl.cx,dir:S.cl.dir,cz:S.cl.cz}:null,sub:S.sub?{att:S.sub.att.side,name:S.sub.name,prog:S.sub.prog}:null,ref:{...S.ref},cage:{...S.cage},th:S.camTheta}}
 function replayView(){
@@ -1072,7 +1077,7 @@ function replayView(){
 function startOutro(){
   S.mode='outro';S.phaseT=200;S.rp=null;S.slow=0;
   const W=S.winSide?(S.winSide==='a'?S.a:S.b):null,L=W?other(W):null;
-  if(S.gr){const {cx,hd}=S.gr;S.a.z=S.b.z=S.gr.cz||0;if(W){W.x=cx-hd*70;L.x=cx+hd*30;L.state='ko';L.koT=99;L.f=-hd;W.f=hd}S.gr=null}
+  if(S.gr){const {cx,hd}=S.gr;S.a.z=S.b.z=S.gr.cz||0;if(W){W.x=cx-hd*70;L.x=cx+hd*30;L.state='ko';L.koT=99;L.koK='back';L.f=-hd;W.f=hd}S.gr=null}
   if(S.cl)S.cl=null;S.sub=null;
   for(const F of [S.a,S.b]){if(F!==L||L.state!=='ko'){F.state=F===W?'celebrate':W?'dejected':'idle';F.t=0;F.A=null}}
   if(L&&L.state==='ko'&&L.koT<30)L.koT=30;

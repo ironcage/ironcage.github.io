@@ -746,6 +746,34 @@ function drawRef(S){
   ctx.restore();
 }
 /* blend toward the target pose so motion has weight: snappy while a strike is live, softer otherwise */
+/* ---------- knockout falls: five different ways to go down, all ending flat on the canvas ---------- */
+const KOK=['back','face','crumple','fence','spin'];
+function koPose(F,J0,t){
+  const kind=F.koK||KOK[(IC.hash?IC.hash(String(F.name||F.d&&F.d.name||'')):0)%KOK.length],f=F.f,x=F.x;
+  const kt=Math.min(1,(F.koT||0)/(kind==='crumple'?40:28)),ease=q=>q*q*(3-2*q);
+  const d=kind==='face'||kind==='spin'||kind==='crumple'?f:-f;           /* which side the head ends up on */
+  /* final lying poses */
+  let E;
+  if(kind==='face'){E={f:d,hip:{x:x+d*6,y:GY-14},chest:{x:x+d*68,y:GY-15},nearFoot:{x:x-d*52,y:GY-5},farFoot:{x:x-d*58,y:GY-4},kneeN:'down',kneeF:'down',nearHand:{x:x+d*96,y:GY-5},farHand:{x:x+d*30,y:GY-4},elbN:'down',elbF:'down',tilt:0}}
+  else if(kind==='crumple'){E={f:d,hip:{x:x,y:GY-20},chest:{x:x+d*58,y:GY-26},nearFoot:{x:x-d*20,y:GY-5},farFoot:{x:x-d*30,y:GY-6},kneeN:'fwd',kneeF:'fwd',nearHand:{x:x+d*50,y:GY-4},farHand:{x:x+d*20,y:GY-6},elbN:'down',elbF:'down',tilt:0}}
+  else if(kind==='spin'){E={f:d,hip:{x:x+d*4,y:GY-18},chest:{x:x+d*64,y:GY-22},nearFoot:{x:x-d*44,y:GY-14},farFoot:{x:x-d*60,y:GY-4},kneeN:'fwd',kneeF:'down',nearHand:{x:x+d*82,y:GY-30},farHand:{x:x+d*40,y:GY-6},elbN:'up',elbF:'down',tilt:0}}
+  else{E={f:-d,hip:{x:x+d*6,y:GY-16},chest:{x:x+d*68,y:GY-18},nearFoot:{x:x-d*50,y:GY-16},farFoot:{x:x-d*58,y:GY-4},kneeN:'up',kneeF:'down',nearHand:{x:x+d*44,y:GY-8},farHand:kind==='fence'?{x:x+d*70,y:GY-70}:{x:x+d*92,y:GY-6},elbN:'down',elbF:kind==='fence'?'up':'down',tilt:0}}
+  E.mood='ko';E.footN=-E.f;E.footF=-E.f;
+  if(kt>=1)return E;
+  /* the fall: hips drop, the torso swings from upright to flat around the hips, limbs go limp toward the final pose */
+  let k=ease(kt),hip,ang,L=66;
+  if(kind==='crumple'){const k1=ease(Math.min(1,kt/.5)),k2=ease(clamp((kt-.5)/.5,0,1));
+    hip={x:x,y:300+(GY-46-300)*k1+((GY-20)-(GY-46))*k2};ang=.18*k1+(Math.PI/2-.12)*k2;
+    const J={f:k2>.5?E.f:f,hip,chest:{x:hip.x+Math.sin(ang)*L*d,y:hip.y-Math.cos(ang)*L},nearFoot:{x:x-d*14*k1,y:GY-2},farFoot:{x:x-d*26*k1,y:GY-3},kneeN:'down',kneeF:'down',
+      nearHand:{x:x+d*(20+20*k2),y:hip.y-10+8*k2},farHand:{x:x+d*(8+12*k2),y:hip.y-4},elbN:'down',elbF:'down',tilt:.3*k1,mood:'ko'};
+    if(k2>0){for(const q of ['nearFoot','farFoot','nearHand','farHand'])J[q]={x:J[q].x+(E[q].x-J[q].x)*k2,y:J[q].y+(E[q].y-J[q].y)*k2}}return J}
+  const hx=x+(E.hip.x-x)*k-(kind==='face'?-d*10*Math.sin(k*Math.PI):0),hy=300+(E.hip.y-300)*Math.pow(k,1.4);hip={x:hx,y:hy};
+  ang=(Math.PI/2)*Math.pow(k,kind==='back'||kind==='fence'?1.6:1.2);
+  const J={f:kt>.5?E.f:f,hip,chest:{x:hip.x+Math.sin(ang)*L*d,y:hip.y-Math.cos(ang)*L},kneeN:E.kneeN,kneeF:E.kneeF,elbN:E.elbN,elbF:E.elbF,tilt:0,mood:'ko'};
+  for(const q of ['nearFoot','farFoot','nearHand','farHand']){const a=J0[q]||E[q];J[q]={x:a.x+(E[q].x-a.x)*k,y:a.y+(E[q].y-a.y)*k}}
+  if(kind==='spin'&&kt<.5){J.f=Math.floor(kt*8)%2?-f:f}
+  if(kind==='fence'&&kt>.3){J.farHand={x:J.chest.x+d*4,y:J.chest.y-46*Math.min(1,(kt-.3)/.4)};J.elbF='up'}
+  return J}
 function smoothPose(F,J){
   const A=F.A,live=F.state==='attack'&&A&&F.t>=A.w-1&&F.t<=A.w+A.a+1;
   const k=F.state==='ko'?.5:live?.72:F.state==='attack'?.42:F.state==='hit'?.5:F.state==='slip'?.45:.26;
@@ -759,11 +787,10 @@ function drawStandingFighter(F,O,S){
   F._t=S.frame;
   ctx.save();depth(F.x,F.z||0);
   shadowAt(F.x,52);
-  const J=smoothPose(F,poseStand(F,O,S));
-  if(F.stance)J.swapD=(F.f===1)===(F.stance==='south');
+  let J=smoothPose(F,poseStand(F,O,S));if(F.state==='ko'){J=koPose(F,J,S.frame);F._pj=null}
+  if(F.stance&&F.state!=='ko')J.swapD=(F.f===1)===(F.stance==='south');
   if(F.swT>0){const k=1-F.swT/16;ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=`rgba(127,227,255,${(1-k)*.8})`;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(F.x,GY+2,30+k*46,7+k*9,0,0,7);ctx.stroke();ctx.restore()}
   ctx.save();
-  if(F.state==='ko'){const a=Math.min(1,F.koT/22)*Math.PI/2*.94;ctx.translate(F.x-F.f*22,GY-4);ctx.rotate(-F.f*a);ctx.translate(-(F.x-F.f*22),-(GY-4));J.mood='ko'}
   if(F.heart>0){const g=ctx.createRadialGradient(J.chest.x,J.chest.y,10,J.chest.x,J.chest.y,90);g.addColorStop(0,`rgba(255,60,40,${.18+.1*Math.sin(S.frame*.2)})`);g.addColorStop(1,'rgba(255,60,40,0)');ctx.fillStyle=g;ctx.fillRect(J.chest.x-90,J.chest.y-90,180,180)}
   const r=drawBody(F,J);
   if(F.exh&&r.head&&F.state!=='ko'){const k=(S.frame%34)/34;ctx.save();ctx.globalAlpha=(1-k)*.35;ctx.fillStyle='#e8eef6';ctx.beginPath();ctx.ellipse(r.head.x+F.f*(16+k*22),r.head.y+8-k*10,4+k*9,3+k*6,0,0,7);ctx.fill();
@@ -1815,8 +1842,8 @@ function tauntScene(c,cw,ch,t,d,opp,kind,kt){
   const W=ft(d,'a',350,1),Lr=ft(opp,'b',505,-1),SS={frame:t,cl:null},k=kt||0;
   let wx=350,wy=0,rot=0,loserUp=0,ghostBelt=0,slash=-1;
   if(!kind){W.state='idle'}
-  else if(kind==='climb'){const p1=clamp(k/30,0,1),p2=clamp((k-30)/30,0,1);wx=lerp(350,262,p1);W.f=-1;W.state=p1<1?'walk':p2<1?'clinch':'celebrate';W.walk=k*.25;wy=-(GY-238)*(p2*p2*(3-2*p2));if(p2>=1)W.f=1}
-  else if(kind==='chest'){const p1=clamp(k/24,0,1);wx=lerp(350,440,p1);W.state=p1<1?'walk':'perf';W.perfK='chest';W.perfT=k-24;W.walk=k*.25}
+  else if(kind==='climb'){const p1=clamp(k/30,0,1),p2=clamp((k-30)/30,0,1);wx=lerp(350,262,p1);W.f=-1;W.state=p1<1?'walk':p2<1?'clinch':'celebrate';W.walk=k*.25;wy=-(GY-300)*(p2*p2*(3-2*p2));if(p2>=1)W.f=1}
+  else if(kind==='chest'){const p1=clamp(k/24,0,1);wx=lerp(350,405,p1);W.state=p1<1?'walk':'perf';W.perfK='chest';W.perfT=k-24;W.walk=k*.25}
   else if(kind==='flip'){const p=clamp((k-10)/34,0,1);W.state=k<10?'idle':p<1?'celebrate':'celebrate';wy=-Math.sin(p*Math.PI)*120;rot=-Math.PI*2*(p*p*(3-2*p))}
   else if(kind==='belt'){W.state='perf';W.perfK='taunt';W.perfT=k;ghostBelt=clamp((k-8)/20,0,1)}
   else if(kind==='cut'){W.state='perf';W.perfK='taunt';W.perfT=k;slash=clamp((k-14)/14,0,1)}
@@ -1824,10 +1851,14 @@ function tauntScene(c,cw,ch,t,d,opp,kind,kt){
   else if(kind==='ear'){W.state='perf';W.perfK='taunt';W.perfT=k*1.6}
   W.x=wx;
   /* the loser: flat on the canvas, or helped up for the respect hug */
-  if(loserUp<1){ctx.save();const a=(1-loserUp)*Math.PI/2*.94;Lr.state=loserUp>0?'idle':'ko';Lr.koT=40;ctx.translate(Lr.x+22,GY-4);ctx.rotate(a);ctx.translate(-(Lr.x+22),-(GY-4));shadowAt(Lr.x,52);const J=poseStand(Lr,W,SS);J.mood=loserUp>0?'hurt':'ko';drawBody(Lr,J);ctx.restore()}
+  if(loserUp<1){ctx.save();Lr.koK='back';Lr.state='ko';Lr.koT=99;shadowAt(Lr.x+Lr.f*-30,70);const Jk=koPose(Lr,poseStand(Lr,W,SS),t);
+    let JL=Jk;if(loserUp>0){const Js=poseStand({...Lr,state:'idle'},W,SS),q=loserUp;JL=blendJ(Jk,Js,q*q);JL.f=q>.5?Js.f:Jk.f;JL.mood='hurt'}drawBody(Lr,JL);ctx.restore()}
   else{Lr.x=lerp(505,490,clamp((k-44)/10,0,1));shadowAt(Lr.x,52);const J=poseStand(Lr,W,SS);J.nearHand={x:Lr.x-30,y:220};J.farHand={x:Lr.x-24,y:226};drawBody(Lr,J)}
-  if(kind==='climb'){ctx.save();const x0=226,x1=300,top=238;ctx.strokeStyle='rgba(160,170,185,.55)';ctx.lineWidth=1;ctx.beginPath();for(let x=x0-40;x<x1+40;x+=10){ctx.moveTo(Math.max(x0,x),top);ctx.lineTo(Math.min(x1,x+60),GY);ctx.moveTo(Math.min(x1,x+60),top);ctx.lineTo(Math.max(x0,x),GY)}ctx.stroke();
-    for(const px of [x0,x1]){ctx.fillStyle='#171a20';ctx.fillRect(px-5,top-4,10,GY-top+4);ctx.fillStyle='#2e333d';ctx.fillRect(px-5,top-4,3,GY-top+4)}ctx.fillStyle='#0d0f13';ctx.fillRect(x0-6,top-8,x1-x0+12,9);ctx.fillStyle='#e8b33a';ctx.fillRect(x0-6,top-8,x1-x0+12,2);ctx.restore()}
+  if(kind==='climb'){const top=300,x0=180,x1=345,p3=clamp((k-30)/30,0,1);ctx.save();
+    /* a section of the octagon fence: padded post, chain-link diamonds clipped to the panel, a rounded top rail */
+    ctx.beginPath();ctx.rect(x0,top,x1-x0,GY-top);ctx.clip();ctx.strokeStyle='rgba(150,160,175,.5)';ctx.lineWidth=1.1;ctx.beginPath();for(let xx=x0-200;xx<x1+200;xx+=11){ctx.moveTo(xx,top);ctx.lineTo(xx+GY-top,GY);ctx.moveTo(xx+GY-top,top);ctx.lineTo(xx,GY)}ctx.stroke();ctx.restore();
+    ctx.fillStyle='#14171d';ctx.fillRect(x0-8,top-6,14,GY-top+6);ctx.fillStyle='#2b3039';ctx.fillRect(x0-8,top-6,4,GY-top+6);ctx.fillStyle='#e8b33a';ctx.font='bold 7px sans-serif';ctx.save();ctx.translate(x0-1,GY-34);ctx.rotate(-Math.PI/2);ctx.fillText('IRON CAGE',0,0);ctx.restore();
+    const rg=ctx.createLinearGradient(0,top-10,0,top+2);rg.addColorStop(0,'#3a3f49');rg.addColorStop(1,'#0c0e12');ctx.fillStyle=rg;ctx.beginPath();ctx.roundRect(x0-10,top-10,x1-x0+12,12,6);ctx.fill();ctx.fillStyle='rgba(232,179,58,.8)';ctx.fillRect(x0-6,top-9,x1-x0+4,1.5)}
   /* the winner */
   shadowAt(wx,wy<-40?30:52);ctx.save();
   if(rot){ctx.translate(wx,GY-70+wy);ctx.rotate(rot);ctx.translate(-wx,-(GY-70))}else ctx.translate(0,wy);
@@ -1935,8 +1966,7 @@ function koScene(c,cw,ch,p,d,opp,hit,o={}){
   /* referee rushes in to wave it off */
   if(imp){const rk=ez((k-H-10)/34);wiPerson(lerp(860,CX+262,rk),-1,p,{shirt:'#111317',skin:'#c99472',hair:'#1f1814',hs:'short',moving:rk<1,state:rk>=1?'stop':'idle'})}
   for(const F of [Bf,A]){shadowAt(F.x,52);const J=poseStand(F,F===A?Bf:A,SS);ctx.save();
-    if(F.state==='ko'){const a=Math.min(1,F.koT/22)*Math.PI/2*.94;ctx.translate(F.x-F.f*22,GY-4);ctx.rotate(-F.f*a);ctx.translate(-(F.x-F.f*22),-(GY-4));J.mood='ko'}
-    const r=drawBody(F,J);ctx.restore();
+    const r=drawBody(F,F.state==='ko'?(F.koK=F.koK||'back',koPose(F,J,p)):J);ctx.restore();
     /* glove trail on the overhand */
     if(F===A&&A.state==='attack'&&kk>3&&kk<16){const h=r.handF;ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<6;i++){ctx.globalAlpha=.12*(6-i);ctx.fillStyle='#fff6e0';ctx.beginPath();ctx.arc(h.x-i*7,h.y-i*5,9-i,0,7);ctx.fill()}ctx.restore()}
     if(F===Bf)F._head=r.head}
@@ -2094,5 +2124,5 @@ function solve(J){
   const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
   return{f,hip:J.hip,chest:J.chest,head,hAng:Math.atan2(sd.y,sd.x)+Math.PI/2+(J.tilt||0)*f,shN,shF,hipN,hipF,kneeN:legN.j,kneeF:legF.j,footN:legN.end,footF:legF.end,elbN:armN.j,elbF:armF.j,handN:armN.end,handF:armF.end,footDirN:J.footN||f,footDirF:J.footF||f,mood:J.mood};
 }
-IC.Draw={_cmp:(c,F,mood)=>{ctx=c;ctx.save();ctx.translate(60,60);ctx.scale(2.6,2.6);const o=fighterLook(F,{mood});drawHead(F,{x:0,y:0},0,1,o);ctx.restore();ctx.save();ctx.translate(170,62);ctx.scale(2.1,2.1);ctx.translate(0,212);drawFront(F,0,{noBuild:true,dmg:{head:F.head,cuts:F.cuts,mood},t:0,sweat:o.sweat});ctx.restore()},cornerPOV,_ground:(c,S)=>{ctx=c;drawGround(S)},render,portrait,weighin,beltScene,koScene,KOI,gateScene,GATE,tauntScene,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
+IC.Draw={_ko:(c,F)=>{ctx=c;ctx.strokeStyle="#888";ctx.beginPath();ctx.moveTo(200,GY);ctx.lineTo(600,GY);ctx.stroke();drawBody(F,koPose(F,poseStand(F,F,{frame:0,cl:null}),0))},_cmp:(c,F,mood)=>{ctx=c;ctx.save();ctx.translate(60,60);ctx.scale(2.6,2.6);const o=fighterLook(F,{mood});drawHead(F,{x:0,y:0},0,1,o);ctx.restore();ctx.save();ctx.translate(170,62);ctx.scale(2.1,2.1);ctx.translate(0,212);drawFront(F,0,{noBuild:true,dmg:{head:F.head,cuts:F.cuts,mood},t:0,sweat:o.sweat});ctx.restore()},cornerPOV,_ground:(c,S)=>{ctx=c;drawGround(S)},render,portrait,weighin,beltScene,koScene,KOI,gateScene,GATE,tauntScene,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
 })(window.IC);
