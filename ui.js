@@ -816,6 +816,7 @@ function loop(now){
   acc+=Math.min(100,now-last);last=now;let n=0;while(acc>=1000/60){acc-=1000/60;n++}
   const S=IC.Fight.S;if(!S)return;
   if(n)IC.Fight.tick(n);
+  if(CORNER){raf=0;return}
   if(CFG&&CFG.online)Net.frame();
   const w=cv.clientWidth,h=cv.clientHeight;
   if(USE3D){try{IC.R3D.render(S,w,h);IC.Draw.render(S,ctx,w,h,{project:IC.R3D.project})}catch(e){console.error(e);USE3D=false;gl.hidden=true}}
@@ -943,8 +944,32 @@ addEventListener('keyup',e=>{const lk=e.key.toLowerCase(),mk=MOVEK[lk];if(mk){IC
 addEventListener('blur',()=>{IC.Fight.releaseAll();heldKeys={}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&!game.hidden&&IC.Fight.S&&IC.Fight.S.mode==='fight'&&between.hidden)openPause()});
 
+/* between rounds (offline): no menus — a first-person corner where the coach talks you through it, then the bell */
+let cornerRaf=0,CORNER=false;
+function runCorner(info){
+  const a=info.a,b=info.b,S=IC.Fight.S,hp=Math.min(a.head,a.body,a.legs),tdS=a.s?a.s.td:(a.d&&a.d.s?a.d.s.td:60),tdO=b.d&&b.d.s?b.d.s.tdd:60;
+  let plan=null,pl='';
+  if(a.st<45||hp<45){plan='safe';pl='이번 라운드는 안전하게 가. 가드 올리고 거리 지켜. 받는 데미지 줄이는 게 먼저야.'}
+  else if(b.head<60||Math.min(b.body,b.legs)<50){plan='press';pl='저 녀석 지쳤어! 지금이야, 압박해! 쉬지 말고 몰아붙여!'}
+  else if(['wrestler','sambo','bjj'].includes(a.d.style)&&tdS>=tdO){plan='wrestle';pl='넘겨! 테이크다운 노려. 바닥에선 네가 왕이야.'}
+  else pl='지금 흐름 좋아. 하던 대로 해. 잽으로 거리 재고 들어가.';
+  IC.Fight.setPlan(plan);
+  const lines=[pick(['숨 쉬어. 크게 들이마시고… 내쉬어.','나 봐! 나 보라고. 괜찮아, 잘하고 있어.','물 한 모금 마셔. 천천히.'])].concat((info.advice||[]).slice(0,2)).concat(a.cuts>=2?['컷맨이 지혈 중이야. 눈 위 상처 조심해, 이마로 받지 마.']:[]).concat([pl,info.round+1>=(S.rounds||3)?'마지막 라운드야! 다 쏟아붓고 와!':'벨 울린다. 일어나!']);
+  const coach={d:{id:'coach_'+(a.d.id||a.d.name)},look:{skin:'#d9a47e',hair:'#2a1f1a',hairStyle:'buzz',beard:true,trunk:'#222'},corner:a.corner,walkShirt:S.wild?'#1a1a1a':'#1f3a6e',kind:'fighter'};
+  CORNER=true;stopLoop();game.classList.add('cornering');pad.hidden=true;hintEl.hidden=true;between.hidden=true;
+  const per=150,total=lines.length*per+40,t0=performance.now();let done=false,lastLi=-1;
+  const finish=()=>{if(done)return;done=true;CORNER=false;game.classList.remove('cornering');cancelAnimationFrame(cornerRaf);cv.removeEventListener('pointerdown',skip);try{Sound.play('bell')}catch(e){}
+    pad.hidden=false;hintEl.hidden=false;lastKey='';IC.Fight.next();startLoop()};
+  const skip=e=>{e.preventDefault();finish()};cv.addEventListener('pointerdown',skip);
+  const fr=now=>{if(done)return;const t=(now-t0)/1000*60,li=Math.min(lines.length-1,Math.floor(t/per)),lt=t-li*per;
+    if(li!==lastLi){lastLi=li;try{Sound.play('coach')}catch(e){}if(hp<40&&li%2===0)try{Sound.play('heart')}catch(e){}}
+    const c2=cv.getContext('2d'),k=cv.width/800;c2.setTransform(k,0,0,k,0,0);
+    IC.Draw.cornerPOV(c2,cv.clientWidth||800,cv.clientHeight||450,t,{coach,me:a,lines,li,typed:Math.floor(lt*1.4),talking:lt<lines[li].length/1.4+12,round:info.round,plan,left:Math.max(0,60-t/total*60)});
+    if(t>=total){finish();return}cornerRaf=requestAnimationFrame(fr)};
+  cornerRaf=requestAnimationFrame(fr)}
 function showBetween(info){
   IC.Fight.releaseAll();
+  if(!(CFG&&CFG.online)){try{runCorner(info);return}catch(e){console.error(e)}}
   const a=info.a,b=info.b,r=info.last;
   const hp=F=>`머리 ${Math.round(F.head)} · 몸통 ${Math.round(F.body)} · 다리 ${Math.round(F.legs)}`;
   between.innerHTML=`<div class="eyebrow">${info.round}라운드 종료 · 코너</div>
