@@ -81,8 +81,8 @@ IC.Haptic=Haptic;
 function buzz(p){if(!S||S.demo||S.spec)return;Haptic.play(p)}
 const STRONG=new Set([/* escapes (get up, re-guard) stay allowed when exhausted */'cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','tornado','lowblow','headbutt','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub']);
 function exhausted(F,id){return false}
-function upExh(F){if(!F.exh&&F.st<=1&&S.mode==='fight'){F.exh=true;floatText(F.x,150+zy(F),'탈진','#c0c6d0');if(Math.random()<.6)say(`${F.nick}, 완전히 지쳤습니다! 숨을 헐떡입니다`);sweat(F.x,200,10)}
-  else if(F.exh&&F.st>=10){F.exh=false;if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
+function upExh(F){if(F.exh)F.exhT=(F.exhT||0)+1;if(!F.exh&&F.st<=1&&S.mode==='fight'){F.exh=true;F.exhT=0;floatText(F.x,150+zy(F),'탈진','#c0c6d0');if(Math.random()<.6)say(`${F.nick}, 완전히 지쳤습니다! 숨을 헐떡입니다`);sweat(F.x,200,10)}
+  else if(F.exh&&(F.st>=6||F.exhT>=50)){F.exh=false;F.st=Math.max(F.st,8);if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
 const ZY=.35,LANE=28,zy=F=>(F.z||0)*ZY;
 /* dynamic arena scaling: the higher the stakes, the bigger the octagon, the denser the crowd and the louder the roar */
 const ARENAS=[
@@ -398,7 +398,7 @@ function upStand(F,O){
     const O=other(F);let vx=F.x-O.x,vz=(F.z||0)-(O.z||0);const d0=Math.hypot(vx,vz)||1;let tx=-vz/d0,tz=vx/d0;if(tz*mz<0){tx=-tx;tz=-tz}
     const st=Math.abs(mz)*spd*.85;F.x+=tx*st;F.z=(F.z||0)+tz*st;vx=F.x-O.x;vz=F.z-(O.z||0);const d1=Math.hypot(vx,vz)||1;F.x=O.x+vx*d0/d1;F.z=(O.z||0)+vz*d0/d1}
   if(F.moveDir||mz)F.walk+=.24;
-  F.st=Math.min(stMax(F),F.st+(blocking?.035:F.moveDir?.06:.085)*(.55+sv(F,'car')*.006)*(F.body<40?.7:1)*(F.inj&&F.inj.rib?.7:1)*(F.exh?1.6:1));
+  F.st=Math.min(stMax(F),F.st+(blocking?.035:F.moveDir?.06:.085)*(.55+sv(F,'car')*.006)*(F.body<40?.7:1)*(F.inj&&F.inj.rib?.7:1)*(F.exh?2.4:1));
   if(F.st<18&&F.st>16.5&&F===S.e)color('tired',F,other(F));
   if(S.frame-(F.lastHit||0)>180&&F.head<100)F.head=Math.min(100,F.head+.008);
 }

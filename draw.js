@@ -228,10 +228,15 @@ function drawHead(F,c,ang,f,o){
   else{ell(-2.5,1.5,3.1*es,4.6*es,shade(skin,.86));ctx.strokeStyle=shade(skin,.6);ctx.lineWidth=.8;ctx.beginPath();ctx.arc(-2.3,1.5,1.8*es,-1.2,1.6);ctx.stroke()}
   if(P.stud)ell(-2.2,5.4*es,.9,.9,'#f4e2a0');
   /* swelling */
-  if(o.head<55){const a=clamp((55-o.head)/80,0,.55);ell(8.6,-1.2,5.2,4.4,`rgba(110,40,80,${a})`);if(o.head<35)ell(4,4,4,3,`rgba(120,40,70,${a*.7})`)}
+  {const dmg=clamp((100-o.head)/100,0,1);
+   if(dmg>.15)ell(7,3,4.5,3.4,`rgba(170,50,60,${(dmg-.15)*.45})`);                         /* reddened cheek */
+   if(dmg>.35){const a=clamp((dmg-.35)*1.1,0,.6);ell(fx-3.4,-2.2,4.4,3.6,`rgba(90,30,80,${a})`)}  /* black eye */
+   if(dmg>.5){const a=clamp((dmg-.5)*1.2,0,.55);ell(fx-4,-6.8,4.6,2.6,`rgba(150,60,90,${a})`);ell(4,4,4,3,`rgba(120,40,70,${a*.7})`)} /* swollen brow */
+   if(dmg>.7){ctx.strokeStyle='rgba(140,10,20,.85)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(10.5,7.8);ctx.lineTo(10.2,10.6);ctx.stroke()}}
   /* eye */
   const tired=o.mood==='tired',shut=o.mood==='ko'||o.mood==='hurt'||o.blink,ez2=.8+P.eye*.42,ex=fx-3.4;
   if(shut){ctx.strokeStyle='#2a1b14';ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(ex-2.2,-2);ctx.quadraticCurveTo(ex,-1.2,ex+2,-2.2);ctx.stroke()}
+  else if(o.head<30){ctx.strokeStyle='#2a1b14';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(ex-2.4,-2.4);ctx.quadraticCurveTo(ex,-1.6,ex+2.2,-2.4);ctx.stroke()}
   else{ell(ex,-2.6,2.7*ez2,1.6*ez2,'#f2ece4');ell(ex+.9,-2.6,1.35*ez2,1.4*ez2,P.iris||'#2a1b14');ell(ex+1,-2.6,.6*ez2,.65*ez2,'#0e0806');ell(ex+1.2,-3,.4,.4,'#fff');
     if(P.lid||tired){ctx.fillStyle=shade(skin,.8);ctx.beginPath();ctx.ellipse(ex,-3.5+(tired?.7:0),3*ez2,tired?1.7:1.15,0,Math.PI,0);ctx.fill()}
     if(P.gray>.4)ell(ex,-.6,2.4,.7,'rgba(90,40,30,.18)')}
@@ -969,15 +974,18 @@ function hudFace(F,cx,cy,r,f,S){if(!F.look)return;ctx.save();
   ctx.save();ctx.clip();
   const mood=F.state==='ko'?'ko':(hitK||rock||(S.sub&&S.sub.def===F))?'hurt':F.exh?'tired':(F.state==='attack'&&F.A&&(F.A.special||F.A.kind==='shoot'))?'yell':null;
   const o=fighterLook(F,{mood});o.blink=!mood&&((S.frame+(f>0?0:57))%170)<6;o.t=S.frame;
-  const shake=hitK?Math.sin(S.frame*2.1)*1.6:rock?Math.sin(S.frame*.3)*1.2:0,sc=r/14.5;
-  ctx.translate(cx+shake,cy+r*.12);ctx.scale(sc,sc);
+  const shake=hitK?Math.sin(S.frame*2.1)*1.6:rock?Math.sin(S.frame*.3)*1.2:0,sc=r/16.5;
+  ctx.translate(cx+shake-f*r*.32,cy+r*.06);ctx.scale(sc,sc);
   ctx.fillStyle=o.shirt||shade(o.skinNow,.85);ctx.beginPath();ctx.ellipse(-f*2,24,22,10,0,0,7);ctx.fill();
   capsule({x:-f*1,y:8},{x:-f*1,y:20},8,9,shade(o.look.skin,.9),0);
   drawHead(F,{x:0,y:0},rock?Math.sin(S.frame*.15)*.12:0,f,o);
   ctx.setTransform(ctx.getTransform());ctx.restore();
   if(hitK){ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.fillStyle='rgba(255,40,30,.28)';ctx.fill();ctx.restore()}
   ctx.restore();
-  ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.lineWidth=2;ctx.strokeStyle=hitK?'#ff5a4a':rgba(F.corner,.9);ctx.stroke();ctx.lineWidth=1;ctx.strokeStyle='rgba(255,255,255,.35)';ctx.beginPath();ctx.arc(cx,cy,r-2.5,Math.PI*1.1,Math.PI*1.7);ctx.stroke();ctx.restore()}
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.lineWidth=2;ctx.strokeStyle=hitK?'#ff5a4a':rgba(F.corner,.9);ctx.stroke();ctx.lineWidth=1;ctx.strokeStyle='rgba(255,255,255,.35)';ctx.beginPath();ctx.arc(cx,cy,r-2.5,Math.PI*1.1,Math.PI*1.7);ctx.stroke();ctx.restore();
+  {const h=F.head,st=F.state==='ko'?['KO','#ff3b2e']:rock?['그로기','#ff5a4a']:F.exh?['탈진','#c0c6d0']:h<30?['위험','#ff5a4a']:h<55?['출혈·부음','#ffb02e']:h<80?['타격 누적','#ffd54a']:['멀쩡','#8fe0a6'];
+   ctx.font='800 7.5px "IBM Plex Sans KR",sans-serif';const tw=ctx.measureText(st[0]).width+8;ctx.fillStyle='rgba(8,10,14,.9)';ctx.beginPath();ctx.roundRect(cx-tw/2,cy+r-3,tw,11,5.5);ctx.fill();ctx.strokeStyle=st[1];ctx.lineWidth=1;ctx.stroke();ctx.fillStyle=st[1];ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(st[0],cx,cy+r+2.6)}
+}
 function plate(F,side,S){
   const left=side==='a',pw=Math.min(312,WH/2-62),ph=64,x=left?10:WH-10-pw,y=8,cc=F.corner,R0=14;
   frost(x,y,pw,ph,R0,.55);
