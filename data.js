@@ -34,6 +34,8 @@ const STYLES = {
     ai:{agg:.55,kick:.45,td:.03,clinch:.25,sub:.12,counter:.2,combo:.45}, sp:['flyknee','spinfist']},
   karate:{name:'가라테', off:{pow:-3,spd:7,kick:8,sdef:9,td:-14,tdd:0,clinch:-8,gnp:-10,subO:-14,subD:-6,car:4,chin:-5},
     ai:{agg:.4,kick:.5,td:.04,clinch:.04,sub:.15,counter:.55,combo:.35}, sp:['qmark','spinkick','superman']},
+  taekwondo:{name:'태권도', off:{pow:-4,spd:8,kick:11,sdef:6,td:-16,tdd:-4,clinch:-10,gnp:-10,subO:-16,subD:-8,car:5,chin:-4},
+    ai:{agg:.45,kick:.62,td:.03,clinch:.03,sub:.12,counter:.45,combo:.45}, sp:['tornado','spinkick','qmark']},
   wrestler:{name:'레슬러', off:{pow:-2,spd:-6,kick:-14,sdef:-4,td:10,tdd:10,clinch:6,gnp:7,subO:-6,subD:3,car:8,chin:2},
     ai:{agg:.5,kick:.1,td:.36,clinch:.22,sub:.3,counter:.15,combo:.35}, sp:['slam','overhand']},
   bjj:{name:'주짓수', off:{pow:-8,spd:-6,kick:-12,sdef:-8,td:0,tdd:-4,clinch:0,gnp:0,subO:11,subD:10,car:2,chin:0},
@@ -64,6 +66,7 @@ const SPM = {
   spinkick:{id:'spinkick',name:'스피닝 백킥',anim:'spinkick',target:'body',kick:true,w:14,a:5,r:20,range:126,dmg:19,st:20,kb:14,special:true},
   flyknee:{id:'flyknee',name:'플라잉 니킥',anim:'flyknee',target:'head',w:10,a:6,r:18,range:116,dmg:19,st:20,kb:12,lunge:6,special:true},
   overhand:{id:'overhand',name:'오버핸드 라이트',anim:'overhand',target:'head',w:13,a:4,r:18,range:94,dmg:18,st:18,kb:12,special:true},
+  tornado:{id:'tornado',name:'뒤후려차기',anim:'tornado',target:'head',kick:true,w:15,a:5,r:22,range:130,dmg:20,st:20,kb:14,special:true},
   qmark:{id:'qmark',name:'퀘스천마크 킥',anim:'qmark',target:'head',kick:true,w:14,a:5,r:20,range:122,dmg:17,st:18,kb:12,special:true},
   slam:{id:'slam',name:'파워 슬램',anim:'shoot',kind:'shoot',w:10,a:4,r:20,range:112,st:16,sure:true,special:true},
   pull:{id:'pull',name:'플라잉 트라이앵글',anim:'shoot',kind:'shoot',w:10,a:4,r:20,range:112,st:16,sure:true,special:true}
@@ -175,7 +178,7 @@ const NICKS=['블리츠','스틸','라이노','팬텀','코브라','바이퍼','
 const NAT_W=[['대한민국',3],['미국',5],['브라질',4],['다게스탄',2],['러시아',2],['일본',2],['멕시코',2],['아일랜드',1],['영국',1],['폴란드',1],['중국',1],['태국',1],['나이지리아',1],['카자흐스탄',1],['프랑스',1],['뉴질랜드',1]];
 Object.assign(SKIN,{'영국':['#efcfb4','#e3b896'],'중국':['#e6b892'],'태국':['#a8724c'],'프랑스':['#efcfb4','#8a5a3c'],'캐나다':['#efcfb4'],'호주':['#efcfb4'],'네덜란드':['#f2d2b8']});
 function wpickR(arr,r){const t=arr.reduce((a,x)=>a+x[1],0);let v=r()*t;for(const [k,w] of arr){if((v-=w)<=0)return k}return arr[0][0]}
-const STYLE_KEYS=Object.keys(STYLES);
+const STYLE_KEYS=Object.keys(STYLES).filter(k=>k!=='taekwondo');
 const USED=new Set(RAW.map(x=>x[1]).concat(RAW.map(x=>x[2])));
 function genDivision(cls,have){
   const r=seeded(hash('div_'+cls)),used=USED,out=[];
@@ -210,7 +213,10 @@ for(const C of CLASSES8){const r=seeded(hash('div2_'+C.id));
     const PRE=['블랙 ','레드 ','아이언 ','골든 ','리틀 ','빅 ','사일런트 ','와일드 ','다크 ','킹 ','미스터 ','영 '];tries=0;
     do{nick=(tries>20?PRE[Math.floor(r()*PRE.length)]:'')+NICKS[Math.floor(r()*NICKS.length)];tries++}while(USED.has(nick)&&tries<300);USED.add(nick);
     RAW_ALL.push([C.id,name,nick,nat,STYLE_KEYS[Math.floor(r()*STYLE_KEYS.length)],Math.round(64+r()*24)])}}
+/* taekwondo: Korean kickers and about half of the generated karateka train taekwondo */
+const isTKD=(name,from,style,i)=>name==='김도현'||(i>=RAW.length&&((from==='대한민국'&&(style==='kickboxer'||style==='karate'||style==='allround'))||(style==='karate'&&hash(name)%2===0)));
 const ROSTER = RAW_ALL.map(([cls,name,nick,from,style,ovr],i)=>{
+  if(isTKD(name,from,style,i))style='taekwondo';
   const id = i<RAW.length?cls+'_'+i:'g_'+cls+'_'+hash(name).toString(36);
   const rand = seeded(hash(name));
   const C = CLASSES8.find(c=>c.id===cls);
@@ -249,5 +255,5 @@ const SONGS=[
  {n:'Neon Riot',g:'edm',gn:'일렉트로닉',bpm:128,key:1,d:'관중을 뛰게 만드는 클럽 비트'},
  {n:'Blackout',g:'edm',gn:'일렉트로닉',bpm:134,key:.89,d:'어두운 신스와 강한 킥'},
  {n:'심장박동',g:'edm',gn:'일렉트로닉',bpm:122,key:1.19,d:'밝고 경쾌한 신스 아르페지오'}];
-IC.VER='16';Object.assign(IC,{CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
+IC.VER='17';Object.assign(IC,{CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
 })(window.IC);

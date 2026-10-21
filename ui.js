@@ -1601,7 +1601,8 @@ const LEGD=[
  ['ww','리암 오카포','철의 장막','나이지리아','wrestler',[25,3,0],0,8,'8차 방어 동안 허용한 녹다운 0회'],
  ['mw','한도윤','무쇠주먹','대한민국','brawler',[22,4,0],0,6,'세 번 다운당하고 일어나 3라운드 KO, 역대 최고의 명승부'],
  ['lhw','빅토르 셀린','북극곰','러시아','kickboxer',[23,5,0],1,5,'미들급과 라이트헤비급 벨트를 동시에 허리에 감은 사나이'],
- ['hw','파누 툴라가','섬의 왕','사모아','brawler',[20,4,0],0,4,'통산 18 KO, 헤비급 역사상 가장 무거운 주먹']];
+ ['hw','파누 툴라가','섬의 왕','사모아','brawler',[20,4,0],0,4,'통산 18 KO, 헤비급 역사상 가장 무거운 주먹'],
+ ['fw','문태호','회오리','대한민국','taekwondo',[21,2,0],0,6,'뒤후려차기로만 네 번의 KO, 케이지에 태권도를 새긴 페더급의 발']];
 const LEG=LEGD.map(([cls,name,nick,from,style,rec,extra,def,line],i)=>{const id='leg_'+i;cls=(IC.CLSMAP||{})[cls]||cls;return{id,name,nick,from,style,cls,rec,def,belts:1+extra,line,look:IC.makeLook(id,from,IC.seeded(IC.hash(id+name)))}});
 function plaque(o){return `<div class="plaque${o.gold?' gold':''}"><canvas data-pid="${o.pid}" data-mode="bust"></canvas><div class="pq">
   <div class="eyebrow">${esc(o.tag)}</div><b class="pn">${esc(o.name)}</b><span class="pk">"${esc(o.nick)}" · ${esc(o.from)} · ${clsName(o.cls)} · ${STYLES[o.style]?STYLES[o.style].name:''}</span>

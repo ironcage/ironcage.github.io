@@ -386,7 +386,7 @@ function poseStand(F,O,S){
     switch(an){
       case 'jab':lean+=f*9*e;drop=3*e;break;case 'cross':lean+=f*17*e;drop=5*e;break;case 'hook':lean+=f*11*e;tilt=.16*e;drop=4*e;break;
       case 'upper':lean+=f*5*e;drop=8*Math.max(0,-E*4)+4*e;break;case 'bodyshot':lean+=f*7*e;drop=20*e;tilt=.2*e;break;
-      case 'lowkick':lean-=f*5*e;break;case 'midkick':lean-=f*8*e;break;case 'highkick':case 'qmark':lean-=f*11*e;break;
+      case 'lowkick':lean-=f*5*e;break;case 'midkick':lean-=f*8*e;break;case 'highkick':case 'qmark':lean-=f*11*e;break;case 'tornado':lean-=f*13*e;tilt=.25*e;break;
       case 'superman':lift=24*e;lean+=f*16*e;break;case 'spinfist':lean+=f*8*e;break;case 'spinkick':lean-=f*11*e;break;
       case 'flyknee':lift=30*e;lean+=f*6*e;break;case 'overhand':lean+=f*13*e;tilt=.15*e;break;
       case 'shoot':drop=Math.max(e,F.t<A.w?F.t/A.w*.6:0)*46;lean+=f*drop*.3;tilt=.3*drop/46;break;
@@ -404,6 +404,7 @@ function poseStand(F,O,S){
     if(an==='midkick')back={x:x+f*(-24+e*112),y:GY-e*92};
     if(an==='highkick')back={x:x+f*(-24+e*112),y:GY-e*136};
     if(an==='spinkick'){back={x:x+f*(-24+e*120),y:GY-e*96};kneeF='back'}
+    if(an==='tornado'){back={x:x+f*(-24+e*118),y:GY-e*142};kneeF='back'}
     if(an==='qmark')back={x:x+f*(-24+e*116),y:GY-(F.t<A.w?40:e*142)};
     if(an==='flyknee'){front={x:x+f*(6+e*24),y:GY-lift-e*58};kneeN='up'}
     if(['lowkick','midkick','highkick','qmark'].includes(an)&&e>.2)kneeF='up';
@@ -421,7 +422,7 @@ function poseStand(F,O,S){
       case 'hook':near={x:x+f*(28+e*60)+lean,y:206-e*8};far={x:x+f*14+lean*.5,y:198};if(e>.2)elbN='up';break;
       case 'upper':far={x:x+f*(22+e*44)+lean,y:E<0?250:246-e*40};break;
       case 'bodyshot':far={x:x+f*(16+e*66)+lean,y:214+drop+e*22};break;
-      case 'lowkick':case 'midkick':case 'highkick':case 'spinkick':case 'qmark':near={x:x+f*24,y:214};far={x:x-f*24,y:252};break;
+      case 'lowkick':case 'midkick':case 'highkick':case 'spinkick':case 'qmark':case 'tornado':near={x:x+f*24,y:214};far={x:x-f*24,y:252};break;
       case 'superman':far={x:x+f*(14+e*94)+lean,y:204-lift};near={x:x-f*2,y:226-lift};break;
       case 'spinfist':far={x:x+f*(E<0?-30:10+e*72)+lean,y:206};elbF='up';break;
       case 'overhand':far={x:x+f*(10+e*74)+lean,y:E<=0?176:178+E*30};elbF='up';break;
@@ -461,7 +462,7 @@ function poseStand(F,O,S){
   /* athletic stance: sink the hips so the knees bend */
   const cr=(st==='ko'||an==='shoot'||st==='sprawl'||st==='stuffed')?0:st==='celebrate'?4:9;
   hip.y+=cr;chest.y+=cr;near.y+=cr;far.y+=cr;
-  if(['lowkick','midkick','highkick','spinkick','qmark'].includes(an)){back.y+=cr*.4}
+  if(['lowkick','midkick','highkick','spinkick','qmark','tornado'].includes(an)){back.y+=cr*.4}
   /* living stance: breathing, weight shifting, hands feinting and the head never still */
   const ph=F.side==='a'?0:2.1;
   if(st==='idle'||st==='walk'||st==='block'||st==='stroll'){
@@ -481,11 +482,11 @@ function poseStand(F,O,S){
   /* body mechanics: shoulders turn into punches, hips open on kicks, rear heel lifts on power shots */
   let twist=0,hipTwist=0;
   if(st==='attack'){
-    const tw={jab:-.35,cross:1,hook:-.9,upper:.7,bodyshot:.9,overhand:1.15,superman:1,spinfist:1.2,lowkick:.2,midkick:.4,highkick:.5,spinkick:.6,qmark:.5,flyknee:.3}[an]||0;
+    const tw={jab:-.35,cross:1,hook:-.9,upper:.7,bodyshot:.9,overhand:1.15,superman:1,spinfist:1.2,lowkick:.2,midkick:.4,highkick:.5,spinkick:.6,qmark:.5,tornado:.9,flyknee:.3}[an]||0;
     twist=tw*Math.max(E,-.6);
-    hipTwist={lowkick:1,midkick:1,highkick:1,spinkick:1.2,qmark:1,cross:.45,overhand:.5,hook:-.3}[an]*Math.max(0,E)||0;
+    hipTwist={lowkick:1,midkick:1,highkick:1,spinkick:1.2,qmark:1,tornado:1.3,cross:.45,overhand:.5,hook:-.3}[an]*Math.max(0,E)||0;
     if(['cross','overhand','upper','bodyshot','superman'].includes(an))back={x:back.x+f*4*e,y:back.y-5*e};
-    if(['lowkick','midkick','highkick','spinkick','qmark'].includes(an)){front={x:front.x-f*2*e,y:front.y-2*e};chest.x-=f*3*e}
+    if(['lowkick','midkick','highkick','spinkick','qmark','tornado'].includes(an)){front={x:front.x-f*2*e,y:front.y-2*e};chest.x-=f*3*e}
   }
   if(st==='hit'){const k=F.t!=null?Math.max(0,1-F.t/18):1;tilt-=.25*k;chest.x-=f*4*k}
   /* stance switch: a quick hop where the feet scissor through each other */
@@ -704,12 +705,12 @@ function drawStandingFighter(F,O,S){
   if(F.heart>0){const g=ctx.createRadialGradient(J.chest.x,J.chest.y,10,J.chest.x,J.chest.y,90);g.addColorStop(0,`rgba(255,60,40,${.18+.1*Math.sin(S.frame*.2)})`);g.addColorStop(1,'rgba(255,60,40,0)');ctx.fillStyle=g;ctx.fillRect(J.chest.x-90,J.chest.y-90,180,180)}
   const r=drawBody(F,J);
   if(F.state==='attack'&&F.A&&F.A.kind!=='shoot'&&F.t>=F.A.w-3&&F.t<=F.A.w+F.A.a+4){
-    const an=F.A.anim,tip=['lowkick','midkick','highkick','spinkick','qmark'].includes(an)?r.footF:an==='flyknee'?J.nearFoot:['jab','hook'].includes(an)?r.handN:r.handF;
+    const an=F.A.anim,tip=['lowkick','midkick','highkick','spinkick','qmark','tornado'].includes(an)?r.footF:an==='flyknee'?J.nearFoot:['jab','hook'].includes(an)?r.handN:r.handF;
     F._trail=(F._trail&&F._trail.k===F.A?F._trail:{k:F.A,p:[]});F._trail.p.push({x:tip.x,y:tip.y});if(F._trail.p.length>8)F._trail.p.shift();
     const P=F._trail.p;ctx.lineCap='round';for(let i=1;i<P.length;i++){ctx.strokeStyle=`rgba(255,250,240,${i/P.length*.62})`;ctx.lineWidth=3+i*2.6;ctx.beginPath();ctx.moveTo(P[i-1].x,P[i-1].y);ctx.lineTo(P[i].x,P[i].y);ctx.stroke()}
   }else F._trail=null;
   if(F.A&&F.A.special&&F.t>=F.A.w-2&&F.t<=F.A.w+F.A.a+3){
-    const tip=['spinkick','qmark'].includes(F.A.anim)?r.footF:F.A.anim==='flyknee'?J.nearFoot:r.handF;
+    const tip=['spinkick','qmark','tornado'].includes(F.A.anim)?r.footF:F.A.anim==='flyknee'?J.nearFoot:r.handF;
     ctx.strokeStyle='rgba(255,215,94,.6)';ctx.lineWidth=6;ctx.lineCap='round';ctx.beginPath();ctx.arc(tip.x-F.f*32,tip.y+10,36,F.f>0?-1.2:Math.PI-.6,F.f>0?.6:Math.PI+1.2);ctx.stroke();
   }
   ctx.restore();
@@ -1035,7 +1036,7 @@ function hud(S){
   }
 }
 /* walkout: spotlight, haze, broadcast name graphics and the announcer's lines */
-const STYLE_LINE={kickboxer:'긴 다리로 거리를 지배하는 킥 스페셜리스트',boxer:'날카로운 손기술과 카운터의 장인',muaythai:'팔꿈치와 니킥, 클린치에서 가장 위험한 남자',karate:'번개 같은 출입과 예측 불가한 킥',wrestler:'한 번 잡으면 놓지 않는 레슬링 머신',bjj:'바닥으로 가는 순간 끝나는 서브미션 사냥꾼',sambo:'던지고 누르고 꺾는 삼보의 압박',brawler:'모든 주먹에 KO를 담는 난타전의 왕',allround:'어디서 싸워도 약점이 없는 완성형'};
+const STYLE_LINE={taekwondo:'눈으로 쫓을 수 없는 발, 뒤후려차기 한 방이 있는 태권 파이터',kickboxer:'긴 다리로 거리를 지배하는 킥 스페셜리스트',boxer:'날카로운 손기술과 카운터의 장인',muaythai:'팔꿈치와 니킥, 클린치에서 가장 위험한 남자',karate:'번개 같은 출입과 예측 불가한 킥',wrestler:'한 번 잡으면 놓지 않는 레슬링 머신',bjj:'바닥으로 가는 순간 끝나는 서브미션 사냥꾼',sambo:'던지고 누르고 꺾는 삼보의 압박',brawler:'모든 주먹에 KO를 담는 난타전의 왕',allround:'어디서 싸워도 약점이 없는 완성형'};
 function introPanel(S,F,t,songK){
   const d=F.d,p=clamp((t-35)/18,0,1);if(p<=0)return;const e=1-Math.pow(1-p,3);
   const w=Math.min(WH*.44,300),h=Math.min(HH-24,268),x=lerp(WH+10,WH-w-12,e),y=12,col=F.corner;

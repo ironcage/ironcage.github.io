@@ -79,7 +79,7 @@ const Haptic={el:null,last:0,
     const P=Array.isArray(p)?p:[p];let t=0;for(let k=0;k<P.length&&k<6;k+=2){const d=t;setTimeout(()=>this.tap(),d);if(P[k]>=60)setTimeout(()=>this.tap(),d+45);t+=P[k]+(P[k+1]||0)}}};
 IC.Haptic=Haptic;
 function buzz(p){if(!S||S.demo||S.spec)return;Haptic.play(p)}
-const STRONG=new Set([/* escapes (get up, re-guard) stay allowed when exhausted */'cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','lowblow','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub']);
+const STRONG=new Set([/* escapes (get up, re-guard) stay allowed when exhausted */'cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','tornado','lowblow','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub']);
 function exhausted(F,id){if(!F.exh||!STRONG.has(id))return false;if(F===S.p)floatText(F.x,166,'탈진! 강공격·그랩 불가','#8e97a6');return true}
 function upExh(F){if(!F.exh&&F.st<=1&&S.mode==='fight'){F.exh=true;floatText(F.x,150+zy(F),'탈진','#c0c6d0');if(Math.random()<.6)say(`${F.nick}, 완전히 지쳤습니다! 숨을 헐떡입니다`);sweat(F.x,200,10)}
   else if(F.exh&&F.st>=15){F.exh=false;if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
@@ -438,7 +438,7 @@ function aiStand(E,P){
   /* desperate late in the fight when behind on the cards */
   const late=S.round===S.rounds&&S.timer<S.roundFrames*.4&&(S.cardLead||0)<0,agg=clamp(T.agg*(E.st<35?.55:1)+(late?.3:0),0,.95);
   /* preferred range by style */
-  const pref={kickboxer:116,karate:120,muaythai:96,boxer:84,wrestler:100,sambo:96,bjj:96,brawler:80,allround:100}[sty]||100;
+  const pref={kickboxer:116,karate:120,taekwondo:126,muaythai:96,boxer:84,wrestler:100,sambo:96,bjj:96,brawler:80,allround:100}[sty]||100;
   if(Math.random()<.08*agg&&dist<120){E.slot='feint';E.moveDir=0;return}
   if((pat.head||0)>3&&dist<96&&Math.random()<.25*T.counter){E.slot=pick(['slip','jab']);return}
   if((pat.kick||0)>3&&dist<=110&&Math.random()<.18+T.td*.4){E.slot='td';E.moveDir=0;return}
@@ -824,7 +824,7 @@ function startRound(){
 /* ---------- walkout & announcer ---------- */
 const WK=[{k:'blueAisle',d:175},{k:'blueIn',d:55},{k:'blueAnn',d:130},{k:'redAisle',d:175},{k:'redIn',d:55},{k:'redAnn',d:130},{k:'tape',d:230},{k:'faceoff',d:175},{k:'touch',d:40},{k:'back',d:40},{k:'coach',d:130}];
 /* signature entrance performance per fighting style */
-const PERF={boxer:'shadow',kickboxer:'kicks',karate:'kicks',muaythai:'waikru',wrestler:'chest',sambo:'chest',bjj:'bow',brawler:'taunt',allround:'taunt'};
+const PERF={boxer:'shadow',kickboxer:'kicks',karate:'kicks',taekwondo:'kicks',muaythai:'waikru',wrestler:'chest',sambo:'chest',bjj:'bow',brawler:'taunt',allround:'taunt'};
 const PERFN={shadow:'섀도복싱',kicks:'허공에 하이킥',waikru:'와이크루 의식',chest:'가슴을 두드리며 포효',bow:'옥타곤에 절',taunt:'관중 도발'};
 const songOf=F=>{const S0=IC.SONGS,k=IC.songPick?IC.songPick(F.d):null;return S0[k!=null&&S0[k]?k:IC.hash((F.d.id||'')+F.name)%S0.length]};
 const AISLE0=-300,AISLE1=600;
