@@ -19,7 +19,7 @@ const DIFF={
 const POSN=['풀 가드','하프 가드','사이드 컨트롤','마운트','백 마운트','프론트 헤드락'];
 const GNP=[.8,1,1.15,1.5,1.35,1.05];
 const GA={
-  g_pound:{name:'파운딩',w:7,r:9,st:3,dmg:5,target:'head'},
+  g_pound:{name:'파운딩',w:9,r:11,st:4,dmg:4.4,target:'head'},
   g_elbow:{name:'엘보',w:12,r:15,st:6,dmg:8,target:'head'},
   g_bodyp:{name:'바디 파운딩',w:8,r:10,st:4,dmg:6,target:'body'},
   g_hammer:{name:'해머피스트',w:9,r:11,st:4,dmg:6.5,target:'head'},
@@ -591,9 +591,18 @@ function startG(F,id){
 }
 function gStrike(F,O,A,top){
   const gr=S.gr;
-  const blocked=O.blockHeld;
+  /* spam control: back-to-back ground strikes lose power, cost more gas, and the bottom man learns to cover and tie up the arms */
+  const now=S.frame;F.gChain=(now-(F.gLast||-999)<44)?(F.gChain||0)+1:0;F.gLast=now;const ch=F.gChain;
+  let blocked=O.blockHeld||(O!==S.p&&ch>=2&&Math.random()<Math.min(.65,.18*ch));
+  if(ch>=2)F.st=Math.max(0,F.st-ch*1.1);
+  if(top&&ch>=4&&Math.random()<Math.min(.4,.08*ch)){F.gChain=0;
+    if(gr.pos>=1&&gr.pos<=3){gr.prevPos=gr.pos;gr.trans=16;gr.pos=Math.max(0,gr.pos-1);floatText(gr.cx,190,'팔 잡고 리가드','#9fe0a8');say(`${O.nick}, 막 휘두르는 팔을 잡아채고 ${POSN[gr.pos]}로 되돌립니다!`)}
+    else{floatText(gr.cx,190,'팔 묶임','#9fe0a8');say(`${O.nick}, 팔을 묶어 파운딩을 끊습니다`)}
+    return}
   if(A.wild&&!blocked)wildHit(F,O,'soccer');
-  const dmg=GDMG*A.dmg*(top?GNP[gr.pos]:1)*(.55+sv(F,top?'gnp':'pow')*.0075)*F.mul*F.cp.pow*(blocked?(top?.4:.5):1)*(O.rocked?1.4:1)*(.6+.4*F.stMul)*rnd(.88,1.12);
+  const spam=Math.max(.3,1-.14*ch);
+  const dmg=GDMG*A.dmg*(top?GNP[gr.pos]:1)*(.55+sv(F,top?'gnp':'pow')*.0075)*F.mul*F.cp.pow*(blocked?(top?.4:.5):1)*(O.rocked?1.2:1)*(.6+.4*F.stMul)*spam*rnd(.88,1.12);
+  if(ch>=3&&F===S.p&&ch%3===0)floatText(F.x,150,'단조로운 파운딩 — 위력 감소','#8e97a6');
   gr.idle=0;
   const h=gHead(O);h.y+=(gr.cz||0)*ZY;ev(F,'land:'+F.g.act);
   if(deal(F,O,dmg,A.target,{name:A.name,src:'ground',blocked:false,x:h.x,y:A.target==='body'?GY-30:h.y}))return;
