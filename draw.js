@@ -1005,13 +1005,19 @@ function plate(F,side,S){
   /* row 2: health with damage ghost */
   F._gh=F._gh==null?F.head:Math.max(F.head,F._gh-.25);
   const hc=F.head<30?'#ffb02e':F.head<55?'#ffd54a':(left?'#4f8ff7':'#f05545');
-  lux(ix,y+29,iw,11,F.head/100,F._gh/100,hc,shade(hc,.78),!left,10);
+  lux(left?ix:ix+30,y+29,iw-30,11,F.head/100,F._gh/100,hc,shade(hc,.78),!left,10);
   /* row 3: stamina | left leg | right leg — one baseline, equal gaps */
   const sw=iw*.46,gw=(iw-sw-16)/2,sc=F.exh?'#8e97a6':F.st<25?'#c0c6d0':'#f2c043';
   const cols=left?[[ix,sw,'STA',F.st/100,sc],[ix+sw+8,gw,'L',null],[ix+sw+16+gw,gw,'R',null]]:[[ix,gw,'L',null],[ix+gw+8,gw,'R',null],[ix+2*gw+16,sw,'STA',F.st/100,sc]];
-  for(const [cx0,w,lab,v,c] of cols){if(lab==='STA'){miniBar(cx0,y+45,w,lab,v,c,!left);continue}
-    const lv=clamp((F['lg'+lab]??F.legs)/100,0,1),lc=lv<.3?'#ff5a4a':lv<.6?'#e8b33a':'#4cc38a';miniBar(cx0,y+45,w,lab,lv,lc,!left);
-    if(lv<.3&&Math.floor(S.frame/10)%2){ctx.strokeStyle='rgba(255,90,74,.9)';ctx.lineWidth=1;ctx.strokeRect(cx0-1.5,y+43.5,w+3,9)}}
+  /* stamina bar + a body map: head, body, left leg, right leg coloured by damage (green → yellow → orange → red) */
+  {const sw2=iw-30,sx=left?ix:ix+30;miniBar(sx,y+45,sw2,'STA',F.st/100,sc,!left);
+   const bx=left?ix+iw-11:ix+11,by=y+30,col=v=>{v=clamp(v,0,100);return v>75?'#4cc38a':v>50?'#d6d040':v>28?'#f08a2e':'#ff4a3a'},blink=p=>p<28&&Math.floor(S.frame/10)%2;
+   const part=(v,fn)=>{ctx.fillStyle=blink(v)?'#ffffff':col(v);ctx.globalAlpha=.95;fn();ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle='rgba(0,0,0,.55)';ctx.lineWidth=.8;ctx.stroke()};
+   part(F.head,()=>{ctx.beginPath();ctx.arc(bx,by-1.5,4,0,7)});
+   part(F.body,()=>{ctx.beginPath();ctx.roundRect(bx-5,by+3.5,10,10,2.5)});
+   part(F.lgL??F.legs,()=>{ctx.beginPath();ctx.roundRect(bx-5,by+14.5,4.2,9,1.6)});
+   part(F.lgR??F.legs,()=>{ctx.beginPath();ctx.roundRect(bx+.8,by+14.5,4.2,9,1.6)});
+   ctx.font=`700 6.5px ${NUM},sans-serif`;ctx.fillStyle='rgba(214,220,230,.55)';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('L',bx-2.9,by+27.5);ctx.fillText('R',bx+2.9,by+27.5)}
   /* row 4 (outside the plate, tucked under): special diamonds + status tags */
   const ry=y+ph+9;for(let i=0;i<5;i++){const fill=clamp(F.meter/20-i,0,1),px=left?x+16+i*13:x+pw-16-i*13;
     ctx.save();ctx.translate(px,ry);ctx.rotate(Math.PI/4);ctx.fillStyle='rgba(10,13,19,.7)';ctx.fillRect(-4,-4,8,8);ctx.strokeStyle='rgba(220,226,236,.35)';ctx.lineWidth=.8;ctx.strokeRect(-4,-4,8,8);

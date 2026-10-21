@@ -261,6 +261,7 @@ function gimStep(){const g=S.gim;
     if(Math.floor(S.arena.r/12)!==Math.floor(nr/12)){if(nr<r0-4&&Math.random()<.5)say('철창이 조여 옵니다! 도망칠 곳이 줄어들어요!');sfx('slam');S.shake=Math.max(S.shake,4)}S.arena.r=nr}
   if(g==='siren'&&!S.sirenOn&&S.round===S.rounds&&S.timer<=S.roundFrames*.5){S.sirenOn=1;S.timer=Math.min(S.timer,20*60);banner('경찰 출동!','#4aa0ff',60);say('사이렌 소리! 20초 안에 끝내야 합니다! 판정까지 가면 둘 다 도망쳐요!');sfx('bell')}}
 function startStrike(F,A0){
+  {const O=F===S.a?S.b:S.a;if(O&&!S.gr&&!S.cl){const dz=(O.z||0)-(F.z||0);F.z=(F.z||0)+clamp(dz,-34,34)*.85}}
   /* 항구 창고: wet concrete — kicks can slip out from under you */
   if(S.gim==='rain'&&A0.kick&&S.mode==='fight'&&!S.gr&&!S.cl&&Math.random()<.14){F.state='hit';F.stun=34;F.A=null;F.vx=-F.f*2;F.st=Math.max(0,F.st-6);floatText(F.x,170+zy(F),'미끄러짐!','#7fc8ff');sfx('slam');say(`${F.nick}, 젖은 바닥에 킥을 차다 미끄러집니다!`);return true}
   const sm=(1.15-sv(F,'spd')*.003)*(F.st<25?1.2:1)*(F.rocked?1.15:1)*(F.exh?1.18:1)/F.cp.spd;
@@ -308,7 +309,8 @@ function tryHit(F,O){
   if(dist>A.range)return;
   if(A.id==='lowkick'&&dist<64&&Math.random()<.035&&!S.wild){F.hitDone=true;foul(F,O,'groin');return}
   if(A.id==='jab'&&O.state==='attack'&&Math.random()<.012&&!S.wild){F.hitDone=true;foul(F,O,'poke');return}
-  if(dz>lane){if(F.t===A.w+A.a){F.hitDone=true;floatText(O.x,150+zy(O),'사이드 스텝','#9fe0a8');ev(O,'sidestep');if(O===S.e&&Math.random()<.4)say(`${O.nick}, 옆으로 빠지며 피합니다`)}return}
+  const dodge=((O.sideT>0||O===S.p)&&O.moveZ)||O.state==='slip';
+  if(dz>(dodge?lane:lane*2.6)){if(F.t===A.w+A.a){F.hitDone=true;floatText(O.x,150+zy(O),'사이드 스텝','#9fe0a8');ev(O,'sidestep');if(O===S.e&&Math.random()<.4)say(`${O.nick}, 옆으로 빠지며 피합니다`)}return}
   F.hitDone=true;
   const hy=(A.target==='head'?212:A.target==='body'?262:352)+zy(O),hx=O.x-F.f*14;
   if(A.target==='head'&&O.state==='slip'&&O.t>=2&&O.t<=13){O.ctrW=26;F.st=Math.max(0,F.st-3);floatText(O.x,160,'회피','#9fe0a8');ev(O,'slip');if(O===S.e&&Math.random()<.5)say(`${O.nick}, 고개만 살짝 빼서 피합니다`);return}
