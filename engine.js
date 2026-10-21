@@ -82,7 +82,7 @@ function buzz(p){if(!S||S.demo||S.spec)return;Haptic.play(p)}
 const STRONG=new Set([/* escapes (get up, re-guard) stay allowed when exhausted */'cross','hook','upper','midkick','highkick','special','td','clinch','overhand','superman','spinfist','spinkick','flyknee','qmark','tornado','lowblow','headbutt','c_elbow','c_kneeH','c_trip','c_cage','c_rev','c_hbutt','g_elbow','g_power','g_pass','g_back','g_sub','g_soccer','b_sweep','b_sub']);
 function exhausted(F,id){return false}
 function upExh(F){if(F.exh)F.exhT=(F.exhT||0)+1;if(!F.exh&&F.st<=1&&S.mode==='fight'){F.exh=true;F.exhT=0;floatText(F.x,150+zy(F),'탈진','#c0c6d0');if(Math.random()<.6)say(`${F.nick}, 완전히 지쳤습니다! 숨을 헐떡입니다`);sweat(F.x,200,10)}
-  else if(F.exh&&(F.st>=4||F.exhT>=15)){F.exh=false;F.st=Math.max(F.st,10);if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
+  else if(F.exh&&(F.st>=6||F.exhT>=36)){F.exh=false;F.st=Math.max(F.st,10);if(F===S.p)floatText(F.x,150+zy(F),'호흡 회복','#9fe0a8')}}
 const ZY=.35,LANE=28,zy=F=>(F.z||0)*ZY;
 /* dynamic arena scaling: the higher the stakes, the bigger the octagon, the denser the crowd and the louder the roar */
 const ARENAS=[
