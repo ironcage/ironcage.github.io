@@ -2272,7 +2272,8 @@ function beltScene(c,cw,ch,t,d,cls,o={}){
   if(lift){pyro(90,t,B.lift);pyro(710,t,B.lift+6);if(t-B.lift<16){ctx.fillStyle=`rgba(255,240,200,${.6*(1-(t-B.lift)/16)})`;ctx.fillRect(-60,-60,920,VHw+120)}}
   if(!CONF){CONF=[];for(let i=0;i<160;i++)CONF.push({x:Math.random()*840-20,y:-Math.random()*500,v:1+Math.random()*2,c:['#ffd75e','#ffffff','#e04a3a','#3d7ff0','#ffd75e'][i%5],a:Math.random()*6})}
   if(t>B.wrap+120){const n=lift?160:60;for(let i=0;i<n;i++){const p=CONF[i],y=((p.y+t*p.v*1.6)%540)-40;ctx.save();ctx.translate(p.x+Math.sin(t*.05+p.a)*12,y);ctx.rotate(t*.1+p.a);ctx.scale(1,Math.cos(t*.15+p.a));ctx.fillStyle=p.c;ctx.fillRect(-3,-1.5,6,3);ctx.restore()}}
-  ctx.restore();ctx.save();ctx.translate(0,oy);
+  /* captions: on wide phones (screen shorter than the 450 stage) shrink the caption layer to fit instead of cutting its bottom off */
+  ctx.restore();ctx.save();{const fs=Math.min(1,VHw/450);if(fs<1){ctx.translate(400*(1-fs),0);ctx.scale(fs,fs)}else ctx.translate(0,oy)}
   // ---- captions ----
   ctx.textAlign='center';ctx.textBaseline='middle';
   if(t<B.close){
@@ -2281,10 +2282,10 @@ function beltScene(c,cw,ch,t,d,cls,o={}){
     ctx.font='700 16px "IBM Plex Sans KR",sans-serif';ctx.fillStyle='#fff';const s=lines[li],n=Math.min(s.length,Math.floor((t-(li?50:0))*.9));ctx.fillText(s.slice(0,n),400,404);ctx.globalAlpha=1;
     if(t>=B.reveal){const k=ez((t-B.reveal)/16),big=o.kc?(o.def?'STILL THE KING!':'KING OF THE CAGE!'):o.def?'AND STILL!':'AND NEW!';ctx.save();ctx.translate(400,82);ctx.scale(1.6-.6*k,1.6-.6*k);ctx.globalAlpha=k;ctx.font='54px "Black Han Sans",sans-serif';ctx.lineWidth=9;ctx.strokeStyle='rgba(0,0,0,.75)';ctx.strokeText(big,0,0);ctx.fillStyle='#ffd75e';ctx.fillText(big,0,0);ctx.restore();
       ctx.globalAlpha=k;ctx.font='700 17px "IBM Plex Sans KR",sans-serif';ctx.fillStyle='#fff';ctx.lineWidth=5;ctx.strokeStyle='rgba(0,0,0,.6)';const tx=`${o.def?'여전히 ':''}${o.kc?'킹 오브 케이지':cls+' 챔피언'} · "${d.nick}" ${d.name}`;ctx.strokeText(tx,400,124);ctx.fillText(tx,400,124);ctx.globalAlpha=1;
-      if(t-B.reveal<10){ctx.fillStyle=`rgba(255,255,255,${.7*(1-(t-B.reveal)/10)})`;ctx.fillRect(0,-oy,800,VHw)}}
+      if(t-B.reveal<10){ctx.fillStyle=`rgba(255,255,255,${.7*(1-(t-B.reveal)/10)})`;ctx.fillRect(-400,-300,1600,VHw+600)}}
   }else if(t<B.lift){const a=ez((t-B.wrap)/20);ctx.globalAlpha=a;ctx.fillStyle='rgba(5,7,10,.78)';ctx.fillRect(140,382,520,44);ctx.fillStyle='#e8b33a';ctx.fillRect(140,382,4,44);
     ctx.font='700 15px "IBM Plex Sans KR",sans-serif';ctx.fillStyle='#fff';ctx.fillText(t<B.wrap+120?'IRON CAGE 대표가 벨트를 들고 옥타곤에 오릅니다':'챔피언의 허리에 벨트가 감깁니다',400,404);ctx.globalAlpha=1;
-    const fa=clamp(1-(t-B.wrap)/14,0,1);if(fa>0){ctx.fillStyle=`rgba(255,255,255,${fa})`;ctx.fillRect(0,-oy,800,VHw)}}
+    const fa=clamp(1-(t-B.wrap)/14,0,1);if(fa>0){ctx.fillStyle=`rgba(255,255,255,${fa})`;ctx.fillRect(-400,-300,1600,VHw+600)}}
   else{const k=ez((t-B.lift-40)/30);ctx.globalAlpha=k;
     ctx.textAlign='left';ctx.font='38px "Black Han Sans",sans-serif';ctx.lineWidth=8;ctx.strokeStyle='rgba(0,0,0,.7)';const big=o.def?`${o.def}차 방어 성공`:o.kc?'킹 오브 케이지 등극':'새 챔피언 탄생',bx=lerp(820,o.kc?400:470,k);ctx.strokeText(big,bx,150);ctx.fillStyle='#ffd75e';ctx.fillText(big,bx,150);ctx.font='700 13px "IBM Plex Sans KR",sans-serif';ctx.fillStyle='#fff';ctx.fillText(o.kc?'체급을 넘어선 최강자':`${cls} · IRON CAGE`,bx+2,182);
     const lx=lerp(-420,140,k);ctx.fillStyle='rgba(5,7,10,.85)';ctx.fillRect(lx,368,520,62);ctx.fillStyle='#e8b33a';ctx.fillRect(lx,368,520,4);
