@@ -196,21 +196,22 @@ function faceOf(F){const d=F.d,key=(d&&(d.id||d.name))||JSON.stringify(F.look||{
 const FACES={},FSKIN={};
 /* average cheek colour of a face photo, so the drawn body matches the face */
 function faceSkinOf(F){const im=faceImgOf(F);if(!im)return null;const k=im.src;if(FSKIN[k]!==undefined)return FSKIN[k];
-  try{const c=document.createElement('canvas');c.width=c.height=16;const x=c.getContext('2d');x.drawImage(im,0,0,16,16);const d=x.getImageData(4,6,8,5).data;let r=0,g=0,b=0,n=0;
+  try{const c=document.createElement('canvas');c.width=c.height=16;const x=c.getContext('2d');x.drawImage(im,0,0,16,16);const d=x.getImageData(5,6,6,4).data;let r=0,g=0,b=0,n=0;
     for(let i=0;i<d.length;i+=4){const l=(d[i]+d[i+1]+d[i+2])/3;if(d[i+3]>200&&l>40&&l<235){r+=d[i];g+=d[i+1];b+=d[i+2];n++}}
     FSKIN[k]=n?'#'+[r,g,b].map(v=>Math.round(Math.min(255,v/n*1.15)).toString(16).padStart(2,'0')).join(''):null}catch(e){FSKIN[k]=null}return FSKIN[k]}
 function lookOf(F){const L=F.look||{};const fs=faceSkinOf(F);return fs&&fs!==L.skin?Object.assign({},L,{skin:fs}):L}
 function faceImgOf(F){const d=F&&F.d;if(!d||!d.id||!IC.facePath)return null;const src=IC.facePath(d);if(!src)return null;let im=FACES[src];if(!im){im=FACES[src]=new Image();im.onload=()=>{clearTimeout(faceImgOf.t);faceImgOf.t=setTimeout(()=>{try{IC.onFaceLoad&&IC.onFaceLoad()}catch(e){}},80)};im.src=src}return im.complete&&im.naturalWidth?im:null}
-function faceOverlay(im,cx,cy,rx,ry,dm,cuts){ctx.save();ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.clip();
-  ctx.drawImage(im,cx-rx*1.08,cy-ry*1.02,rx*2.16,ry*2.12);
-  if(dm>.12){ctx.globalCompositeOperation='multiply';ctx.fillStyle=`rgba(200,90,100,${Math.min(.55,(dm-.12)*.7)})`;ctx.fillRect(cx-rx,cy-ry,rx*2,ry*2);ctx.globalCompositeOperation='source-over';
-    ctx.fillStyle=`rgba(90,20,60,${Math.min(.5,(dm-.3)*.8)})`;if(dm>.3){ctx.beginPath();ctx.ellipse(cx-rx*.38,cy-ry*.08,rx*.24,ry*.13,0,0,7);ctx.ellipse(cx+rx*.38,cy-ry*.08,rx*.24,ry*.13,0,0,7);ctx.fill()}}
-  const n=Math.min(5,cuts|0);ctx.strokeStyle='rgba(150,8,18,.9)';ctx.lineCap='round';for(let i=0;i<n;i++){const bx=cx+rx*(-.3+i*.18),by=cy-ry*.42;ctx.lineWidth=rx*.09;ctx.beginPath();ctx.moveTo(bx,by);ctx.quadraticCurveTo(bx+rx*.05,by+ry*.4,bx-rx*.02,by+ry*(.55+i*.12));ctx.stroke()}
-  if(dm>.45){ctx.strokeStyle='rgba(140,8,18,.85)';ctx.lineWidth=rx*.08;ctx.beginPath();ctx.moveTo(cx-rx*.04,cy+ry*.28);ctx.lineTo(cx-rx*.06,cy+ry*.62);ctx.stroke()}
-  const g=ctx.createRadialGradient(cx,cy,rx*.6,cx,cy,rx*1.05);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.35)');ctx.fillStyle=g;ctx.fillRect(cx-rx,cy-ry,rx*2,ry*2);
+/* photo head (hair, ears, neck) in place of the drawn head; face centre at (cx,cy), fw = face width */
+function photoHead(im,cx,cy,fw,dm,cuts,sq=1){const k=fw/94,W=160*k,H=200*k;ctx.save();ctx.translate(cx,cy);ctx.scale(sq,1);
+  ctx.drawImage(im,-W/2,-90*k,W,H);
+  const u=fw/2;/* bruises, swelling and blood painted on top of the photo */
+  if(dm>.15){ctx.globalCompositeOperation='multiply';ctx.fillStyle=`rgba(205,95,105,${Math.min(.45,(dm-.15)*.6)})`;ctx.beginPath();ctx.ellipse(-u*.42,u*.18,u*.32,u*.22,0,0,7);ctx.ellipse(u*.42,u*.18,u*.32,u*.22,0,0,7);ctx.fill();ctx.globalCompositeOperation='source-over'}
+  if(dm>.35){const a=Math.min(.55,(dm-.35)*1.1);ctx.fillStyle=`rgba(80,25,70,${a})`;ctx.beginPath();ctx.ellipse(u*.38,-u*.12,u*.26,u*.17,0,0,7);ctx.fill();if(dm>.55){ctx.beginPath();ctx.ellipse(-u*.38,-u*.12,u*.24,u*.16,0,0,7);ctx.fill()}}
+  const n=Math.min(5,cuts|0);ctx.strokeStyle='rgba(150,8,18,.9)';ctx.lineCap='round';for(let i=0;i<n;i++){const bx=u*(-.35+i*.2),by=-u*.62;ctx.lineWidth=u*.07;ctx.beginPath();ctx.moveTo(bx,by);ctx.quadraticCurveTo(bx+u*.04,by+u*.45,bx-u*.02,by+u*(.7+i*.12));ctx.stroke()}
+  if(dm>.45){ctx.strokeStyle='rgba(140,8,18,.85)';ctx.lineWidth=u*.07;ctx.beginPath();ctx.moveTo(-u*.04,u*.3);ctx.lineTo(-u*.06,u*.7);ctx.stroke()}
   ctx.restore()}
-function drawHead(F,c,ang,f,o){drawHead0(F,c,ang,f,o);const im=faceImgOf(F);if(!im)return;
-  const P=o.face||{hs:1},dm=clamp((100-(F.head==null?100:F.head))/100,0,1);ctx.save();ctx.translate(c.x,c.y);ctx.rotate(ang);ctx.scale(f,1);ctx.scale(P.hs||1,P.hs||1);faceOverlay(im,2.2,-.5,12.6,14.6,dm,F.head<85?F.cuts:0);ctx.restore()}
+function drawHead(F,c,ang,f,o){const im=faceImgOf(F);if(!im)return drawHead0(F,c,ang,f,o);
+  const P=o.face||{hs:1},dm=clamp((100-(F.head==null?100:F.head))/100,0,1);ctx.save();ctx.translate(c.x,c.y);ctx.rotate(ang);ctx.scale(P.hs||1,P.hs||1);photoHead(im,f*1.6,.5,24,dm,F.head<85?F.cuts:0,.9);ctx.restore()}
 function drawHead0(F,c,ang,f,o){
   const P=o.face||{shape:'round',hs:1,jaw:0,chin:0,nose:'straight',brow:.4,browA:0,eye:.5,iris:'#2a1b14',mouth:'flat',guard:'#1f6fe0',ear:1,beardS:'full',hairV:(o.look&&o.look.hairStyle)||'crop',gray:0,cheek:.5,skinK:1};
   const L=P.hairTone?Object.assign({},o.look,{hair:P.hairTone}):o.look,skin=P.skinK!==1?shade(o.skinNow,P.skinK):o.skinNow,j=P.jaw,ch=P.chin,hv=P.hairV,hair=L.hair;
@@ -1271,6 +1272,7 @@ function drawFront(F,t,o2={}){
   if(shirt){ctx.fillStyle=shade(shirt,.75);ctx.beginPath();ctx.ellipse(0,chestY-6,22,12,0,0,7);ctx.fill()}
   /* neck + head (front) */
   capsule({x:0,y:chestY+(shirt?-4:4)},{x:0,y:chestY-14},10,9,shade(skin,.9),0);if(shirt){ctx.fillStyle=shade(shirt,.6);ctx.beginPath();ctx.ellipse(0,chestY-1,15,6,0,0,7);ctx.fill();ctx.fillStyle=shirt;ctx.beginPath();ctx.ellipse(0,chestY+2,17,5,0,0,Math.PI);ctx.fill()}
+  {const im=faceImgOf(F);if(im){const HD=o2.dmg||{head:100,cuts:0};photoHead(im,0,chestY-28,27*(P.hs||1),clamp((100-HD.head)/100,0,1),HD.head<85?HD.cuts:0);ctx.restore();return}}
   const SHF={round:[1.06,.97],long:[.9,1.08],square:[1.04,1],wide:[1.13,.96],egg:[.94,1.05]}[P.shape]||[1,1],hy=chestY-29,rx=15*SHF[0]*(P.hs||1),ry=18*SHF[1]*(P.hs||1),jw=(P.jaw||0)+(P.shape==='square'?.8:P.shape==='egg'?-.8:0);
   ell(-rx+1,hy+2,3.6,6,skinD);ell(rx-1,hy+2,3.6,6,skinD);if(P.cauli){ell(-rx,hy+2,4.6,6.6,shade(skin,.75));ell(rx,hy+2,4.6,6.6,shade(skin,.75))}
   {const g=ctx.createRadialGradient(-3,hy-6,2,0,hy,22);g.addColorStop(0,shade(skin,1.15));g.addColorStop(.6,skin);g.addColorStop(1,shade(skin,.75));ctx.fillStyle=g;
@@ -1300,7 +1302,6 @@ function drawFront(F,t,o2={}){
    if(bl>.8){ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(-1.5,ey+8.5);ctx.quadraticCurveTo(-1.8,my-1,-1.4,my+1);ctx.stroke()}
    if(bl>2){ctx.fillStyle='rgba(140,8,18,.55)';ctx.beginPath();ctx.ellipse(-1,my+1.5,3,1.4,0,0,7);ctx.fill();ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(-2,my+2.5);ctx.quadraticCurveTo(-2.4,my+6,-1.8,my+9);ctx.stroke()}
    if(bl>3){ctx.fillStyle='rgba(130,6,16,.35)';ctx.beginPath();ctx.ellipse(6,ey+1,6,7,0,0,7);ctx.fill()}}
-  {const im=faceImgOf(F);if(im)faceOverlay(im,0,hy+1,rx*.98,ry*1.02,dm,HD.head<85?HD.cuts:0)}
   if(o2.sweat>.3){ell(-9,hy-ry+8,1.1,.7,`rgba(255,255,255,${o2.sweat*.6})`);ell(10,hy-6,1,.6,`rgba(255,255,255,${o2.sweat*.5})`)}
   /* beard */
   if(P.side&&L.hairStyle!=='bald'){ctx.fillStyle=beardC;ctx.globalAlpha=.7;ctx.fillRect(-rx+.5,hy-6,2.2,9);ctx.fillRect(rx-2.7,hy-6,2.2,9);ctx.globalAlpha=1}
