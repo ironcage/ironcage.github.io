@@ -1,6 +1,6 @@
 /* 아이언 케이지 — 서비스 워커 (오프라인 실행)
    게임 파일을 바꿔 올릴 때는 아래 VERSION 숫자를 하나 올려 주세요. 그래야 폰에 있는 옛 버전이 새 버전으로 바뀝니다. */
-const VERSION = 'iron-cage-pwa-v55';
+const VERSION = 'iron-cage-pwa-v56';
 const FONT_CACHE = 'iron-cage-fonts';
 const APP_FILES = [
   './',
@@ -113,11 +113,17 @@ self.addEventListener('fetch', event => {
   // 새 버전은 sw.js의 VERSION을 바꿔 올리면 다음 실행 때 통째로 교체됩니다.
   // 온라인이면 항상 최신 파일(네트워크 우선), 오프라인이면 저장해 둔 파일 사용
   const key = req.mode === 'navigate' ? './index.html' : req;
-  // 코드 파일(html/js/json)은 GitHub Pages CDN 캐시(최대 10분)를 건너뛰도록 주소에 시각을 붙여 항상 방금 올린 파일을 받음
-  const code = req.mode === 'navigate' || /\.(js|json|html|css)$/.test(url.pathname) || url.pathname.endsWith('/');
-  const netReq = code ? new Request(url.href + (url.search ? '&' : '?') + '_=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' }) : req;
-  event.respondWith(fetch(netReq, { cache: 'no-store' }).then(res => {
-    if (res && res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(key, copy)); }
+  // 페이지 이동(앱 시작): 브라우저 기본 요청을 그대로 보내고, 실패(오프라인)할 때만 저장본 사용 — 흰 화면 방지
+  if (req.mode === 'navigate') {
+    event.respondWith(fetch(req).then(res => {
+      if (res && res.ok && !res.redirected) { const copy = res.clone(); caches.open(VERSION).then(c => c.put('./index.html', copy)).catch(() => {}); }
+      return res;
+    }).catch(() => caches.match('./index.html').then(hit => hit || Response.error())));
+    return;
+  }
+  // 나머지 게임 파일: 온라인이면 항상 최신(네트워크 우선), 오프라인이면 저장해 둔 파일
+  event.respondWith(fetch(req, { cache: 'no-cache' }).then(res => {
+    if (res && res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)).catch(() => {}); }
     return res;
-  }).catch(() => caches.match(key, { ignoreSearch: true }).then(hit => hit || caches.match('./index.html'))));
+  }).catch(() => caches.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req))));
 });

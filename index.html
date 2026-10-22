@@ -731,6 +731,9 @@ if('serviceWorker' in navigator&&location.protocol!=='file:'){addEventListener('
       const doit=()=>{sessionStorage.setItem('icfix',JSON.stringify({v:m[1],t:Date.now()}));(window.caches?caches.keys().then(ks=>Promise.all(ks.filter(k=>k!=='iron-cage-fonts').map(k=>caches.delete(k)))):Promise.resolve()).then(()=>navigator.serviceWorker.getRegistration()).then(r=>r&&r.update()).catch(()=>{}).finally(()=>location.reload())};
       if(!ICUP.busy())doit();else{const iv=setInterval(()=>{if(!ICUP.busy()){clearInterval(iv);doit()}},1500)}}).catch(()=>{}).finally(()=>{ICUP.running=false})}
   addEventListener('load',()=>setTimeout(icCheck,1200));
+  /* boot watchdog: if the game never started (stuck white screen), drop the service worker + caches and reload once */
+  setTimeout(()=>{const scr=document.getElementById('scr');if(window.IC&&IC.VER&&scr&&scr.innerHTML.length>50)return;if(sessionStorage.getItem('icboot'))return;sessionStorage.setItem('icboot','1');
+    navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).then(()=>window.caches?caches.keys().then(ks=>Promise.all(ks.map(k=>caches.delete(k)))):0).catch(()=>{}).finally(()=>location.reload())},8000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){ICUP.last=0;icCheck();navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{})}});
   addEventListener('focus',()=>icCheck());addEventListener('pageshow',()=>{ICUP.last=0;icCheck()});
   setInterval(()=>{if(document.visibilityState==='visible'&&!ICUP.busy())icCheck()},120000);
