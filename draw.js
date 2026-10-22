@@ -454,7 +454,7 @@ function mcAttack(F,base){const A=F.A,m=A&&MC_ATK[A.anim];if(!m||!mcInfo(m.k))re
   let u;if(t<w+a*.4)u=lerp(s0,imp,Math.min(1,t/(w+a*.4)));else u=lerp(imp,s1,Math.min(1,(t-w-a*.4)/(a*.6+r)));
   const d0=mcDelta(F,m.k,s0,m.swap),d=mcDelta(F,m.k,u,m.swap);if(!d||!d0)return base;
   for(const q in d)d[q]={x:d[q].x-d0[q].x,y:d[q].y-d0[q].y};/* motion relative to the windup start, not the clip's first frame */
-  const kick=/kick/.test(A.anim),g=kick?{hip:.5,chest:.7,head:.7,nearHand:.5,nearFoot:.1}:{hip:.6,chest:.85,head:.8,nearFoot:.2,farFoot:.25};
+  const kick=/kick/.test(A.anim),g=kick?{hip:.4,chest:.4,head:.4,nearHand:.4,nearFoot:.1}:{hip:.6,chest:.85,head:.8,nearFoot:.2,farFoot:.25};
   if(kick){d.hip.y*=.35;d.nearHand.y=Math.max(-12,Math.min(12,d.nearHand.y))}
   const edge=clamp(Math.min(1,t/3,(w+a+r-t)/4),0,1);for(const q in g)g[q]*=edge;const o=addJ(base,d,g);
   /* the free hand guards the chin, in front of the face rather than over the head */
@@ -614,6 +614,11 @@ function poseStand(F,O,S){
       if(key&&mcInfo(key)){const dur=RX.k==='big'?26:RX.k==='body'?28:18,p=clamp(RX.t/dur,0,1),pk=key==='Hit_Reaction'?.45:.42,w=Math.sin(Math.min(1,p*1.15)*Math.PI);
         J0=addJ(J0,mcDelta(F,key,p*pk),{hip:.8*w,chest:1.1*w,head:1.2*w,nearHand:.7*w,farHand:.7*w,nearFoot:.2*w,farFoot:.2*w})}}
   }
+  /* keep the spine believable: limit how far the torso leans from upright (big leans read as the body snapping) */
+  if(!['ko','sprawl','stuffed','clinch'].includes(st)&&an!=='shoot'&&PK!=='waikru'&&PK!=='bow'&&!F.exh){const dx=J0.chest.x-J0.hip.x,dy=J0.hip.y-J0.chest.y,L=Math.hypot(dx,dy)||1,ang=Math.atan2(dx,dy),mx=st==='attack'&&/kick/.test(an||'')?.3:.34;
+    if(Math.abs(ang)>mx){const a2=Math.sign(ang)*mx,nx=J0.hip.x+Math.sin(a2)*L,ny=J0.hip.y-Math.cos(a2)*L,sx=nx-J0.chest.x,sy=ny-J0.chest.y;
+      J0={...J0,chest:{x:nx,y:ny}};for(const q of ['nearHand','farHand'])J0[q]={x:J0[q].x+sx,y:J0[q].y+sy};if(J0._hd)J0._hd={x:J0._hd.x+sx,y:J0._hd.y+sy}}
+    if(J0._hd){const h=Math.hypot(J0._hd.x,J0._hd.y);if(h>14)J0._hd={x:J0._hd.x*14/h,y:J0._hd.y*14/h}}}
   return J0;
 }
 function poseRef(R,S){
