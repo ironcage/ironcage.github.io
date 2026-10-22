@@ -200,7 +200,7 @@ function faceSkinOf(F){const im=faceImgOf(F);if(!im)return null;const k=im.src;i
     for(let i=0;i<d.length;i+=4){const l=(d[i]+d[i+1]+d[i+2])/3;if(d[i+3]>200&&l>40&&l<235){r+=d[i];g+=d[i+1];b+=d[i+2];n++}}
     FSKIN[k]=n?'#'+[r,g,b].map(v=>Math.round(Math.min(255,v/n*1.15)).toString(16).padStart(2,'0')).join(''):null}catch(e){FSKIN[k]=null}return FSKIN[k]}
 function lookOf(F){const L=F.look||{};const fs=faceSkinOf(F);return fs&&fs!==L.skin?Object.assign({},L,{skin:fs}):L}
-function faceImgOf(F){const d=F&&F.d;if(!d||!d.id||!IC.facePath)return null;const src=IC.facePath(d);if(!src)return null;let im=FACES[src];if(!im){im=FACES[src]=new Image();im.onload=()=>{clearTimeout(faceImgOf.t);faceImgOf.t=setTimeout(()=>{try{IC.onFaceLoad&&IC.onFaceLoad()}catch(e){}},80)};im.src=src}return im.complete&&im.naturalWidth?im:null}
+function faceImgOf(F,view){const d=F&&F.d;if(!d||!d.id||!IC.facePath)return null;const src=IC.facePath(d,view);if(!src)return null;let im=FACES[src];if(!im){im=FACES[src]=new Image();im.onload=()=>{clearTimeout(faceImgOf.t);faceImgOf.t=setTimeout(()=>{try{IC.onFaceLoad&&IC.onFaceLoad()}catch(e){}},80)};im.src=src}return im.complete&&im.naturalWidth?im:null}
 /* photo head (hair, ears, neck) in place of the drawn head; face centre at (cx,cy), fw = face width */
 function photoHead(im,cx,cy,fw,dm,cuts,sq=1){const k=fw/94,W=160*k,H=200*k;ctx.save();ctx.translate(cx,cy);ctx.scale(sq,1);
   ctx.drawImage(im,-W/2,-90*k,W,H);
@@ -210,8 +210,20 @@ function photoHead(im,cx,cy,fw,dm,cuts,sq=1){const k=fw/94,W=160*k,H=200*k;ctx.s
   const n=Math.min(5,cuts|0);ctx.strokeStyle='rgba(150,8,18,.9)';ctx.lineCap='round';for(let i=0;i<n;i++){const bx=u*(-.35+i*.2),by=-u*.62;ctx.lineWidth=u*.07;ctx.beginPath();ctx.moveTo(bx,by);ctx.quadraticCurveTo(bx+u*.04,by+u*.45,bx-u*.02,by+u*(.7+i*.12));ctx.stroke()}
   if(dm>.45){ctx.strokeStyle='rgba(140,8,18,.85)';ctx.lineWidth=u*.07;ctx.beginPath();ctx.moveTo(-u*.04,u*.3);ctx.lineTo(-u*.06,u*.7);ctx.stroke()}
   ctx.restore()}
-function drawHead(F,c,ang,f,o){const im=faceImgOf(F);if(!im)return drawHead0(F,c,ang,f,o);
-  const P=o.face||{hs:1},dm=clamp((100-(F.head==null?100:F.head))/100,0,1);ctx.save();ctx.translate(c.x,c.y);ctx.rotate(ang);ctx.scale(P.hs||1,P.hs||1);photoHead(im,f*1.6,.5,24,dm,F.head<85?F.cuts:0,.9);ctx.restore()}
+/* which way the head should face: side (default), tq = 3/4 (rocked/hurt), down (ground top), up (on the back) */
+function headView(F){if(F.state==='ko')return F.koK==='face'?'down':'up';
+  if(typeof S!=='undefined'&&S&&S.gr&&!S.gr.done){if(S.gr.top===F)return 'down';if(S.gr.bot===F)return 'up'}
+  if(F.state==='hit'||(F.flash||0)>0||(F.stun||0)>0)return 'tq';return 'side'}
+function drawHead(F,c,ang,f,o){const view=headView(F);let im=faceImgOf(F,view),multi=!!(im&&IC.headHasViews&&IC.headHasViews(F.d));if(!im)return drawHead0(F,c,ang,f,o);
+  const P=o.face||{hs:1},dm=clamp((100-(F.head==null?100:F.head))/100,0,1);ctx.save();ctx.translate(c.x,c.y);ctx.rotate(ang);ctx.scale(P.hs||1,P.hs||1);
+  if(multi){ctx.scale(f,1);photoHeadV(im,0,-1,34,dm,F.head<85?F.cuts:0,view)}else photoHead(im,f*1.6,.5,24,dm,F.head<85?F.cuts:0,.9);ctx.restore()}
+/* multi-view head: 200x200 sprite, head (crown to chin) normalised to 150px and centred; side views face right */
+function photoHeadV(im,cx,cy,hh,dm,cuts,view){const k=hh/150,W=200*k;ctx.drawImage(im,cx-W/2,cy-W/2,W,W);
+  const u=hh*.34,ox=view==='front'?0:view==='tq'?u*.25:u*.55;ctx.save();ctx.translate(cx+ox,cy+u*.15);ctx.scale(view==='front'?1:.7,1);
+  if(dm>.35){ctx.fillStyle=`rgba(80,25,70,${Math.min(.5,(dm-.35))})`;ctx.beginPath();ctx.ellipse(u*.2,-u*.15,u*.25,u*.16,0,0,7);ctx.fill()}
+  const n=Math.min(4,cuts|0);ctx.strokeStyle='rgba(150,8,18,.9)';ctx.lineCap='round';for(let i=0;i<n;i++){ctx.lineWidth=u*.08;ctx.beginPath();ctx.moveTo(u*(-.1+i*.18),-u*.6);ctx.quadraticCurveTo(u*(-.05+i*.18),-u*.2,u*(-.1+i*.16),u*(.1+i*.1));ctx.stroke()}
+  if(dm>.45){ctx.strokeStyle='rgba(140,8,18,.85)';ctx.lineWidth=u*.08;ctx.beginPath();ctx.moveTo(u*.45,u*.25);ctx.lineTo(u*.42,u*.6);ctx.stroke()}
+  ctx.restore()}
 function drawHead0(F,c,ang,f,o){
   const P=o.face||{shape:'round',hs:1,jaw:0,chin:0,nose:'straight',brow:.4,browA:0,eye:.5,iris:'#2a1b14',mouth:'flat',guard:'#1f6fe0',ear:1,beardS:'full',hairV:(o.look&&o.look.hairStyle)||'crop',gray:0,cheek:.5,skinK:1};
   const L=P.hairTone?Object.assign({},o.look,{hair:P.hairTone}):o.look,skin=P.skinK!==1?shade(o.skinNow,P.skinK):o.skinNow,j=P.jaw,ch=P.chin,hv=P.hairV,hair=L.hair;
@@ -389,6 +401,15 @@ function ext(F){
   if(F.t<A.w+A.a){const p=(F.t-A.w)/Math.max(1,A.a);return 1+.09*Math.sin(Math.min(1,p*1.6)*Math.PI)}
   const p=Math.min(1,(F.t-A.w-A.a)/A.r);return Math.max(0,1-p*p*(3-2*p));
 }
+/* real kick mechanics: knee chambers first, the shin whips out on an arc, re-chambers, then steps down */
+function kickPath(F,A,x,f,an){const H={lowkick:30,midkick:92,highkick:138}[an],R={lowkick:104,midkick:110,highkick:110}[an];
+  const B0={x:x-f*24,y:GY},C={x:x+f*(an==='lowkick'?14:6),y:GY-(an==='lowkick'?40:H*.55+18)},T={x:x+f*(-24+R+24),y:GY-H},M={x:x+f*(an==='lowkick'?60:34),y:GY-H-(an==='lowkick'?6:26)};
+  const sm=p=>p*p*(3-2*p),eo=p=>1-Math.pow(1-p,3),bz=(a,b,c,p)=>({x:(1-p)*(1-p)*a.x+2*(1-p)*p*b.x+p*p*c.x,y:(1-p)*(1-p)*a.y+2*(1-p)*p*b.y+p*p*c.y});
+  const t=F.t,w=A.w,a=Math.max(1,A.a),r=Math.max(1,A.r);let foot,knee='up',ext=0,pivot=0;
+  if(t<w){const p=sm(t/w);foot={x:lerp(B0.x,C.x,p),y:lerp(B0.y,C.y,p)};knee=p>.3?'up':'fwd';pivot=p*.5}
+  else if(t<w+a){const p=eo(Math.min(1,(t-w)/a*1.25));foot=bz(C,M,T,p);ext=p;pivot=.5+p*.5}
+  else{const p=Math.min(1,(t-w-a)/r);if(p<.45){const q=sm(p/.45);foot=bz(T,M,C,q);ext=1-q;pivot=1}else{const q=sm((p-.45)/.55);foot={x:lerp(C.x,B0.x,q),y:lerp(C.y,B0.y,q)};knee=q>.7?'fwd':'up';pivot=1-q}}
+  return{foot,knee,ext,pivot}}
 function poseStand(F,O,S){
   const x=F.x,f=F.f,E=ext(F),e=Math.max(E,0),A=F.A,an=A&&A.anim,t=S.frame,st=F.state;
   const bob=st==='stroll'?-Math.abs(Math.sin(F.walk))*3.5:(st==='idle'||st==='block'||st==='walk')?Math.sin(t*.12+(F.side==='a'?0:1.5))*2.2:0;
@@ -425,9 +446,10 @@ function poseStand(F,O,S){
   let back={x:x-f*27-w,y:GY-lift*.6-(mv?Math.max(0,-Math.sin(wk))*6:0)};
   let kneeN='fwd',kneeF='fwd',footF=null;
   if(st==='attack'){
-    if(an==='lowkick')back={x:x+f*(-24+e*108),y:GY-12-e*22};
-    if(an==='midkick')back={x:x+f*(-24+e*112),y:GY-e*92};
-    if(an==='highkick')back={x:x+f*(-24+e*112),y:GY-e*136};
+    if(an==='jab'||an==='superman'){front={x:front.x+f*12*e,y:front.y-4*Math.sin(Math.min(1,e)*Math.PI)}}
+    if(an==='cross'||an==='overhand'||an==='bodyshot'){back={x:back.x+f*7*e,y:back.y-6*e};kneeF=e>.3?'down':kneeF}
+    if(an==='hook'){front={x:front.x-f*3*e,y:front.y-3*e}}
+    if(an==='lowkick'||an==='midkick'||an==='highkick'){const K=kickPath(F,A,x,f,an);back=K.foot;kneeF=K.knee;front={x:front.x+f*K.pivot*4,y:front.y-K.pivot*3}}
     if(an==='spinkick'){back={x:x+f*(-24+e*120),y:GY-e*96};kneeF='back'}
     if(an==='tornado'){back={x:x+f*(-24+e*118),y:GY-e*142};kneeF='back'}
     if(an==='qmark')back={x:x+f*(-24+e*116),y:GY-(F.t<A.w?40:e*142)};
@@ -447,7 +469,8 @@ function poseStand(F,O,S){
       case 'hook':near={x:x+f*(28+e*60)+lean,y:206-e*8};far={x:x+f*14+lean*.5,y:198};if(e>.2)elbN='up';break;
       case 'upper':far={x:x+f*(22+e*44)+lean,y:E<0?250:246-e*40};break;
       case 'bodyshot':far={x:x+f*(16+e*66)+lean,y:214+drop+e*22};break;
-      case 'lowkick':case 'midkick':case 'highkick':case 'spinkick':case 'qmark':case 'tornado':near={x:x+f*24,y:214};far={x:x-f*24,y:252};break;
+      case 'lowkick':case 'midkick':case 'highkick':{const K=kickPath(F,A,x,f,an),sw=K.ext;near={x:x+f*(28-sw*4)+lean*.6,y:212-sw*3};far={x:x-f*(18+sw*30),y:236+sw*(an==='lowkick'?10:26)};elbN='down';elbF=sw>.4?'back':'down';break}
+      case 'spinkick':case 'qmark':case 'tornado':near={x:x+f*24,y:214};far={x:x-f*24,y:252};break;
       case 'superman':far={x:x+f*(14+e*94)+lean,y:204-lift};near={x:x-f*2,y:226-lift};break;
       case 'spinfist':far={x:x+f*(E<0?-30:10+e*72)+lean,y:206};elbF='up';break;
       case 'overhand':far={x:x+f*(10+e*74)+lean,y:E<=0?176:178+E*30};elbF='up';break;
@@ -1272,7 +1295,7 @@ function drawFront(F,t,o2={}){
   if(shirt){ctx.fillStyle=shade(shirt,.75);ctx.beginPath();ctx.ellipse(0,chestY-6,22,12,0,0,7);ctx.fill()}
   /* neck + head (front) */
   capsule({x:0,y:chestY+(shirt?-4:4)},{x:0,y:chestY-14},10,9,shade(skin,.9),0);if(shirt){ctx.fillStyle=shade(shirt,.6);ctx.beginPath();ctx.ellipse(0,chestY-1,15,6,0,0,7);ctx.fill();ctx.fillStyle=shirt;ctx.beginPath();ctx.ellipse(0,chestY+2,17,5,0,0,Math.PI);ctx.fill()}
-  {const im=faceImgOf(F);if(im){const HD=o2.dmg||{head:100,cuts:0};photoHead(im,0,chestY-28,27*(P.hs||1),clamp((100-HD.head)/100,0,1),HD.head<85?HD.cuts:0);ctx.restore();return}}
+  {const im=faceImgOf(F,'front');if(im){const HD=o2.dmg||{head:100,cuts:0},dmv=clamp((100-HD.head)/100,0,1),cu=HD.head<85?HD.cuts:0;if(IC.headHasViews&&IC.headHasViews(F.d))photoHeadV(im,0,chestY-30,38*(P.hs||1),dmv,cu,'front');else photoHead(im,0,chestY-28,27*(P.hs||1),dmv,cu);ctx.restore();return}}
   const SHF={round:[1.06,.97],long:[.9,1.08],square:[1.04,1],wide:[1.13,.96],egg:[.94,1.05]}[P.shape]||[1,1],hy=chestY-29,rx=15*SHF[0]*(P.hs||1),ry=18*SHF[1]*(P.hs||1),jw=(P.jaw||0)+(P.shape==='square'?.8:P.shape==='egg'?-.8:0);
   ell(-rx+1,hy+2,3.6,6,skinD);ell(rx-1,hy+2,3.6,6,skinD);if(P.cauli){ell(-rx,hy+2,4.6,6.6,shade(skin,.75));ell(rx,hy+2,4.6,6.6,shade(skin,.75))}
   {const g=ctx.createRadialGradient(-3,hy-6,2,0,hy,22);g.addColorStop(0,shade(skin,1.15));g.addColorStop(.6,skin);g.addColorStop(1,shade(skin,.75));ctx.fillStyle=g;
@@ -2151,5 +2174,5 @@ function solve(J){
   const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
   return{f,hip:J.hip,chest:J.chest,head,hAng:Math.atan2(sd.y,sd.x)+Math.PI/2+(J.tilt||0)*f,shN,shF,hipN,hipF,kneeN:legN.j,kneeF:legF.j,footN:legN.end,footF:legF.end,elbN:armN.j,elbF:armF.j,handN:armN.end,handF:armF.end,footDirN:J.footN||f,footDirF:J.footF||f,mood:J.mood};
 }
-IC.Draw={_ko:(c,F)=>{ctx=c;ctx.strokeStyle="#888";ctx.beginPath();ctx.moveTo(200,GY);ctx.lineTo(600,GY);ctx.stroke();drawBody(F,koPose(F,poseStand(F,F,{frame:0,cl:null}),0))},_cmp:(c,F,mood)=>{ctx=c;ctx.save();ctx.translate(60,60);ctx.scale(2.6,2.6);const o=fighterLook(F,{mood});drawHead(F,{x:0,y:0},0,1,o);ctx.restore();ctx.save();ctx.translate(170,62);ctx.scale(2.1,2.1);ctx.translate(0,212);drawFront(F,0,{noBuild:true,dmg:{head:F.head,cuts:F.cuts,mood},t:0,sweat:o.sweat});ctx.restore()},cornerPOV,_ground:(c,S)=>{ctx=c;drawGround(S)},render,portrait,weighin,beltScene,koScene,KOI,gateScene,GATE,tauntScene,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
+IC.Draw={_body:(c,F,J)=>{ctx=c;drawBody(F,J)},_ko:(c,F)=>{ctx=c;ctx.strokeStyle="#888";ctx.beginPath();ctx.moveTo(200,GY);ctx.lineTo(600,GY);ctx.stroke();drawBody(F,koPose(F,poseStand(F,F,{frame:0,cl:null}),0))},_cmp:(c,F,mood)=>{ctx=c;ctx.save();ctx.translate(60,60);ctx.scale(2.6,2.6);const o=fighterLook(F,{mood});drawHead(F,{x:0,y:0},0,1,o);ctx.restore();ctx.save();ctx.translate(170,62);ctx.scale(2.1,2.1);ctx.translate(0,212);drawFront(F,0,{noBuild:true,dmg:{head:F.head,cuts:F.cuts,mood},t:0,sweat:o.sweat});ctx.restore()},cornerPOV,_ground:(c,S)=>{ctx=c;drawGround(S)},render,portrait,weighin,beltScene,koScene,KOI,gateScene,GATE,tauntScene,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
 })(window.IC);

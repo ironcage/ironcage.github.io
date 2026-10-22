@@ -315,7 +315,11 @@ const POOL_NEAR={cauc:['white','latin'],white:['cauc','latin'],latin:['white','b
 const HAIR_NEAR={shaved:['short','mohawk','long'],short:['shaved','mohawk','long'],mohawk:['shaved','short','long'],long:['short','shaved','mohawk']};
 function poolNearest(k){if(!k)return null;if(POOL.has(k))return k;const [e,h,b]=k.split('_'),nb=b==='b'?'n':'b';
   for(const E of [e,...(POOL_NEAR[e]||[])])for(const H of [h,...HAIR_NEAR[h]])for(const B of [b,nb]){const t=`${E}_${H}_${B}`;if(POOL.has(t))return t}return null}
-IC.facePath=d=>{if(!d)return null;const id=d.id==='__tmp'?null:d.id;if(id&&CHART[id])return `art/head/ch_${CHART[id]}.png`;const k=poolNearest(photoKey(d));return k?`art/head/${k}.png`:null};
+/* multi-angle head sets (art/head/<key>_<view>.png, views: side tq front down up) — keys listed here once their turnaround sheet is cut */
+const POOLV=new Set([]);
+function headKey(d){if(!d)return null;const id=d.id==='__tmp'?null:d.id;if(id&&CHART[id])return 'ch_'+CHART[id];return poolNearest(photoKey(d))}
+IC.headHasViews=d=>POOLV.has(headKey(d));
+IC.facePath=(d,view)=>{const k=headKey(d);if(!k)return null;return POOLV.has(k)?`art/head/${k}_${view||'front'}.png`:`art/head/${k}.png`};
 function champsOf(){const c=DATA.career;return CLASSES.map(C=>{let id=null;
   if(c&&((IC.CLSMAP||{})[c.cls]||c.cls)===C.id&&c.order&&c.order.length)id=c.order[0];
   if(!id){const l=ROSTER.filter(f=>((IC.CLSMAP||{})[f.cls]||f.cls)===C.id).sort((x,y)=>y.ovr-x.ovr);id=l[0]&&l[0].id}
