@@ -230,10 +230,10 @@ function photoHead(im,cx,cy,fw,dm,cuts,sq=1){const k=fw/94,W=160*k,H=200*k;ctx.s
 function headView(F){if(F.state==='ko')return F.koK==='face'?'down':'up';
   if(typeof S!=='undefined'&&S&&S.gr&&!S.gr.done){if(S.gr.top===F)return 'down';if(S.gr.bot===F)return 'up'}
   if(F.state==='hit'||(F.flash||0)>0||(F.stun||0)>0)return 'tq';return 'side'}
-/* drawn heads face the camera most of the time and turn to profile for strikes, clinch, ground and KO;
+/* drawn heads stay in profile during the fight and turn to face the camera for the result announcement;
    the turn is a quick squash so it reads as the head rotating */
-function wantsProfile(F){const st=F.state,S=IC.Fight&&IC.Fight.S;if(S&&S.gr&&(S.gr.top===F||S.gr.bot===F))return true;
-  return st==='attack'||st==='clinch'||st==='ko'||st==='slip'||st==='stuffed'||st==='sprawl'||(F.A&&F.A.kind==='shoot')}
+function wantsProfile(F){/* side profile during the fight; face the camera only for the result announcement */
+  const S=IC.Fight&&IC.Fight.S;if(!S||F.state==='ko')return true;return !(S.mode==='decision'||S.mode==='outro')}
 function drawHeadFront(F,c,ang,o,sx){const P=o.face||{hs:1},mood=o.mood||(F.state==='hit'||F.rocked>0?'hurt':F.exh?'tired':null);
   ctx.save();ctx.translate(c.x,c.y);ctx.rotate(ang);ctx.scale(.8*sx,.8);ctx.beginPath();ctx.ellipse(0,-3,25,26,0,0,Math.PI*2);ctx.clip();ctx.translate(0,212);
   drawFront(F,0,{walk:0,perf:'hud',noBuild:true,dmg:{head:F.head??100,cuts:F.cuts||0,mood},blink:o.blink,t:o.t||0,sweat:o.sweat});ctx.restore()}
