@@ -1550,7 +1550,7 @@ function walkOverlay(S){
   // lower-third name graphic
   if(isA)introPanel(S,F,t);
   if(F&&isAnn){
-    const p=clamp((t+170)/26,0,1),e=1-Math.pow(1-p,3),cw=Math.min(WH*.86,440),ch=92,x=lerp(-cw,WH/2-cw/2,e),y=HH-ch-16;
+    const p=clamp((t+170)/26,0,1),e=1-Math.pow(1-p,3),cw=Math.min(WH*.4,330),ch=86,x=lerp(-cw,Math.max(14,WH*.03),e),y=HH-ch-16;/* broadcast lower-third: bottom-left, clear of the fighter in the middle */
     const grd=ctx.createLinearGradient(x,0,x+cw,0);grd.addColorStop(0,rgba(F.corner,.95));grd.addColorStop(.32,'rgba(12,14,19,.95)');grd.addColorStop(1,'rgba(12,14,19,.88)');
     ctx.fillStyle=grd;ctx.beginPath();ctx.roundRect(x,y,cw,ch,6);ctx.fill();ctx.fillStyle='#e8b33a';ctx.fillRect(x,y+ch-3,cw*e,3);
     ctx.textBaseline='alphabetic';const d=F.d,rec=d.rec||[0,0,0];

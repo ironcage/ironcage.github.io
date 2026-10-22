@@ -874,6 +874,14 @@ function fit(){const dpr=Math.min(2.5,window.devicePixelRatio||1),w=cv.clientWid
   const hs=clamp(600/w,1,1.75),u=w/800*hs;game.style.setProperty('--hu',u+'px');
   requestAnimationFrame(()=>{const cr=cv.getBoundingClientRect(),Lc=document.querySelector('.game .cl.l'),Rc=document.querySelector('.game .cl.r');
     if(Lc&&Rc&&Lc.offsetParent&&Rc.offsetParent){const a=Lc.getBoundingClientRect(),b=Rc.getBoundingClientRect();IC.opts.tickBand={l:(a.right-cr.left)/u+6,r:(b.left-cr.left)/u-6}}else IC.opts.tickBand=null})}
+/* iPhone home-screen app: after rotating (or reloading while sideways) iOS sometimes reports a shorter window than the screen,
+   which left a black band under the fight. Size the full-screen game from the real screen instead, re-checked after rotation settles. */
+function appHeight(){const standalone=navigator.standalone||matchMedia('(display-mode: standalone)').matches,land=matchMedia('(orientation: landscape)').matches;
+  let h=Math.max(window.innerHeight||0,(window.visualViewport&&visualViewport.height)||0);
+  if(standalone&&screen&&screen.width&&screen.height){const sh=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);if(sh>h)h=sh}
+  document.documentElement.style.setProperty('--app-h',h+'px')}
+appHeight();['resize','orientationchange','pageshow'].forEach(ev=>addEventListener(ev,()=>{appHeight();[60,300,800].forEach(d=>setTimeout(()=>{appHeight();fit()},d))}));
+try{visualViewport.addEventListener('resize',()=>{appHeight();fit()})}catch(e){}
 fit();addEventListener('resize',()=>{autoImmersive();fit()});
 try{new ResizeObserver(()=>fit()).observe(cv)}catch(e){}
 /* immersive (full-viewport) mode; real fullscreen and landscape lock are attempted but optional */
@@ -1041,7 +1049,7 @@ function runCorner(info){
   const finish=()=>{if(done)return;done=true;CORNER=false;game.classList.remove('cornering');cancelAnimationFrame(cornerRaf);cv.removeEventListener('pointerdown',skip);try{Sound.play('bell')}catch(e){}
     pad.hidden=false;hintEl.hidden=false;lastKey='';IC.Fight.next();startLoop()};
   const skip=e=>{e.preventDefault();finish()};cv.addEventListener('pointerdown',skip);
-  const fr=now=>{if(done)return;const t=(now-t0)/1000*60,li=Math.min(lines.length-1,Math.floor(t/per)),lt=t-li*per;
+  const fr=now=>{if(done)return;/* the first frame's timestamp can be a hair earlier than t0: clamp, or lines[-1] crashes and the corner never ends */const t=Math.max(0,(now-t0)/1000*60),li=clamp(Math.floor(t/per),0,lines.length-1),lt=t-li*per;
     if(li!==lastLi){lastLi=li;try{Sound.play('coach')}catch(e){}if(hp<40&&li%2===0)try{Sound.play('heart')}catch(e){}}
     const c2=cv.getContext('2d'),k=cv.width/800;c2.setTransform(k,0,0,k,0,0);
     IC.Draw.cornerPOV(c2,cv.clientWidth||800,cv.clientHeight||450,t,{coach,me:a,lines,li,typed:Math.floor(lt*1.4),talking:lt<lines[li].length/1.4+12,round:info.round,plan,left:Math.max(0,60-t/total*60)});

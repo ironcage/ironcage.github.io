@@ -1108,8 +1108,9 @@ function upRef(){
   else if(S.cl){tx=S.cl.cx+(S.cl.cx<400?110:-110);st='watch'}
   else{const m=(a.x+b.x)/2;tx=m+(m<=400?-200:200);st='watch'}
   tx=clamp(tx,70,730);
-  const az=S.gr?(S.gr.cz||0):S.cl?(S.cl.cz||0):((a.z||0)+(b.z||0))/2;const tz=S.walk&&['faceoff','touch'].includes(WK[S.walk.i].k)?(S.walk.tension>0&&S.walk.ev!=='push'?az-130:az-60):az-150;R.z=(R.z??-150)+((tz-(R.z??-150))*.05);R.z=Math.min(R.z,S.walk?az-45:az-110);
-  const d=tx-R.x;R.x+=clamp(d*.06,-3.2,3.2);inCage(R);R.walk+=Math.min(1,Math.abs(d)*.04)*.22;
+  const az=S.gr?(S.gr.cz||0):S.cl?(S.cl.cz||0):((a.z||0)+(b.z||0))/2;const tz=S.walk&&['faceoff','touch'].includes(WK[S.walk.i].k)?(S.walk.tension>0&&S.walk.ev!=='push'?az-130:az-60):az-150;/* while he walks past a fighter, the referee steps further back so he never stands on top of him */
+  const near=!S.walk&&!S.gr&&!S.cl&&((Math.abs(R.x-a.x)<80||Math.abs(R.x-b.x)<80)||(S.mode==='fight'&&S.timer>S.roundFrames-100));R.z=(R.z??-150)+(((near?tz-110:tz)-(R.z??-150))*(near?.12:.05));R.z=Math.min(R.z,S.walk?az-45:az-110);
+  const d=tx-R.x;R.x+=clamp(d*(near?.16:.06),near?-7:-3.2,near?7:3.2);inCage(R);R.walk+=Math.min(1,Math.abs(d)*.04)*.22;
   const focus=S.gr?S.gr.cx:S.cl?S.cl.cx:(a.x+b.x)/2;R.f=focus>R.x?1:-1;R.state=st;R.moving=Math.abs(d)>4;
 }
 function tick(n){
