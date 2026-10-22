@@ -943,6 +943,11 @@ function drawStandingFighter(F,O,S){
   if(F.swT>0){const k=1-F.swT/16;ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=`rgba(127,227,255,${(1-k)*.8})`;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(F.x,GY+2,30+k*46,7+k*9,0,0,7);ctx.stroke();ctx.restore()}
   ctx.save();
   if(F.heart>0){const g=ctx.createRadialGradient(J.chest.x,J.chest.y,10,J.chest.x,J.chest.y,90);g.addColorStop(0,`rgba(255,60,40,${.18+.1*Math.sin(S.frame*.2)})`);g.addColorStop(1,'rgba(255,60,40,0)');ctx.fillStyle=g;ctx.fillRect(J.chest.x-90,J.chest.y-90,180,180)}
+  /* result announcement: the whole body turns to face the crowd (quick squash turn), winner raises both arms, loser hangs his head */
+  const S0=IC.Fight&&IC.Fight.S,face=S0&&(S0.mode==='decision'||S0.mode==='outro')&&F.state!=='ko';F._bv=F._bv==null?(face?1:0):F._bv+((face?1:0)-F._bv)*.25;
+  if(F._bv>.02){const k=F._bv;if(k>=.5){const sx=Math.max(.2,2*k-1),win=F.state==='celebrate',lose=F.state==='dejected';
+      ctx.save();ctx.translate(F.x,GY);ctx.scale(.82*sx,.82);drawFront(F,S.frame,{walk:0,perf:win?'win':lose?'bow':null,pt:S.frame,dmg:{head:F.head??100,cuts:F.cuts||0,mood:win?'yell':lose?'hurt':null},t:S.frame,sweat:.4});ctx.restore();ctx.restore();ctx.restore();return}
+    ctx.translate(F.x,0);ctx.scale(Math.max(.2,1-2*k),1);ctx.translate(-F.x,0)}
   const r=drawBody(F,J);
   if(F.exh&&r.head&&F.state!=='ko'){const k=(S.frame%34)/34;ctx.save();ctx.globalAlpha=(1-k)*.35;ctx.fillStyle='#e8eef6';ctx.beginPath();ctx.ellipse(r.head.x+F.f*(16+k*22),r.head.y+8-k*10,4+k*9,3+k*6,0,0,7);ctx.fill();
     ctx.globalAlpha=.7*(1-((S.frame+11)%40)/40);ctx.fillStyle='#bfe3ff';ctx.beginPath();ctx.ellipse(r.head.x-F.f*4,r.head.y+6+((S.frame+11)%40)*.9,1.4,2.2,0,0,7);ctx.fill();ctx.restore()}
@@ -1391,7 +1396,7 @@ function drawFront(F,t,o2={}){
    else{ctx.fillStyle='rgba(255,255,255,.85)';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText('IRON CAGE',0,chestY+34);ctx.fillStyle=shade(base,.55);ctx.beginPath();ctx.moveTo(-8,chestY);ctx.lineTo(0,chestY+16);ctx.lineTo(8,chestY);ctx.fill()}}
   /* arms */
   const arm=(side,swing)=>{const sh={x:side*(shW-3),y:chestY+8};let el={x:side*(shW+6),y:chestY+44-swing*4},hd={x:side*(shW+2)+swing*2*side,y:chestY+80-swing*8};
-    if(perf==='taunt'||perf==='kicks'||perf==='shadow'){const up=side>0||perf!=='taunt';if(up){el={x:side*(shW+12),y:chestY-10};hd={x:side*(shW+4),y:chestY-48+Math.sin(pt*.3+side)*4}}}
+    if(perf==='taunt'||perf==='kicks'||perf==='shadow'||perf==='win'){const up=side>0||perf!=='taunt';if(up){el={x:side*(shW+12),y:chestY-10};hd={x:side*(shW+4),y:chestY-48+Math.sin(pt*.3+side)*4}}}
     if(perf==='chest'){const hit=(Math.floor(pt/9)+(side>0?1:0))%2;el={x:side*(shW+8),y:chestY+30};hd={x:side*(hit?10:shW+14),y:chestY+(hit?18:-6)}}
     if(perf==='bow'||perf==='waikru'){el={x:side*(shW+2),y:chestY+36};hd={x:side*8,y:chestY+30}}
     if(perf==='coach'&&side>0){const g=Math.sin(pt*.13);el={x:shW+16,y:chestY+30};hd={x:18+g*8,y:chestY-2-Math.abs(g)*10}}
