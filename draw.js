@@ -455,7 +455,7 @@ function mcAttack(F,base){const A=F.A,m=A&&MC_ATK[A.anim];if(!m||!mcInfo(m.k))re
   const d0=mcDelta(F,m.k,s0,m.swap),d=mcDelta(F,m.k,u,m.swap);if(!d||!d0)return base;
   for(const q in d)d[q]={x:d[q].x-d0[q].x,y:d[q].y-d0[q].y};/* motion relative to the windup start, not the clip's first frame */
   const kick=/kick/.test(A.anim),g=kick?{hip:.4,chest:.4,head:.4,nearHand:.4,nearFoot:.1}:{hip:.6,chest:.85,head:.8,nearFoot:.2,farFoot:.25};
-  if(kick){d.hip.y*=.35;d.nearHand.y=Math.max(-12,Math.min(12,d.nearHand.y))}
+  if(kick){d.hip.y=0;d.nearFoot={x:0,y:0};d.nearHand.y=Math.max(-12,Math.min(12,d.nearHand.y))}
   const edge=clamp(Math.min(1,t/3,(w+a+r-t)/4),0,1);for(const q in g)g[q]*=edge;const o=addJ(base,d,g);
   /* the free hand guards the chin, in front of the face rather than over the head */
   if(!kick){const q=(m.hand||m.lim)==='nH'?'farHand':'nearHand',G={x:o.chest.x+F.f*(q==='nearHand'?24:17),y:o.chest.y-30};o[q]={x:lerp(o[q].x,G.x,edge),y:lerp(o[q].y,G.y,edge)};o[q==='nearHand'?'elbN':'elbF']='down'}
@@ -465,9 +465,9 @@ function kickPath(F,A,x,f,an){const H={lowkick:30,midkick:92,highkick:138}[an],R
   const B0={x:x-f*24,y:GY},C={x:x+f*(an==='lowkick'?14:6),y:GY-(an==='lowkick'?40:H*.55+18)},T={x:x+f*(-24+R+24),y:GY-H},M={x:x+f*(an==='lowkick'?60:34),y:GY-H-(an==='lowkick'?6:26)};
   const sm=p=>p*p*(3-2*p),eo=p=>1-Math.pow(1-p,3),bz=(a,b,c,p)=>({x:(1-p)*(1-p)*a.x+2*(1-p)*p*b.x+p*p*c.x,y:(1-p)*(1-p)*a.y+2*(1-p)*p*b.y+p*p*c.y});
   const t=F.t,w=A.w,a=Math.max(1,A.a),r=Math.max(1,A.r);let foot,knee='up',ext=0,pivot=0;
-  if(t<w){const p=sm(t/w);foot={x:lerp(B0.x,C.x,p),y:lerp(B0.y,C.y,p)};knee=p>.3?'up':'fwd';pivot=p*.5}
+  if(t<w){/* heel lifts behind first, then the knee drives up and forward into the chamber (no sideways frog squat) */const p=sm(t/w),H0={x:B0.x+f*6,y:GY-22};foot=p<.35?{x:lerp(B0.x,H0.x,p/.35),y:lerp(B0.y,H0.y,p/.35)}:{x:lerp(H0.x,C.x,(p-.35)/.65),y:lerp(H0.y,C.y,(p-.35)/.65)};knee='up';pivot=p*.5}
   else if(t<w+a){const p=eo(Math.min(1,(t-w)/a*1.25));foot=bz(C,M,T,p);ext=p;pivot=.5+p*.5}
-  else{const p=Math.min(1,(t-w-a)/r);if(p<.45){const q=sm(p/.45);foot=bz(T,M,C,q);ext=1-q;pivot=1}else{const q=sm((p-.45)/.55);foot={x:lerp(C.x,B0.x,q),y:lerp(C.y,B0.y,q)};knee=q>.7?'fwd':'up';pivot=1-q}}
+  else{const p=Math.min(1,(t-w-a)/r);if(p<.45){const q=sm(p/.45);foot=bz(T,M,C,q);ext=1-q;pivot=1}else{const q=sm((p-.45)/.55);foot={x:lerp(C.x,B0.x,q),y:lerp(C.y,B0.y,q)};knee='up';pivot=1-q}}
   return{foot,knee,ext,pivot}}
 function poseStand(F,O,S){
   const x=F.x,f=F.f,E=ext(F),e=Math.max(E,0),A=F.A,an=A&&A.anim,t=S.frame,st=F.state;
@@ -491,7 +491,7 @@ function poseStand(F,O,S){
     switch(an){
       case 'jab':lean+=f*9*e;drop=3*e;break;case 'cross':lean+=f*17*e;drop=5*e;break;case 'hook':lean+=f*11*e;tilt=.16*e;drop=4*e;break;
       case 'upper':lean+=f*5*e;drop=8*Math.max(0,-E*4)+4*e;break;case 'bodyshot':lean+=f*7*e;drop=20*e;tilt=.2*e;break;
-      case 'lowkick':lean-=f*5*e;break;case 'midkick':lean-=f*8*e;break;case 'highkick':case 'qmark':lean-=f*11*e;break;case 'tornado':lean-=f*13*e;tilt=.25*e;break;
+      case 'lowkick':lean-=f*3*e;break;case 'midkick':lean-=f*5*e;break;case 'highkick':lean-=f*7*e;break;case 'qmark':lean-=f*11*e;break;case 'tornado':lean-=f*13*e;tilt=.25*e;break;
       case 'superman':lift=24*e;lean+=f*16*e;break;case 'headbutt':lean+=f*24*e;drop=8*e;tilt=.4*e;break;case 'spinfist':lean+=f*8*e;break;case 'spinkick':lean-=f*11*e;break;
       case 'flyknee':lift=30*e;lean+=f*6*e;break;case 'overhand':lean+=f*13*e;tilt=.15*e;break;
       case 'shoot':drop=Math.max(e,F.t<A.w?F.t/A.w*.6:0)*46;lean+=f*drop*.3;tilt=.3*drop/46;break;
@@ -508,7 +508,7 @@ function poseStand(F,O,S){
     if(an==='jab'||an==='superman'){front={x:front.x+f*12*e,y:front.y-4*Math.sin(Math.min(1,e)*Math.PI)}}
     if(an==='cross'||an==='overhand'||an==='bodyshot'){back={x:back.x+f*7*e,y:back.y-6*e};kneeF=e>.3?'down':kneeF}
     if(an==='hook'){front={x:front.x-f*3*e,y:front.y-3*e}}
-    if(an==='lowkick'||an==='midkick'||an==='highkick'){const K=kickPath(F,A,x,f,an);back=K.foot;kneeF=K.knee;front={x:front.x+f*K.pivot*4,y:front.y-K.pivot*3}}
+    if(an==='lowkick'||an==='midkick'||an==='highkick'){const K=kickPath(F,A,x,f,an);back=K.foot;kneeF=K.knee;front={x:front.x+f*K.pivot*4,y:front.y-K.pivot*3};hip.y-=7*K.pivot;chest.y-=7*K.pivot}
     if(an==='spinkick'){back={x:x+f*(-24+e*120),y:GY-e*96};kneeF='back'}
     if(an==='tornado'){back={x:x+f*(-24+e*118),y:GY-e*142};kneeF='back'}
     if(an==='qmark')back={x:x+f*(-24+e*116),y:GY-(F.t<A.w?40:e*142)};
@@ -594,7 +594,7 @@ function poseStand(F,O,S){
   if(st==='attack'){
     const tw={jab:-.35,cross:1,hook:-.9,upper:.7,bodyshot:.9,overhand:1.15,superman:1,spinfist:1.2,lowkick:.2,midkick:.4,highkick:.5,spinkick:.6,qmark:.5,tornado:.9,flyknee:.3}[an]||0;
     twist=tw*Math.max(E,-.6);
-    hipTwist={lowkick:1,midkick:1,highkick:1,spinkick:1.2,qmark:1,tornado:1.3,cross:.45,overhand:.5,hook:-.3}[an]*Math.max(0,E)||0;
+    hipTwist={lowkick:.45,midkick:.5,highkick:.55,spinkick:1.2,qmark:1,tornado:1.3,cross:.45,overhand:.5,hook:-.3}[an]*Math.max(0,E)||0;
     if(['cross','overhand','upper','bodyshot','superman'].includes(an))back={x:back.x+f*4*e,y:back.y-5*e};
     if(['lowkick','midkick','highkick','spinkick','qmark','tornado'].includes(an)){front={x:front.x-f*2*e,y:front.y-2*e};chest.x-=f*3*e}
   }
@@ -615,7 +615,7 @@ function poseStand(F,O,S){
         J0=addJ(J0,mcDelta(F,key,p*pk),{hip:.8*w,chest:1.1*w,head:1.2*w,nearHand:.7*w,farHand:.7*w,nearFoot:.2*w,farFoot:.2*w})}}
   }
   /* keep the spine believable: limit how far the torso leans from upright (big leans read as the body snapping) */
-  if(!['ko','sprawl','stuffed','clinch'].includes(st)&&an!=='shoot'&&PK!=='waikru'&&PK!=='bow'&&!F.exh){const dx=J0.chest.x-J0.hip.x,dy=J0.hip.y-J0.chest.y,L=Math.hypot(dx,dy)||1,ang=Math.atan2(dx,dy),mx=st==='attack'&&/kick/.test(an||'')?.3:.34;
+  if(!['ko','sprawl','stuffed','clinch'].includes(st)&&an!=='shoot'&&PK!=='waikru'&&PK!=='bow'&&!F.exh){const dx=J0.chest.x-J0.hip.x,dy=J0.hip.y-J0.chest.y,L=Math.hypot(dx,dy)||1,ang=Math.atan2(dx,dy),mx=st==='attack'&&/kick/.test(an||'')?.2:.34;
     if(Math.abs(ang)>mx){const a2=Math.sign(ang)*mx,nx=J0.hip.x+Math.sin(a2)*L,ny=J0.hip.y-Math.cos(a2)*L,sx=nx-J0.chest.x,sy=ny-J0.chest.y;
       J0={...J0,chest:{x:nx,y:ny}};for(const q of ['nearHand','farHand'])J0[q]={x:J0[q].x+sx,y:J0[q].y+sy};if(J0._hd)J0._hd={x:J0._hd.x+sx,y:J0._hd.y+sy}}
     if(J0._hd){const h=Math.hypot(J0._hd.x,J0._hd.y);if(h>14)J0._hd={x:J0._hd.x*14/h,y:J0._hd.y*14/h}}}
