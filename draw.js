@@ -668,9 +668,14 @@ function poseRef(R,S){
   return{f,hip,chest,tilt:st==='crouch'?.35:st==='cover'?.5:0,nearHand:near,farHand:far,nearFoot:{x:x+f*(cr>20||st==='cover'?30:20)+w,y:GY},farFoot:{x:x-f*(cr>20||st==='cover'?24:18)-w,y:GY},kneeN:'fwd',kneeF:st==='cover'?'up':'fwd',elbN,elbF};
 }
 /* ---------- submission poses: full-body holds for every submission (attacker A, victim V) ---------- */
+function stagedJ(A,B,k){if(k>=1)return B;if(k<=0)return A;const sm=x=>{x=clamp(x,0,1);return x*x*(3-2*x)},o={...B};
+  const L=(q,kk,lift)=>{if(A[q]&&B[q]){const e=sm(kk);o[q]={x:A[q].x+(B[q].x-A[q].x)*e,y:A[q].y+(B[q].y-A[q].y)*e-(lift?Math.sin(e*Math.PI)*lift:0)}}};
+  L('nearHand',k/.5);L('farHand',k/.55);L('chest',(k-.12)/.6);L('hip',(k-.28)/.65,8);L('nearFoot',(k-.3)/.7,34);L('farFoot',(k-.36)/.64,26);
+  for(const q of ['kneeN','kneeF','elbN','elbF','footN','footF','mood','f'])o[q]=k>.5?B[q]:A[q];o.tilt=(A.tilt||0)+((B.tilt||0)-(A.tilt||0))*sm((k-.12)/.6);return o}
+function groundJNoSub(S){const s0=S.sub,e0=S.subEnd,m0=S.mode;S.sub=null;S.subEnd=null;S.mode='fight';try{return groundJ(S)}finally{S.sub=s0;S.subEnd=e0;S.mode=m0}}
 function subPose(gr,sub,t){
   const {cx,hd,pos,top}=gr,P=(dx,dy)=>({x:cx+hd*dx,y:GY+dy}),att=sub.att===top?'t':'b',name=sub.name,fam=IC.Fight.SUBK?IC.Fight.SUBK[name]:null;
-  const q=clamp(sub.prog/100,0,1),w=Math.sin(t*.35)*(1-q*.4),sq=q*.8+w*.2; /* squeeze: tightens with progress, the victim struggles */
+  const q=clamp(sub.prog/100,0,1),jA=(sub.jA||0)/10,jD=(sub.jD||0)/10,w=Math.sin(t*.35)*(1-q*.4)+Math.sin(t*1.3)*jD*.9,sq=clamp(q*.8+w*.2+jA*.22,0,1.15); /* squeeze: tightens with progress, the victim struggles */
   let A,V,last='A';
   const onBack=(o={})=>Object.assign({f:-hd,hip:P(-4,-14),chest:P(58,-18),nearFoot:P(-52,-34),farFoot:P(-60,-6),kneeN:'up',kneeF:'up',nearHand:P(30,-40),farHand:P(24,-30),elbN:'up',elbF:'up',footN:-hd,footF:-hd,tilt:0,mood:'hurt'},o);
   if(name==='암바'){
@@ -772,9 +777,16 @@ function groundJ(S){
       else{T.nearHand=vadd(B.chest,{x:hd*10,y:-20});T.farHand=vadd(B.chest,{x:-hd*4,y:-16});B.nearHand=vadd(B.chest,{x:hd*4,y:-34})}
     }
   }
-  if(sub&&sub.prog>80){const D=sub.att===top?B:T,tap=Math.abs(Math.sin(t*.55));const base=sub.att===top?vadd(B.chest,{x:hd*10,y:6}):vadd(T.chest,{x:hd*20,y:10});D.farHand={x:base.x,y:base.y-14*tap};D.elbF='up'}
   let order=null;
-  let ov=null;if(sub){const R=subPose(gr,sub,t);if(R){const k=clamp((sub.t||0)/14,0,1),e=k*k*(3-2*k);T=Object.assign(blendJ(T,R.T,e),{});B=blendJ(B,R.B,e);order=R.order;if(R.ov&&e>.8)ov={list:R.ov,who:R.ovA==='T'?top:bot}}}
+  /* submissions: staged entry (hands grab first, then torso, then hips and legs swing over on an arc),
+     the hold stays on screen through the tap, and an escape unwinds out of it instead of snapping */
+  let ov=null;
+  const held=sub||(S.mode==='ko'&&S.subEnd&&S.frame-S.subEnd.end<150?S.subEnd:null);
+  if(held){const R=subPose(gr,held,t);if(R){const k=clamp((held.t||0)/34,0,1);
+      T=stagedJ(T,R.T,k);B=stagedJ(B,R.B,k*1.15);order=R.order;if(R.ov&&k>.8)ov={list:R.ov,who:R.ovA==='T'?top:bot};
+      if(!sub){const e=clamp((S.frame-S.subEnd.end-90)/50,0,1),ee=e*e*(3-2*e);if(ee>0){const P0=groundJNoSub(S);T=blendJ(T,P0.T,ee);B=blendJ(B,P0.B,ee)}}}}
+  else if(S.subOut&&S.frame-S.subOut.out<40){const u=(S.frame-S.subOut.out)/40,ee=u*u*(3-2*u),R=subPose(gr,Object.assign({},S.subOut,{t:99}),t);if(R){T=stagedJ(R.T,T,ee);B=stagedJ(R.B,B,ee)}}
+  if(held&&held.prog>85){const D=held.att===top?B:T,tap=Math.abs(Math.sin(t*.42));const base=held.att===top?vadd(B.chest,{x:hd*10,y:6}):vadd(T.chest,{x:hd*20,y:10});D.farHand={x:base.x,y:base.y-14*tap};D.elbF='up'}
   if(bot.state==='ko'||(S.mode==='ko'&&S.camFocus===bot.side)){B.nearHand=vadd(B.chest,{x:-hd*4,y:20});B.farHand=vadd(B.chest,{x:hd*10,y:18});B.mood='ko'}
   return{T,B,order,ov};
 }

@@ -247,7 +247,7 @@ function finish(Wn,method,detail){
   if(S.mode!=='fight')return;
   hlMark(100,`${Wn.nick} · ${method} 피니시`);
   const L=other(Wn);
-  S.mode='ko';S.phaseT=200;S.sub=null;S.koRefIn=0;
+  if(S.sub)S.subEnd=Object.assign({},S.sub,{prog:100,end:S.frame});S.mode='ko';S.phaseT=200;S.sub=null;S.koRefIn=0;
   const el=S.roundFrames-S.timer;
   S.result={winner:Wn.side,method,detail,round:S.round,time:fmt(el)};if(Wn===S.p||L===S.p)buzz(method==='서브미션'?[60,40,60]:[90,60,180,60,90]);
   if(!S.gr){L.state='ko';L.koT=0;L.koK=pick(['back','face','crumple','fence','spin']);S.slow=90;S.cl=null}
@@ -725,11 +725,11 @@ function mash(){
   p.st=Math.max(0,p.st-.35);sfx('tick');
 }
 function upSub(){
-  const s=S.sub,D=S.D,e=S.e;s.t++;
+  const s=S.sub,D=S.D,e=S.e;s.t++;if(s.jA>0)s.jA--;if(s.jD>0)s.jD--;
   s.prog+=((sv(s.att,'subO')-sv(s.def,'subD'))/100)*.35*s.pow+(s.def.st<20?.06:0)-(s.att.st<15?.05:0)+(s.def.head<30?.04:0);
   if(!S.remote&&(!(S.practice&&S.practice.ai!=='normal')||s.att===e)){
     const role=s.att===e?'att':'def';
-    if(Math.random()<D.mash*(.7+sv(e,role==='att'?'subO':'subD')*.004)){s.prog+=role==='att'?tapAmt(e,'att'):-tapAmt(e,'def');e.st=Math.max(0,e.st-.35)}
+    if(Math.random()<D.mash*(.7+sv(e,role==='att'?'subO':'subD')*.004)){s.prog+=role==='att'?tapAmt(e,'att'):-tapAmt(e,'def');e.st=Math.max(0,e.st-.35);if(role==='att')s.jA=10;else s.jD=10}
   }
   if(s.prog>=100){s.prog=100;
     if(S.practice&&S.practice.inf){say(`${s.def.nick} 탭! (연습 모드)`);floatText(S.gr?S.gr.cx:400,170,'탭!','#ffd75e');S.sub=null;if(S.gr)exitGround();return}
@@ -737,11 +737,11 @@ function upSub(){
   if(s.prog<=0||s.t>=420){
     const gr=S.gr;say(`${s.def.nick}, ${s.name}에서 빠져나옵니다!`);
     if(gr&&gr.top===s.att)gr.pos=gr.pos===5?0:Math.max(0,gr.pos-2);
-    s.att.st=Math.max(0,s.att.st-14);S.sub=null;if(gr)gr.idle=0;
+    s.att.st=Math.max(0,s.att.st-14);S.subOut=Object.assign({},s,{out:S.frame,pos0:gr?gr.pos:0});S.sub=null;if(gr)gr.idle=0;
   }
 }
 
-function mashFor(p){const s=S.sub;if(!s)return;if(s.att===p)s.prog+=tapAmt(p,'att');else if(s.def===p)s.prog-=tapAmt(p,'def');p.st=Math.max(0,p.st-.35);sfx('tick')}
+function mashFor(p){const s=S.sub;if(!s)return;if(s.att===p){s.prog+=tapAmt(p,'att');s.jA=10}else if(s.def===p){s.prog-=tapAmt(p,'def');s.jD=10}p.st=Math.max(0,p.st-.35);sfx('tick')}
 /* ---------- online: the remote fighter (b) is driven by the guest's inputs ---------- */
 function remoteCtl(E,P){const R=S.rin||{};E.blockHeld=!!R.blk;if(!S.gr&&!S.cl){E.moveDir=R.ax||0;E.moveZ=R.az||0}}
 function netInput(R){if(!S||!S.remote||!R)return;S.rin=R;const E=S.b,P=S.a;
