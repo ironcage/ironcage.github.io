@@ -352,7 +352,7 @@ function drawBody0(F,J){
   const shL=vadd(vadd(shB,vmul(fwd,4-tw*6)),vmul(sd,tw<0?tw*1.5:0)),shR=vadd(vadd(shB,vmul(fwd,-5+tw*9)),vmul(sd,tw>0?-tw*1.5:0));
   const hpL=vadd(J.hip,vmul(fwd,3-ht*3)),hpR=vadd(J.hip,vmul(fwd,-3+ht*8));
   const shN=sw?shR:shL,shF=sw?shL:shR,hipN=sw?hpR:hpL,hipF=sw?hpL:hpR;
-  const head=J.head||vadd(vadd(J.chest,vmul(sd,21)),vmul(fwd,3));
+  const head=J.head||vadd(vadd(vadd(J.chest,vmul(sd,21)),vmul(fwd,3)),J._hd?{x:J._hd.x*.5,y:J._hd.y*.5}:{x:0,y:0});
   const hAng=Math.atan2(sd.y,sd.x)+Math.PI/2+(J.tilt||0)*f;
   const legF=ik(hipF,J.farFoot,46,44,J.kneeF||'fwd',f),legN=ik(hipN,J.nearFoot,46,44,J.kneeN||'fwd',f);
   const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
@@ -433,14 +433,33 @@ function mixJ(A,B,w){if(w<=0)return A;if(w>=1)return B;const o={...A};
   for(const q of ['hip','chest','nearHand','farHand','nearFoot','farFoot'])o[q]={x:A[q].x+(B[q].x-A[q].x)*w,y:A[q].y+(B[q].y-A[q].y)*w};
   if(B.head)o.head=A.head?{x:A.head.x+(B.head.x-A.head.x)*w,y:A.head.y+(B.head.y-A.head.y)*w}:null;
   for(const q of ['kneeN','kneeF','elbN','elbF'])o[q]=w>.5?B[q]:A[q];o.tilt=(A.tilt||0)*(1-w);return o}
-const MC_ATK={jab:{k:'Punching',lim:'nH'},cross:{k:'Cross_Punch',lim:'fH'},hook:{k:'Hook_Punch',lim:'fH'},midkick:{k:'Roundhouse_Kick',lim:'nF',swap:1,axis:'y',h:1.15},highkick:{k:'Roundhouse_Kick',lim:'nF',swap:1,axis:'y',h:1.7}};
+/* additive mocap: keep OUR stance/strike as the base pose and add only the captured MOVEMENT on top
+   (joint offset from the clip's first frame). This keeps the bladed side stance and our strike targets,
+   and borrows the weight shift, torso lean, head snap and guard motion from the real capture. */
+function mcDelta(F,key,u,swap){const I=mcInfo(key);if(!I)return null;const M=I.M,n=M.n,q=clamp(u,0,1)*(n-1),i0=Math.floor(q),i1=Math.min(n-1,i0+1),k=q-i0;
+  const P=(fr,j)=>I.g(fr,j),at=j=>{const a=P(M.d[i0],j),b=P(M.d[i1],j);return{x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k}},r0=j=>P(M.d[0],j),S=90/I.leg,f=F.f;
+  const N=swap?'f':'n',Fr=swap?'n':'f',D=j=>{const a=at(j),b=r0(j);return{x:(a.x-b.x)*S*f,y:-(a.y-b.y)*S}};
+  return{hip:D('hip'),chest:D('chest'),head:D('head'),nearHand:D(N+'H'),farHand:D(Fr+'H'),nearFoot:D(N+'F'),farFoot:D(Fr+'F')}}
+function addJ(J,d,g){if(!d)return J;const o={...J};for(const q in g){if(!d[q]||!J[q]&&q!=='head')continue;const gg=g[q];
+    if(q==='head'){if(J.head)o.head={x:J.head.x+d.head.x*gg,y:J.head.y+d.head.y*gg};else o._hd={x:d.head.x*gg,y:d.head.y*gg};continue}
+    o[q]={x:J[q].x+d[q].x*gg,y:J[q].y+d[q].y*gg}}
+  /* hands follow the chest, feet stay planted unless asked */
+  /* guard hands ride with the head (that is where they protect) */
+  for(const q of ['nearHand','farHand'])if(!(q in g)&&d.head){const gh=(g.head||0)*.5+(g.chest||0)*.5,mx={x:(d.head.x+d.chest.x)/2,y:(d.head.y+d.chest.y)/2};o[q]={x:J[q].x+mx.x*gh,y:J[q].y+mx.y*gh}}
+  for(const q of ['nearFoot','farFoot'])if(o[q])o[q].y=Math.min(o[q].y,GY);return o}
+const MC_ATK={jab:{k:'Punching',lim:'nH'},cross:{k:'Cross_Punch',lim:'fH'},hook:{k:'Hook_Punch',lim:'fH',hand:'nH'},midkick:{k:'Roundhouse_Kick',lim:'nF',swap:1,axis:'y',h:1.15},highkick:{k:'Roundhouse_Kick',lim:'nF',swap:1,axis:'y',h:1.7}};
 /* map the game's windup/active/recovery frames onto the capture: start → impact → settle */
 function mcAttack(F,base){const A=F.A,m=A&&MC_ATK[A.anim];if(!m||!mcInfo(m.k))return base;
   const imp=m.imp??(m.imp=mcPeak(m.k,m.lim,m.axis)),s0=imp*.35,s1=Math.min(1,imp+(1-imp)*.55),t=F.t,w=A.w,a=Math.max(1,A.a),r=Math.max(1,A.r);
   let u;if(t<w+a*.4)u=lerp(s0,imp,Math.min(1,t/(w+a*.4)));else u=lerp(imp,s1,Math.min(1,(t-w-a*.4)/(a*.6+r)));
-  const pk=m.axis==='y'?((GY-mcPose(F,m.k,imp,{swap:m.swap}).farFoot.y)/80):1;
-  const J=mcPose(F,m.k,u,{swap:m.swap,footH:m.h,footPk:pk,mood:A.special?'yell':null});
-  const edge=Math.min(1,t/3,(w+a+r-t)/4);return mixJ(base,J,clamp(edge,0,1))}
+  const d0=mcDelta(F,m.k,s0,m.swap),d=mcDelta(F,m.k,u,m.swap);if(!d||!d0)return base;
+  for(const q in d)d[q]={x:d[q].x-d0[q].x,y:d[q].y-d0[q].y};/* motion relative to the windup start, not the clip's first frame */
+  const kick=/kick/.test(A.anim),g=kick?{hip:.5,chest:.7,head:.7,nearHand:.5,nearFoot:.1}:{hip:.6,chest:.85,head:.8,nearFoot:.2,farFoot:.25};
+  if(kick){d.hip.y*=.35;d.nearHand.y=Math.max(-12,Math.min(12,d.nearHand.y))}
+  const edge=clamp(Math.min(1,t/3,(w+a+r-t)/4),0,1);for(const q in g)g[q]*=edge;const o=addJ(base,d,g);
+  /* the free hand guards the chin, in front of the face rather than over the head */
+  if(!kick){const q=(m.hand||m.lim)==='nH'?'farHand':'nearHand',G={x:o.chest.x+F.f*(q==='nearHand'?24:17),y:o.chest.y-30};o[q]={x:lerp(o[q].x,G.x,edge),y:lerp(o[q].y,G.y,edge)};o[q==='nearHand'?'elbN':'elbF']='down'}
+  return o}
 function mcLoop(F,key,t,speed=1,o={}){const I=mcInfo(key);if(!I)return null;const u=((t*speed/4)/(I.M.n))%1;return mcPose(F,key,u,o)}
 function kickPath(F,A,x,f,an){const H={lowkick:30,midkick:92,highkick:138}[an],R={lowkick:104,midkick:110,highkick:110}[an];
   const B0={x:x-f*24,y:GY},C={x:x+f*(an==='lowkick'?14:6),y:GY-(an==='lowkick'?40:H*.55+18)},T={x:x+f*(-24+R+24),y:GY-H},M={x:x+f*(an==='lowkick'?60:34),y:GY-H-(an==='lowkick'?6:26)};
@@ -587,11 +606,13 @@ function poseStand(F,O,S){
   let J0={f,hip,chest,tilt,mood,nearHand:near,farHand:far,nearFoot:front,farFoot:back,kneeN,kneeF,elbN,elbF,twist,hipTwist};
   if(IC.MOCAP&&IC.opts&&IC.opts.mocap!==false){
     if(st==='attack')J0=mcAttack(F,J0);
-    else if((st==='idle'||st==='block')&&!F.exh&&!RX&&!(F.swT>0)){const L=mcLoop(F,'Fighting_Idle',t+(F.side==='a'?0:37),1);if(L){if(st==='block'){L.nearHand={x:x+f*24,y:198+cr};L.farHand={x:x+f*17,y:203+cr};L.elbN='down';L.elbF='down'}J0=mixJ(J0,L,.85)}}
-    else if(st==='perf'&&(PK==='chest'||PK==='taunt')){const L=mcLoop(F,PK==='chest'?'Standing_Taunt_Chest_Thump':'Taunt',pt,1,{mood:'yell'});if(L)J0=L}
-    else if(st==='dejected'){const I=mcInfo('Defeated');if(I){const L=mcPose(F,'Defeated',Math.min(.55,(F.perfT||t%600)/((I.M.n-1)*4)),{mood:'hurt'});if(L)J0=L}}
+    else if((st==='idle'||st==='block')&&!F.exh&&!RX&&!(F.swT>0)){const I=mcInfo('Fighting_Idle');if(I){const u=(((t+(F.side==='a'?0:37))/4)/I.M.n)%1,d=mcDelta(F,'Fighting_Idle',u);
+      J0=addJ(J0,d,st==='block'?{hip:.5,chest:.6,head:.6}:{hip:.6,chest:.7,head:.7,nearHand:.45,farHand:.45})}}
+    else if(st==='perf'&&(PK==='chest'||PK==='taunt')){const key=PK==='chest'?'Standing_Taunt_Chest_Thump':'Taunt',I=mcInfo(key);if(I){const u=((pt/4)/I.M.n)%1;J0=addJ(J0,mcDelta(F,key,u),{hip:.8,chest:1,head:1,nearHand:1,farHand:1,nearFoot:.3,farFoot:.3});J0.mood='yell'}}
+    else if(st==='dejected'){const I=mcInfo('Defeated');if(I){const u=Math.min(.55,(F.perfT||t%600)/((I.M.n-1)*4));J0=addJ(J0,mcDelta(F,'Defeated',u),{hip:.8,chest:1,head:1,nearHand:.9,farHand:.9})}}
     if(RX&&st!=='ko'&&st!=='attack'){const key=RX.k==='big'?'Receive_Uppercut_To_The_Face':RX.k==='body'?'Hit_Reaction':RX.k==='head'?'Receive_Punch_To_The_Face':null;
-      if(key){const dur=RX.k==='big'?26:RX.k==='body'?28:18,p=clamp(RX.t/dur,0,1),pk=key==='Hit_Reaction'?.45:.42,L=mcPose(F,key,p*pk,{mood:'hurt'});if(L)J0=mixJ(J0,L,Math.sin(Math.min(1,p*1.15)*Math.PI)*.95)}}
+      if(key&&mcInfo(key)){const dur=RX.k==='big'?26:RX.k==='body'?28:18,p=clamp(RX.t/dur,0,1),pk=key==='Hit_Reaction'?.45:.42,w=Math.sin(Math.min(1,p*1.15)*Math.PI);
+        J0=addJ(J0,mcDelta(F,key,p*pk),{hip:.8*w,chest:1.1*w,head:1.2*w,nearHand:.7*w,farHand:.7*w,nearFoot:.2*w,farFoot:.2*w})}}
   }
   return J0;
 }
@@ -2217,7 +2238,7 @@ function portrait(canvas,d,side,mode){
 function solve(J){
   const f=J.f,sp=vsub(J.chest,J.hip),sd=vn(sp),fwd=vmul({x:-sd.y,y:sd.x},f);
   const shB=vadd(J.chest,vmul(sd,-5));
-  const head=J.head||vadd(vadd(J.chest,vmul(sd,21)),vmul(fwd,3));
+  const head=J.head||vadd(vadd(vadd(J.chest,vmul(sd,21)),vmul(fwd,3)),J._hd?{x:J._hd.x*.5,y:J._hd.y*.5}:{x:0,y:0});
   const shN=vadd(shB,vmul(fwd,4)),shF=vadd(shB,vmul(fwd,-5)),hipN=vadd(J.hip,vmul(fwd,3)),hipF=vadd(J.hip,vmul(fwd,-3));
   const legF=ik(hipF,J.farFoot,46,44,J.kneeF||'fwd',f),legN=ik(hipN,J.nearFoot,46,44,J.kneeN||'fwd',f);
   const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
