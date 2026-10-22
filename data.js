@@ -235,9 +235,14 @@ const ROSTER = RAW_ALL.map(([cls,name,nick,from,style,ovr],i)=>{
 });
 ROSTER.forEach(f=>{f.ovr=ovrOf(f.s,f.style);if(CLSMAP[f.cls])f.cls=CLSMAP[f.cls]});
 
+/* active roster: the 20 best per division (champion + 15 ranked + 4 prospects). Everyone else retires but stays
+   resolvable by id so old saves, records and hall-of-fame entries keep working. */
+const ROSTER_ALL=ROSTER.slice();ROSTER.length=0;
+for(const C of CLASSES){const l=ROSTER_ALL.filter(f=>f.cls===C.id).sort((a,b)=>b.ovr-a.ovr);l.forEach((f,i)=>{f.seed=i});ROSTER.push(...l.slice(0,20))}
+ROSTER.forEach(f=>{f.ranked=f.seed<16});
 const CUSTOM=[];
 function byClass(cls){return ROSTER.concat(CUSTOM).filter(f=>f.cls===cls)}
-function fighter(id){return ROSTER.find(f=>f.id===id)||CUSTOM.find(f=>f.id===id)}
+function fighter(id){return ROSTER_ALL.find(f=>f.id===id)||CUSTOM.find(f=>f.id===id)}
 
 const COUNTRIES = ['대한민국','미국','브라질','일본','러시아','멕시코','영국','아일랜드','캐나다','호주','프랑스','태국','중국','나이지리아','뉴질랜드','폴란드','스페인','네덜란드'];
 const SKIN_OPTIONS = ['#f0cdb0','#e2b48c','#d2a07a','#b47a52','#8a5a3c','#5a3824'];
@@ -255,5 +260,5 @@ const SONGS=[
  {n:'Neon Riot',g:'edm',gn:'일렉트로닉',bpm:128,key:1,d:'관중을 뛰게 만드는 클럽 비트'},
  {n:'Blackout',g:'edm',gn:'일렉트로닉',bpm:134,key:.89,d:'어두운 신스와 강한 킥'},
  {n:'심장박동',g:'edm',gn:'일렉트로닉',bpm:122,key:1.19,d:'밝고 경쾌한 신스 아르페지오'}];
-IC.VER='48';Object.assign(IC,{CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
+IC.VER='49';Object.assign(IC,{ROSTER_ALL,CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
 })(window.IC);

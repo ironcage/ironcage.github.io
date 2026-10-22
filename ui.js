@@ -301,7 +301,7 @@ const CHART={g_fly_1jbswcl:'fly',g_fw_192dyev:'fw',lw_0:'lw',ww_9:'ww',mw_17:'mw
 /* ===== photo pool: 40 AI portraits shared by look (ethnicity group × hair × beard) ===== */
 const POOL_ETH={'대한민국':'asian','일본':'asian','중국':'asian','태국':'asian','다게스탄':'cauc','체첸':'cauc','카자흐스탄':'cauc','조지아':'cauc','브라질':'latin','멕시코':'latin','뉴질랜드':'latin','사모아':'latin','나이지리아':'black','카메룬':'black','모로코':'latin'};
 function skinLum(h){h=(h||'#d2a07a').replace('#','');const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return .299*r+.587*g+.114*b}
-function photoKey(d){if(!d||!d.look)return null;const L=d.look,lum=skinLum(L.skin);
+function photoKey(d){if(!d||!d.look)return null;const L=d.look;if(L.face&&POOL.has(L.face))return L.face;const lum=skinLum(L.skin);
   let e=lum<120?'black':POOL_ETH[d.from]||'white';if(e==='asian'&&lum<150)e='latin';if(e==='white'&&lum<160)e='latin';
   const hs=L.hairStyle,h=hs==='bald'||hs==='buzz'?'shaved':hs==='long'||hs==='bun'?'long':hs==='mohawk'?'mohawk':'short';
   return `${e}_${h}_${L.beard?'b':'n'}`}
@@ -1239,9 +1239,14 @@ const ACTS={
   film:{name:'상대 분석',grp:null,stats:[],en:-4,inj:0,d:'경기 전 상대 성향 파악, 받는 데미지 5% 감소'},
   rest:{name:'휴식',grp:null,stats:[],en:35,inj:0,d:'에너지 회복. 경기 당일 컨디션에 영향'}
 };
-const CR={name:'',nick:'',from:'대한민국',cls:'lw',style:'kickboxer',skin:IC.SKIN_OPTIONS[1],hair:IC.HAIR[0],hairStyle:'short',beard:false,trunk:IC.TRUNKS[0]};
+const CR={name:'',nick:'',from:'대한민국',cls:'lw',style:'kickboxer',skin:IC.SKIN_OPTIONS[1],hair:IC.HAIR[0],hairStyle:'short',beard:false,trunk:IC.TRUNKS[0],face:null};
 A.career=()=>{if(DATA.career)go('chub');else go('ccreate')};
-function previewData(){const s=IC.makeStats(CR.style,56,IC.seeded(7));return{id:'__tmp',name:CR.name||'이름 없음',nick:CR.nick||'',from:CR.from,style:CR.style,s,look:{skin:CR.skin,hair:CR.hair,hairStyle:CR.hairStyle,beard:CR.beard,trunk:CR.trunk},special:STYLES[CR.style].sp[0]}}
+/* face picker: the photo heads in the pool; 자동 = closest to the chosen skin/hair/beard */
+const facePicker=(act,cur)=>`<div class="field"><span class="lbl">얼굴</span><div class="fpick"><button class="fpk auto" data-act="${act}" data-v="" aria-pressed="${!cur}">자동</button>${[...POOL].map(k=>`<button class="fpk" data-act="${act}" data-v="${k}" aria-pressed="${k===cur}"><img src="art/head/${k}.png" alt="" loading="lazy"></button>`).join('')}</div></div>`;
+A.crFace=d=>{keepInputs();CR.face=d.v||null;render()};
+A.cFace=d=>{const c=DATA.career;if(!c)return;c.look.face=d.v||null;save();render()};
+V.cface=()=>`${back('chub','← 커리어')}<div class="panel"><div class="eyebrow">커리어 · 얼굴</div><h2 class="big">얼굴 바꾸기</h2><div class="chead"><canvas data-pid="me" data-mode="bust"></canvas><p>몸 피부색은 고른 얼굴에 맞춰 자동으로 바뀌어요.</p></div>${facePicker('cFace',DATA.career&&DATA.career.look.face)}</div>`;
+function previewData(){const s=IC.makeStats(CR.style,56,IC.seeded(7));return{id:'__tmp',name:CR.name||'이름 없음',nick:CR.nick||'',from:CR.from,style:CR.style,s,look:{skin:CR.skin,hair:CR.hair,hairStyle:CR.hairStyle,beard:CR.beard,trunk:CR.trunk,face:CR.face},special:STYLES[CR.style].sp[0]}}
 V.ccreate=()=>{P._tmp=previewData();const pv=P._tmp;
   const sw=(act,arr,cur)=>`<div class="swatches">${arr.map(c=>`<button data-act="${act}" data-v="${c}" aria-pressed="${c===cur}" style="background:${c}" aria-label="${c}"></button>`).join('')}</div>`;
   return `${back('home')}<div class="panel"><div class="eyebrow">커리어 · 선수 생성</div><h2 class="big">나만의 파이터</h2>
@@ -1252,6 +1257,7 @@ V.ccreate=()=>{P._tmp=previewData();const pv=P._tmp;
   <label class="field"><span class="lbl">체급</span><select id="crCls" data-change="crSel" data-k="cls">${CLASSES.map(c=>`<option value="${c.id}" ${c.id===CR.cls?'selected':''}>${c.name} (${c.kg}kg)</option>`).join('')}</select></label></div>
   <div class="field"><span class="lbl">파이팅 스타일</span>${seg('crStyle',Object.keys(STYLES),CR.style,k=>STYLES[k].name)}</div>
   ${sbars(pv.s)}
+  ${facePicker('crFace',CR.face)}
   <div class="grid2"><div class="field"><span class="lbl">피부</span>${sw('crSkin',IC.SKIN_OPTIONS,CR.skin)}</div><div class="field"><span class="lbl">머리색</span>${sw('crHair',IC.HAIR,CR.hair)}</div>
   <div class="field"><span class="lbl">트렁크</span>${sw('crTrunk',IC.TRUNKS,CR.trunk)}</div>
   <div class="field"><span class="lbl">헤어 · 수염</span>${seg('crHs',['short','buzz','bald','long','bun','mohawk'],CR.hairStyle,v=>({short:'짧은',buzz:'버즈',bald:'삭발',long:'장발',bun:'묶음',mohawk:'모히칸'})[v])}${seg('crBeard',['no','yes'],CR.beard?'yes':'no',v=>v==='yes'?'수염 있음':'수염 없음')}</div></div>
@@ -1266,7 +1272,7 @@ A.crTrunk=d=>{keepInputs();CR.trunk=d.v;render()};A.crHs=d=>{keepInputs();CR.hai
 A.crGo=()=>{keepInputs();const name=CR.name.trim();if(!name){const n=$('#crName');n.focus();n.placeholder='이름을 입력해야 시작할 수 있어요';return}
   const C=CLASSES.find(c=>c.id===CR.cls),seed=Math.floor(Math.random()*1e9);
   const s=IC.makeStats(CR.style,56,Math.random);
-  const c={v:1,seed,name,nick:CR.nick.trim()||name,from:CR.from,cls:CR.cls,style:CR.style,look:{skin:CR.skin,hair:CR.hair,hairStyle:CR.hairStyle,beard:CR.beard,trunk:CR.trunk,tattoo:false},
+  const c={v:1,seed,name,nick:CR.nick.trim()||name,from:CR.from,cls:CR.cls,style:CR.style,look:{skin:CR.skin,hair:CR.hair,hairStyle:CR.hairStyle,beard:CR.beard,trunk:CR.trunk,tattoo:false,face:CR.face},
     s,special:STYLES[CR.style].sp[0],unlocked:[...STYLES[CR.style].sp],age:22,rec:[0,0,0],hype:5,gym:'local',energy:100,phase:'offers',offers:[],fight:null,camp:null,
     pts:3,streak:0,isChamp:false,titleDef:0,titles:0,peak:99,history:[],news:['지역 단체에서 프로 커리어를 시작합니다. 3승을 거두면 IRON CAGE 입성 테스트 기회가 옵니다.'],tier:'regional',reg:{w:0,l:0},locals:[],belts:[],cutRisk:0,height:Math.round((C.h[0]+C.h[1])/2),reach:Math.round((C.reach[0]+C.reach[1])/2),fillers:genFillers(CR.cls,seed),order:[]};
   const ids=[...IC.byClass(CR.cls).map(f=>f.id),...c.fillers.map(f=>f.id)];
@@ -1357,7 +1363,7 @@ V.chub=()=>{const c=ensureC(DATA.career),me=meData(c),idx=c.order.indexOf('me'),
   <div class="panel">${main}</div>
   ${hubPanel(c)}
   <div class="panel"><div class="row">
-    <button class="btn" data-act="nav" data-to="cstats">능력치${c.pts>0?` · 포인트 ${c.pts}`:''}</button><button class="btn" data-act="nav" data-to="cgym">체육관</button><button class="btn" data-act="nav" data-to="cspec">필살기</button><button class="btn" data-act="songOpen" data-id="me">입장곡</button>
+    <button class="btn" data-act="nav" data-to="cstats">능력치${c.pts>0?` · 포인트 ${c.pts}`:''}</button><button class="btn" data-act="nav" data-to="cgym">체육관</button><button class="btn" data-act="nav" data-to="cspec">필살기</button><button class="btn" data-act="songOpen" data-id="me">입장곡</button><button class="btn" data-act="nav" data-to="cface">얼굴</button>
     <button class="btn" data-act="nav" data-to="crank">랭킹</button><button class="btn" data-act="nav" data-to="cclass" ${c.phase==='fight'?'disabled':''}>체급 변경</button><button class="btn" data-act="nav" data-to="chist">전적</button><button class="btn" data-act="nav" data-to="cevents">지난 이벤트</button><button class="btn" data-act="nav" data-to="csns">SNS</button><button class="btn" data-act="nav" data-to="cphone">휴대폰${unread(c)?` <em class="badge">${unread(c)}</em>`:''}</button><button class="btn" data-act="nav" data-to="cretire">은퇴</button></div>
   ${c.news.length?`<h3>${clsName(c.cls)} 소식</h3><div class="log">${c.news.slice(0,5).map(n=>`<div>${esc(n)}</div>`).join('')}</div>`:''}</div>`};
 A.cReroll=()=>{const c=DATA.career;if(c.phase!=='offers')return;c.rerolled=(c.rerolled||0)+1;const old=c.offers.map(o=>o.opp);c.recent=[...(c.recent||[]),...old];c.offers=makeOffers(c);c.recent=c.recent.slice(0,4);save();render()};
