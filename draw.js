@@ -384,6 +384,8 @@ function drawBody0(F,J){
   const legF=ik(hipF,J.farFoot,46,44,J.kneeF||'fwd',f),legN=ik(hipN,J.nearFoot,46,44,J.kneeN||'fwd',f);
   const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
   const pants=o.pants,legCol=pants?'#3b3f47':null;
+  if(J._only==='legN'){limb(hipN,legN.j,legN.end,PROF.leg,1,legCol||skin,{flat:!!legCol,sheen:o.sweat*.25,bellies:[[.45,.16],[1.3,.14]]});foot(legN.end,J.footN||f,skin,o);shortsLeg(hipN,legN.j,o,false,legN.end);return{head}}
+  if(J._only==='armN'){limb(shN,armN.j,armN.end,PROF.arm,1,skin,{sheen:o.sweat*.25,bellies:[[.42,.2],[1.25,.14]]});glove(armN.end,Math.atan2(armN.end.y-armN.j.y,armN.end.x-armN.j.x),o,false);return{head}}
   // far leg
   limb(hipF,legF.j,legF.end,PROF.leg,.94,legCol?shade(legCol,.72):shade(o.look.skin,.7),{flat:!!legCol,bellies:[[.45,.12],[1.3,.1]]});foot(legF.end,J.footF||f,skinD,o);
   shortsLeg(hipF,legF.j,o,true,legF.end);
@@ -804,15 +806,16 @@ function groundJ(S){
   let order=null;
   /* submissions: staged entry (hands grab first, then torso, then hips and legs swing over on an arc),
      the hold stays on screen through the tap, and an escape unwinds out of it instead of snapping */
-  let ov=null;
+  let ov=null,limbOv=null;
   const held=sub||(S.mode==='ko'&&S.subEnd&&S.frame-S.subEnd.end<150?S.subEnd:null);
   if(held){const R=subPose(gr,held,t);if(R){const k=clamp((held.t||0)/34,0,1);
       T=stagedJ(T,R.T,k);B=stagedJ(B,R.B,k*1.15);order=R.order;if(R.ov&&k>.8)ov={list:R.ov,who:R.ovA==='T'?top:bot};
-      if(R.legOv&&k>.35){const r=solve(R.ovA==='T'?T:B);ov={list:R.legOv===2?[[r.shN,r.elbN,7,6,'A'],[r.elbN,r.handN,6.5,6,'A'],[r.handN,r.handN,0,0,'G']]:[[r.hipN,r.kneeN,10,8,'A'],[r.kneeN,r.footN,8,6,'A']],who:R.ovA==='T'?top:bot}}
+      if(R.legOv&&k>.35)limbOv={who:R.ovA==='T'?top:bot,part:R.legOv===2?'armN':'legN',side:R.ovA};
       if(!sub){const e=clamp((S.frame-S.subEnd.end-90)/50,0,1),ee=e*e*(3-2*e);if(ee>0){const P0=groundJNoSub(S);T=blendJ(T,P0.T,ee);B=blendJ(B,P0.B,ee)}}}}
   else if(S.subOut&&S.frame-S.subOut.out<40){const u=(S.frame-S.subOut.out)/40,ee=u*u*(3-2*u),R=subPose(gr,Object.assign({},S.subOut,{t:99}),t);if(R){T=stagedJ(R.T,T,ee);B=stagedJ(R.B,B,ee)}}
   if(bot.state==='ko'||(S.mode==='ko'&&S.camFocus===bot.side)){B.nearHand=vadd(B.chest,{x:-hd*4,y:20});B.farHand=vadd(B.chest,{x:hd*10,y:18});B.mood='ko'}
-  return{T,B,order,ov};
+  if(limbOv)limbOv.J=limbOv.side==='T'?T:B;
+  return{T,B,order,ov,limbOv};
 }
 
 /* ---------- arena ---------- */
@@ -1001,13 +1004,15 @@ function drawStandingFighter(F,O,S){
 }
 function blendJ(A,B,k){const o={...B};for(const q of ['hip','chest','nearHand','farHand','nearFoot','farFoot']){if(A[q]&&B[q])o[q]={x:A[q].x+(B[q].x-A[q].x)*k,y:A[q].y+(B[q].y-A[q].y)*k}}o.tilt=(A.tilt||0)+((B.tilt||0)-(A.tilt||0))*k;return o}
 function drawGround(S){
-  const gr=S.gr;let {T,B,order,ov}=groundJ(S);
+  const gr=S.gr;let {T,B,order,ov,limbOv}=groundJ(S);
   if(gr.trans>0&&gr.prevPos!=null&&gr.prevPos!==gr.pos){const cur=gr.pos;gr.pos=gr.prevPos;const P0=groundJ(S);gr.pos=cur;const k=1-gr.trans/16,e=k*k*(3-2*k);T=blendJ(P0.T,T,e);B=blendJ(P0.B,B,e);
     if(e<.5){T.chest={x:T.chest.x,y:T.chest.y-14*Math.sin(e*Math.PI)}}}
   gr.top._t=gr.bot._t=S.frame;
   ctx.save();depth(gr.cx,gr.cz||0);
   shadowAt(gr.cx,120);
   if(order==='TB'||(!order&&gr.pos===4)){drawBody(gr.top,T);drawBody(gr.bot,B)}else{drawBody(gr.bot,B);drawBody(gr.top,T)}
+  /* the attacker's wrapping leg/arm is drawn again over the victim with the normal limb renderer */
+  if(limbOv)drawBody(limbOv.who,Object.assign({},limbOv.J,{_only:limbOv.part}));
   /* choking arm drawn over the victim's throat */
   if(ov){const sk=(ov.who.look&&ov.who.look.skin)||'#d2a07a';for(const [a,b,r1,r2,k] of ov.list){if(k==='G'){const g=ctx.createRadialGradient(b.x-2,b.y-3,1,b.x,b.y,9);g.addColorStop(0,'#4b4f58');g.addColorStop(1,'#0b0c0e');ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(b.x,b.y,8,7,0,0,7);ctx.fill();ctx.fillStyle=ov.who.corner||'#3d7ff0';ctx.fillRect(b.x-9,b.y-3,4,7)}else capsule(a,b,r1,r2,sk,0)}}
   ctx.restore();
