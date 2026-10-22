@@ -22,7 +22,7 @@ function ik(a,b,l1,l2,pref,f){
   const ang=Math.atan2(dy,dx),t=Math.acos(clamp((l1*l1+d*d-l2*l2)/(2*l1*d),-1,1));
   const j1={x:a.x+Math.cos(ang+t)*l1,y:a.y+Math.sin(ang+t)*l1},j2={x:a.x+Math.cos(ang-t)*l1,y:a.y+Math.sin(ang-t)*l1};
   let j;
-  switch(pref){case 'up':j=j1.y<j2.y?j1:j2;break;case 'fwd':j=j1.x*f>j2.x*f?j1:j2;break;case 'back':j=j1.x*f<j2.x*f?j1:j2;break;default:j=j1.y>j2.y?j1:j2}
+  if(pref&&typeof pref==='object'){j=Math.hypot(j1.x-pref.x,j1.y-pref.y)<Math.hypot(j2.x-pref.x,j2.y-pref.y)?j1:j2}else switch(pref){case 'up':j=j1.y<j2.y?j1:j2;break;case 'fwd':j=j1.x*f>j2.x*f?j1:j2;break;case 'back':j=j1.x*f<j2.x*f?j1:j2;break;default:j=j1.y>j2.y?j1:j2}
   return{j,end:b};
 }
 /* tapered, shaded limb */
@@ -402,6 +402,46 @@ function ext(F){
   const p=Math.min(1,(F.t-A.w-A.a)/A.r);return Math.max(0,1-p*p*(3-2*p));
 }
 /* real kick mechanics: knee chambers first, the shin whips out on an arc, re-chambers, then steps down */
+/* ================= motion capture retarget (Mixamo, side view) =================
+   IC.MOCAP[key].d = frames of 15 joints (x forward, y up, hip height = 1000). Each segment's DIRECTION comes from the
+   capture and its LENGTH from our rig, so the 2D fighter moves like a person but keeps its proportions. */
+const MCJ=['hip','chest','head','nS','nE','nH','fS','fE','fH','nK','nF','fK','fF','nT','fT'];
+const MCI={};
+function mcInfo(key){if(MCI[key])return MCI[key];const M=IC.MOCAP&&IC.MOCAP[key];if(!M)return null;
+  const g=(fr,j)=>{const i=MCJ.indexOf(j)*2;return{x:fr[i]/1000,y:fr[i+1]/1000}},f0=M.d[0],L=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  const arm=L(g(f0,'nS'),g(f0,'nE'))+L(g(f0,'nE'),g(f0,'nH')),leg=L(g(f0,'hip'),g(f0,'nK'))+L(g(f0,'nK'),g(f0,'nF'));
+  return MCI[key]={M,g,arm,leg}}
+/* the frame where a limb is most extended (x forward or y up) */
+function mcPeak(key,j,axis){const I=mcInfo(key);if(!I)return 0;let b=-1e9,bi=0;I.M.d.forEach((fr,i)=>{const p=I.g(fr,j),h=I.g(fr,'hip'),v=axis==='y'?p.y:p.x-h.x;if(v>b){b=v;bi=i}});return bi/(I.M.n-1)}
+function mcPose(F,key,u,o={}){const I=mcInfo(key);if(!I)return null;const M=I.M,n=M.n,q=clamp(u,0,1)*(n-1),i0=Math.floor(q),i1=Math.min(n-1,i0+1),k=q-i0;
+  const P=j=>{const a=I.g(M.d[i0],j),b=I.g(M.d[i1],j);return{x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k}};
+  const sw=o.swap,N=sw?'f':'n',Fr=sw?'n':'f',f=F.f,x=F.x+(o.dx||0),K=90/I.leg;
+  const hp=P('hip'),hip={x:x+f*hp.x*K*(o.travel??1),y:GY-hp.y*K*.98};
+  const dirTo=(a,b,len)=>{const d=Math.hypot(b.x-a.x,b.y-a.y)||1;return{x:(b.x-a.x)/d*len,y:(b.y-a.y)/d*len}};
+  const W=(base,a,b,len)=>{const d=dirTo(P(a),P(b),len);return{x:base.x+f*d.x,y:base.y-d.y}};
+  const chest=W(hip,'hip','chest',66),head=W(chest,'chest','head',23);
+  const ka=53/I.arm,kl=90/I.leg,rel=(base,a,b,kk)=>{const A=P(a),B=P(b);return{x:base.x+f*(B.x-A.x)*kk,y:base.y-(B.y-A.y)*kk}};
+  const shN={x:chest.x+f*4,y:chest.y+5},shF={x:chest.x-f*5,y:chest.y+5};
+  const out={f,hip,chest,head,tilt:0,mood:o.mood||null,
+    nearHand:rel(shN,N+'S',N+'H',ka),farHand:rel(shF,Fr+'S',Fr+'H',ka),elbN:rel(shN,N+'S',N+'E',ka),elbF:rel(shF,Fr+'S',Fr+'E',ka),
+    nearFoot:rel(hip,'hip',N+'F',kl),farFoot:rel(hip,'hip',Fr+'F',kl),kneeN:rel(hip,'hip',N+'K',kl),kneeF:rel(hip,'hip',Fr+'K',kl),twist:0,hipTwist:0};
+  if(o.footH!=null){const pk=o.footPk||1;out.farFoot.y=hip.y+(out.farFoot.y-hip.y)*1;const lift=GY-out.farFoot.y;out.farFoot.y=GY-lift*o.footH/Math.max(1,pk)}
+  for(const q of ['nearFoot','farFoot'])out[q].y=Math.min(out[q].y,GY);
+  return out}
+/* blend two rig poses (bend hints switch halfway) */
+function mixJ(A,B,w){if(w<=0)return A;if(w>=1)return B;const o={...A};
+  for(const q of ['hip','chest','nearHand','farHand','nearFoot','farFoot'])o[q]={x:A[q].x+(B[q].x-A[q].x)*w,y:A[q].y+(B[q].y-A[q].y)*w};
+  if(B.head)o.head=A.head?{x:A.head.x+(B.head.x-A.head.x)*w,y:A.head.y+(B.head.y-A.head.y)*w}:null;
+  for(const q of ['kneeN','kneeF','elbN','elbF'])o[q]=w>.5?B[q]:A[q];o.tilt=(A.tilt||0)*(1-w);return o}
+const MC_ATK={jab:{k:'Punching',lim:'nH'},cross:{k:'Cross_Punch',lim:'fH'},hook:{k:'Hook_Punch',lim:'fH'},midkick:{k:'Roundhouse_Kick',lim:'nF',swap:1,axis:'y',h:1.15},highkick:{k:'Roundhouse_Kick',lim:'nF',swap:1,axis:'y',h:1.7}};
+/* map the game's windup/active/recovery frames onto the capture: start → impact → settle */
+function mcAttack(F,base){const A=F.A,m=A&&MC_ATK[A.anim];if(!m||!mcInfo(m.k))return base;
+  const imp=m.imp??(m.imp=mcPeak(m.k,m.lim,m.axis)),s0=imp*.35,s1=Math.min(1,imp+(1-imp)*.55),t=F.t,w=A.w,a=Math.max(1,A.a),r=Math.max(1,A.r);
+  let u;if(t<w+a*.4)u=lerp(s0,imp,Math.min(1,t/(w+a*.4)));else u=lerp(imp,s1,Math.min(1,(t-w-a*.4)/(a*.6+r)));
+  const pk=m.axis==='y'?((GY-mcPose(F,m.k,imp,{swap:m.swap}).farFoot.y)/80):1;
+  const J=mcPose(F,m.k,u,{swap:m.swap,footH:m.h,footPk:pk,mood:A.special?'yell':null});
+  const edge=Math.min(1,t/3,(w+a+r-t)/4);return mixJ(base,J,clamp(edge,0,1))}
+function mcLoop(F,key,t,speed=1,o={}){const I=mcInfo(key);if(!I)return null;const u=((t*speed/4)/(I.M.n))%1;return mcPose(F,key,u,o)}
 function kickPath(F,A,x,f,an){const H={lowkick:30,midkick:92,highkick:138}[an],R={lowkick:104,midkick:110,highkick:110}[an];
   const B0={x:x-f*24,y:GY},C={x:x+f*(an==='lowkick'?14:6),y:GY-(an==='lowkick'?40:H*.55+18)},T={x:x+f*(-24+R+24),y:GY-H},M={x:x+f*(an==='lowkick'?60:34),y:GY-H-(an==='lowkick'?6:26)};
   const sm=p=>p*p*(3-2*p),eo=p=>1-Math.pow(1-p,3),bz=(a,b,c,p)=>({x:(1-p)*(1-p)*a.x+2*(1-p)*p*b.x+p*p*c.x,y:(1-p)*(1-p)*a.y+2*(1-p)*p*b.y+p*p*c.y});
@@ -544,7 +584,16 @@ function poseStand(F,O,S){
   /* stance switch: a real step — the new lead foot travels from the back to the front while the old lead slides back */
   if(F.swT>0&&st!=='ko'){const p=1-F.swT/16,k=p*p*(3-2*p),arc=Math.sin(p*Math.PI),fx0=front.x,bx0=back.x;
     front={x:lerp(bx0,fx0,k),y:GY-16*arc};back={x:lerp(fx0,bx0,k),y:GY-3*arc};kneeN='up';hip.y-=4*arc;chest.y-=4*arc}
-  return{f,hip,chest,tilt,mood,nearHand:near,farHand:far,nearFoot:front,farFoot:back,kneeN,kneeF,elbN,elbF,twist,hipTwist};
+  let J0={f,hip,chest,tilt,mood,nearHand:near,farHand:far,nearFoot:front,farFoot:back,kneeN,kneeF,elbN,elbF,twist,hipTwist};
+  if(IC.MOCAP&&IC.opts&&IC.opts.mocap!==false){
+    if(st==='attack')J0=mcAttack(F,J0);
+    else if((st==='idle'||st==='block')&&!F.exh&&!RX&&!(F.swT>0)){const L=mcLoop(F,'Fighting_Idle',t+(F.side==='a'?0:37),1);if(L){if(st==='block'){L.nearHand={x:x+f*24,y:198+cr};L.farHand={x:x+f*17,y:203+cr};L.elbN='down';L.elbF='down'}J0=mixJ(J0,L,.85)}}
+    else if(st==='perf'&&(PK==='chest'||PK==='taunt')){const L=mcLoop(F,PK==='chest'?'Standing_Taunt_Chest_Thump':'Taunt',pt,1,{mood:'yell'});if(L)J0=L}
+    else if(st==='dejected'){const I=mcInfo('Defeated');if(I){const L=mcPose(F,'Defeated',Math.min(.55,(F.perfT||t%600)/((I.M.n-1)*4)),{mood:'hurt'});if(L)J0=L}}
+    if(RX&&st!=='ko'&&st!=='attack'){const key=RX.k==='big'?'Receive_Uppercut_To_The_Face':RX.k==='body'?'Hit_Reaction':RX.k==='head'?'Receive_Punch_To_The_Face':null;
+      if(key){const dur=RX.k==='big'?26:RX.k==='body'?28:18,p=clamp(RX.t/dur,0,1),pk=key==='Hit_Reaction'?.45:.42,L=mcPose(F,key,p*pk,{mood:'hurt'});if(L)J0=mixJ(J0,L,Math.sin(Math.min(1,p*1.15)*Math.PI)*.95)}}
+  }
+  return J0;
 }
 function poseRef(R,S){
   const x=R.x,f=R.f,t=S.frame,w=R.moving?Math.sin(R.walk)*9:0,st=R.state;
