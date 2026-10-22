@@ -668,60 +668,84 @@ function poseRef(R,S){
   return{f,hip,chest,tilt:st==='crouch'?.35:st==='cover'?.5:0,nearHand:near,farHand:far,nearFoot:{x:x+f*(cr>20||st==='cover'?30:20)+w,y:GY},farFoot:{x:x-f*(cr>20||st==='cover'?24:18)-w,y:GY},kneeN:'fwd',kneeF:st==='cover'?'up':'fwd',elbN,elbF};
 }
 /* ---------- submission poses: full-body holds for every submission (attacker A, victim V) ---------- */
-function stagedJ(A,B,k){if(k>=1)return B;if(k<=0)return A;const sm=x=>{x=clamp(x,0,1);return x*x*(3-2*x)},o={...B};
+function stagedJ(A,B,k){if(k>=1)return B;if(k<=0)return A;if(B.head&&!A.head)A={...A,head:solve(A).head};if(A.head&&!B.head)B={...B,head:solve(B).head};const sm=x=>{x=clamp(x,0,1);return x*x*(3-2*x)},o={...B};
   const L=(q,kk,lift)=>{if(A[q]&&B[q]){const e=sm(kk);o[q]={x:A[q].x+(B[q].x-A[q].x)*e,y:A[q].y+(B[q].y-A[q].y)*e-(lift?Math.sin(e*Math.PI)*lift:0)}}};
-  L('nearHand',k/.5);L('farHand',k/.55);L('chest',(k-.12)/.6);L('hip',(k-.28)/.65,8);L('nearFoot',(k-.3)/.7,34);L('farFoot',(k-.36)/.64,26);
+  L('head',(k-.12)/.6);L('nearHand',k/.5);L('farHand',k/.55);L('chest',(k-.12)/.6);L('hip',(k-.28)/.65,8);L('nearFoot',(k-.3)/.7,34);L('farFoot',(k-.36)/.64,26);
   for(const q of ['kneeN','kneeF','elbN','elbF','footN','footF','mood','f'])o[q]=k>.5?B[q]:A[q];o.tilt=(A.tilt||0)+((B.tilt||0)-(A.tilt||0))*sm((k-.12)/.6);return o}
 function groundJNoSub(S){const s0=S.sub,e0=S.subEnd,m0=S.mode;S.sub=null;S.subEnd=null;S.mode='fight';try{return groundJ(S)}finally{S.sub=s0;S.subEnd=e0;S.mode=m0}}
 function subPose(gr,sub,t){
+  /* v66 submissions: each hold is drawn from where the two fighters already are (no body swapping),
+     knees/elbows are steered with points so limbs wrap the right way. A = attacker, V = victim.
+     P(dx,dy): dx toward gr.hd from the pair's centre, dy up from the mat (negative = higher). */
   const {cx,hd,pos,top}=gr,P=(dx,dy)=>({x:cx+hd*dx,y:GY+dy}),att=sub.att===top?'t':'b',name=sub.name,fam=IC.Fight.SUBK?IC.Fight.SUBK[name]:null;
-  const q=clamp(sub.prog/100,0,1),jA=(sub.jA||0)/10,jD=(sub.jD||0)/10,w=Math.sin(t*.35)*(1-q*.4)+Math.sin(t*1.3)*jD*.9,sq=clamp(q*.8+w*.2+jA*.22,0,1.15); /* squeeze: tightens with progress, the victim struggles */
-  let A,V,last='A';
-  const onBack=(o={})=>Object.assign({f:-hd,hip:P(-4,-14),chest:P(58,-18),nearFoot:P(-52,-34),farFoot:P(-60,-6),kneeN:'up',kneeF:'up',nearHand:P(30,-40),farHand:P(24,-30),elbN:'up',elbF:'up',footN:-hd,footF:-hd,tilt:0,mood:'hurt'},o);
-  if(name==='암바'){
-    /* victim flat on the back, arm pulled straight up between the attacker's thighs; attacker lies perpendicular (torso toward camera), one leg over the chest, one over the face, hips bridging into the elbow */
-    V=onBack({nearHand:P(64+sq*2,-66-sq*6),farHand:P(30,-44+w*6),nearFoot:P(-46,-40-w*6),elbN:'up'});
-    A={f:-hd,hip:P(42,-34-sq*10),chest:P(84,-4),nearFoot:P(4,-40),farFoot:P(100,-44),kneeN:'up',kneeF:'up',nearHand:P(64,-56-sq*5),farHand:P(70,-50-sq*4),elbN:'down',elbF:'down',footN:-hd,footF:hd,tilt:.1,mood:'yell'};
+  const q=clamp(sub.prog/100,0,1),jA=(sub.jA||0)/10,jD=(sub.jD||0)/10,w=Math.sin(t*.35)*(1-q*.4)+Math.sin(t*1.3)*jD*.9,sq=clamp(q*.8+w*.2+jA*.22,0,1.15),wg=Math.sin(t*.9)*jD;
+  let A,V,first='V',tapAt=null,ov=null,legOv=0;
+  /* victim flat on the back, head toward +x (the bottom fighter's normal place) */
+  const back=(o={})=>Object.assign({f:-hd,hip:P(-6,-16),chest:P(56,-18-sq*2),nearFoot:P(-54,-4),farFoot:P(-46,-30-w*8),kneeN:'up',kneeF:'up',nearHand:P(30,-40),farHand:P(24,-30),elbN:'up',elbF:'up',footN:-hd,footF:-hd,tilt:0,mood:'hurt'},o);
+  if(name==='암바'&&att==='t'){
+    /* from mount: attacker swings to the head side and falls back, both legs across the chest, arm stretched up between the thighs */
+    V=back({hip:P(-36,-16),nearFoot:P(-84,-4),farFoot:P(-76,-34-w*10),chest:P(24,-22-sq*3),nearHand:P(30+sq*4,-72-sq*5),elbN:P(28,-48),farHand:P(14,-48+wg*6),elbF:P(2,-40)});
+    A={f:-hd,hip:P(30,-12-sq*9),chest:P(86,-10),nearFoot:P(-32,-30),farFoot:P(-12,-38),kneeN:P(-4,-62),kneeF:P(10,-68),nearHand:P(34,-70-sq*5),farHand:P(38,-64-sq*5),elbN:P(58,-48),elbF:P(62,-42),footN:-hd,footF:-hd,tilt:.15,mood:'yell'};first='A';tapAt='Vf';legOv=1;
+  }else if(name==='암바'){
+    /* from guard: leg swung over the neck drives the head down beside the chest, the arm is stretched across the hips, hips lift */
+    A=back({hip:P(-8,-22-sq*8),chest:P(54,-14),nearFoot:P(48,-30+sq*4),kneeN:P(4,-74),farFoot:P(-48,-36),kneeF:P(-30,-58),nearHand:P(36,-24),farHand:P(42,-20),elbN:P(26,-6),elbF:P(50,-4),mood:'yell',footN:hd,footF:-hd});
+    V={f:hd,hip:P(-46,-48),chest:P(0,-42+sq*6),nearFoot:P(-82,-6),farFoot:P(-76,-4),kneeN:'down',kneeF:'down',nearHand:P(34-sq*2,-24),elbN:P(18,-30),farHand:P(-16,-6+wg*4),elbF:'down',tilt:.6+sq*.15,mood:'hurt'};first='A';tapAt='Vf';legOv=1;
   }else if(name==='트라이앵글 초크'){
-    V={f:hd,hip:P(-42,-40),chest:P(-10,-70+sq*10),nearFoot:P(-78,-6),farFoot:P(-72,-4),kneeN:'down',kneeF:'down',nearHand:P(30,-30),farHand:P(-24,-8+w*4),elbN:'down',elbF:'down',tilt:.55+sq*.15,mood:'hurt'};
-    A={f:-hd,hip:P(-6,-20-sq*6),chest:P(54,-16),nearFoot:P(-16,-106+sq*6),farFoot:P(-34,-86),kneeN:'up',kneeF:'up',nearHand:P(14,-80+sq*6),farHand:P(8,-72),elbN:'up',elbF:'up',footN:-hd,footF:-hd,tilt:0,mood:'yell'};
+    /* bottom man's legs lock around head and one arm, he pulls the head down, hips up */
+    A=back({hip:P(-12,-30-sq*6),chest:P(48,-14),nearFoot:P(10,-90+sq*4),kneeN:P(-32,-70),farFoot:P(-26,-84),kneeF:P(6,-70),nearHand:P(20,-62),farHand:P(14,-58),elbN:P(30,-34),elbF:P(36,-30),mood:'yell',footN:hd,footF:-hd});
+    V={f:hd,hip:P(-52,-40),chest:P(-6,-62+sq*8),nearFoot:P(-86,-6),farFoot:P(-80,-4),kneeN:'down',kneeF:'down',nearHand:P(32,-26),elbN:P(14,-40),farHand:P(-26,-12+wg*6),elbF:'down',tilt:.75+sq*.15,mood:'hurt'};first='A';tapAt='Vf';legOv=1;
   }else if(fam==='back'){
-    /* attacker sits behind (drawn first), hooks in; the choking forearm is drawn over the victim's throat */
-    V={f:hd,hip:P(16,-22),chest:P(36,-84+sq*6),nearFoot:P(100,-6),farFoot:P(106,-4+w*4),kneeN:'up',kneeF:'up',nearHand:P(52,-96),farHand:P(46,-90+w*4),elbN:'up',elbF:'up',footN:hd,footF:hd,tilt:-.3-sq*.2,mood:'hurt'};
-    A={f:hd,hip:P(-22,-26),chest:P(-2,-96),nearFoot:P(50,-30),farFoot:P(60,-44),kneeN:'up',kneeF:'up',nearHand:P(40,-108),farHand:P(14,-122),elbN:'up',elbF:'up',footN:hd,footF:hd,tilt:.35+sq*.1,mood:'yell'};last='V';
-    sub._ov=[[P(30,-96+sq*3),P(56,-104+sq*2),7.5,6.2,'A'],[P(56,-104+sq*2),P(60,-106),6.5,6.5,'G']];
-  }else if(fam==='front'&&(name==='길로틴 초크'&&att==='b')){
-    V={f:hd,hip:P(-34,-42),chest:P(14,-50+sq*4),nearFoot:P(-72,-6),farFoot:P(-66,-4),kneeN:'down',kneeF:'down',nearHand:P(44,-28),farHand:P(-2,-8+w*4),elbN:'down',elbF:'down',tilt:.75,mood:'hurt'};
-    A={f:-hd,hip:P(-6,-18-sq*4),chest:P(52,-22),nearFoot:P(-50,-58),farFoot:P(-58,-50),kneeN:'up',kneeF:'up',nearHand:P(30,-58+sq*4),farHand:P(38,-50),elbN:'up',elbF:'up',footN:-hd,footF:-hd,tilt:-.1,mood:'yell'};
+    /* rear: attacker sits tight behind with hooks in, head tucked beside the victim's; the choking arm is drawn over the throat */
+    V={f:hd,hip:P(16,-22),chest:P(24,-80+sq*4),nearFoot:P(100,-6),farFoot:P(104,-4+w*6),kneeN:'up',kneeF:'up',nearHand:P(44,-80+sq*2),farHand:P(38,-76+wg*6),elbN:P(40,-60),elbF:P(34,-58),footN:hd,footF:hd,tilt:-.3-sq*.25,mood:'hurt'};
+    A={f:hd,hip:P(-10,-24),chest:P(2,-86),head:P(6,-108+sq*3),nearFoot:P(54,-30),farFoot:P(64,-42),kneeN:'up',kneeF:'up',nearHand:P(32,-96),farHand:P(12,-116),elbN:P(14,-80),elbF:P(-4,-104),footN:hd,footF:hd,tilt:.25,mood:'yell'};
+    if(name==='넥 크랭크'){A.nearHand=P(38,-104);A.farHand=P(26,-114);V.tilt=-.6-sq*.3}
+    first='A';tapAt='Vf';ov=[[P(16,-90+sq*3),P(40,-92+sq*2),7.5,6.2,'A'],[P(40,-92+sq*2),P(44,-94),6.5,6.5,'G']];
+  }else if(name==='길로틴 초크'&&att==='b'){
+    /* from guard: head trapped under the armpit at the chest, closed guard, hips bridge */
+    A=back({hip:P(-6,-20-sq*6),chest:P(50,-30),nearFoot:P(-52,-44),kneeN:P(-30,-64),farFoot:P(-58,-38),kneeF:P(-36,-58),nearHand:P(26,-50),farHand:P(30,-44),elbN:P(36,-72),elbF:P(46,-60),tilt:.2,mood:'yell'});
+    V={f:hd,hip:P(-44,-46),chest:P(4,-54+sq*4),nearFoot:P(-80,-6),farFoot:P(-74,-4),kneeN:'down',kneeF:'down',nearHand:P(30,-4),elbN:P(26,-30),farHand:P(-6,-20+wg*6),elbF:'down',tilt:.95,mood:'hurt'};first='A';tapAt='Vf';legOv=2;
   }else if(fam==='front'&&pos===5){
-    V={f:hd,hip:P(46,-50),chest:P(8,-58+sq*4),nearFoot:P(84,-4),farFoot:P(90,-4),kneeN:'down',kneeF:'down',nearHand:P(-6,-60),farHand:P(2,-52+w*4),elbN:'down',elbF:'down',footN:hd,footF:hd,tilt:.6,mood:'hurt'};
-    A={f:hd,hip:P(-60,-58+sq*6),chest:P(-34,-104),nearFoot:P(-92,-4),farFoot:P(-40,-4),kneeN:'fwd',kneeF:'fwd',nearHand:P(-6,-50+sq*4),farHand:P(-14,-66),elbN:'down',elbF:'down',tilt:-.15-sq*.1,mood:'yell'};
-  }else if(fam==='front'||fam==='neck'){ /* arm triangle / darce / anaconda / ezekiel from top */
-    V=onBack({nearHand:P(80,-44),farHand:P(30,-36+w*5),elbN:'up'});
-    A=fam==='neck'?{f:hd,hip:P(12,-38),chest:P(44,-88+sq*18),nearFoot:P(-30,-6),farFoot:P(-22,-4),kneeN:'down',kneeF:'down',nearHand:P(70,-28),farHand:P(66,-34),elbN:'up',elbF:'up',tilt:.5+sq*.2,mood:'yell'}
-      :{f:hd,hip:P(6,-36),chest:P(60,-46+sq*6),nearFoot:P(-38,-6),farFoot:P(-30,-4),kneeN:'down',kneeF:'down',nearHand:P(80,-22),farHand:P(72,-30),elbN:'up',elbF:'up',tilt:.85,mood:'yell'};
+    /* front headlock: attacker sprawled in front, arm wrapped under the neck, pulling up and back */
+    V={f:-hd,hip:P(46,-50),chest:P(8,-50+sq*2),nearFoot:P(84,-4),farFoot:P(90,-4),kneeN:'down',kneeF:'down',nearHand:P(-4,-8),farHand:P(4,-6+wg*6),elbN:'down',elbF:'down',footN:hd,footF:hd,tilt:.85,mood:'hurt'};
+    A={f:hd,hip:P(-58,-52+sq*4),chest:P(-28,-100+sq*4),nearFoot:P(-96,-4),farFoot:P(-44,-4),kneeN:'fwd',kneeF:'fwd',nearHand:P(-6,-46+sq*4),farHand:P(-12,-58),elbN:P(-30,-60),elbF:P(-22,-82),tilt:-.1-sq*.15,mood:'yell'};first='V';tapAt='Vf';
+  }else if(fam==='front'||fam==='neck'){
+    if(name==='에제키엘 초크'){
+      /* from mount: chest over the face, forearm across the throat */
+      V=back({nearHand:P(64,-62),elbN:P(64,-40),farHand:P(58,-56+wg*6),elbF:P(48,-40)});
+      A={f:hd,hip:P(14,-36),chest:P(64,-62+sq*10),nearFoot:P(-26,-6),farFoot:P(-18,-4),kneeN:'down',kneeF:'down',nearHand:P(76,-24),farHand:P(82,-30),elbN:P(56,-30),elbF:P(62,-36),tilt:.75+sq*.2,mood:'yell'};first='V';tapAt='Vf';
+    }else{
+      /* arm triangle / darce / anaconda / bone-flute from the top: chest on chest, head on the mat beside the victim's, hands locked around the neck */
+      V=back({nearHand:P(84,-48),elbN:P(70,-56),farHand:P(14,-40+wg*6),elbF:P(22,-30)});
+      A={f:hd,hip:P(4,-38+sq*4),chest:P(64,-40+sq*6),nearFoot:P(-48,-4),farFoot:P(-38,-6),kneeN:'down',kneeF:'down',nearHand:P(76,-24),farHand:P(84,-28),elbN:P(66,-14),elbF:P(78,-12),tilt:1.05,mood:'yell'};first='V';tapAt='Vf';
+    }
   }else if(name==='오모플라타'){
-    V={f:hd,hip:P(-40,-34),chest:P(14,-24+sq*6),nearFoot:P(-84,-6),farFoot:P(-78,-4),kneeN:'down',kneeF:'down',nearHand:P(-20,-62),farHand:P(32,-6+w*3),elbN:'up',elbF:'down',tilt:1.1,mood:'hurt'};
-    A={f:-hd,hip:P(10,-16),chest:P(60,-54),nearFoot:P(-12,-52),farFoot:P(-28,-38),kneeN:'up',kneeF:'up',nearHand:P(16,-40),farHand:P(24,-34),elbN:'down',elbF:'down',footN:-hd,footF:-hd,tilt:-.2,mood:'yell'};
+    /* legs over the shoulder, victim forced face-down, attacker sits up and leans toward the hips */
+    V={f:hd,hip:P(-34,-30),chest:P(28,-16+sq*2),nearFoot:P(-92,-6),farFoot:P(-86,-4),kneeN:'down',kneeF:'down',nearHand:P(-12,-46-sq*6),elbN:P(14,-40),farHand:P(52,-6+wg*4),elbF:'down',tilt:.2,mood:'hurt'};
+    A={f:-hd,hip:P(44,-14),chest:P(10-sq*6,-66+sq*6),nearFoot:P(60,-30),kneeN:P(30,-50),farFoot:P(70,-20),kneeF:P(40,-42),nearHand:P(-14,-44),farHand:P(-20,-36),elbN:'down',elbF:'down',tilt:-.15,mood:'yell'};first='V';tapAt='Vn';legOv=1;
   }else if(name==='기무라'&&att==='b'){
-    V={f:hd,hip:P(-40,-40),chest:P(-6,-82),nearFoot:P(-76,-6),farFoot:P(-70,-4),kneeN:'down',kneeF:'down',nearHand:P(-34,-54-sq*8),farHand:P(18,-40+w*4),elbN:'up',elbF:'down',tilt:.2,mood:'hurt'};
-    A={f:-hd,hip:P(-2,-18),chest:P(36,-62),nearFoot:P(-52,-30),farFoot:P(-40,-8),kneeN:'up',kneeF:'up',nearHand:P(-26,-58-sq*8),farHand:P(-18,-66-sq*8),elbN:'down',elbF:'down',footN:-hd,footF:-hd,tilt:-.4,mood:'yell'};
-  }else if(fam==='arm'){ /* americana / kimura from the top */
+    /* bottom man crunches up toward the trapped arm, figure-four on the wrist, cranking the hand up behind the victim's back; legs clamp the back */
+    A=back({hip:P(-4,-18),chest:P(30,-48+sq*4),nearFoot:P(-62,-58),kneeN:P(-30,-62),farFoot:P(-46,-10),kneeF:'up',nearHand:P(-22,-82-sq*6),farHand:P(-14,-76-sq*6),elbN:P(8,-80),elbF:P(12,-70),tilt:-.2,mood:'yell'});
+    V={f:hd,hip:P(-46,-44),chest:P(-8,-74+sq*4),nearFoot:P(-82,-6),farFoot:P(-76,-4),kneeN:'down',kneeF:'down',nearHand:P(-28,-82-sq*6),elbN:P(8,-66),farHand:P(14,-26+wg*6),elbF:'down',tilt:.55+sq*.2,mood:'hurt'};first='V';tapAt='Vf';
+  }else if(fam==='arm'){
+    /* americana / kimura from the top */
     const am=name==='아메리카나';
-    V=onBack(am?{nearHand:P(88-sq*6,-10-sq*10),farHand:P(30,-36+w*5),elbN:'up'}:{nearHand:P(40,-34-sq*10),farHand:P(28,-40+w*5),elbN:'down'});
-    A={f:hd,hip:P(20,-40),chest:P(56,-66+sq*6),nearFoot:P(-26,-6),farFoot:P(-18,-4),kneeN:'down',kneeF:'down',nearHand:am?P(88-sq*6,-14-sq*10):P(42,-40-sq*10),farHand:am?P(64,-24):P(54,-56),elbN:'up',elbF:'down',tilt:.55,mood:'yell'};
+    V=am?back({nearHand:P(88,-8),elbN:P(66,-14-sq*12),farHand:P(30,-36+wg*6),elbF:'up'})
+        :back({nearHand:P(40,-40-sq*10),elbN:P(66,-46),farHand:P(28,-36+wg*6),elbF:'up'});
+    A={f:hd,hip:P(16,-40),chest:P(56,-74+sq*8),nearFoot:P(-28,-6),farFoot:P(-20,-4),kneeN:'down',kneeF:'down',
+       nearHand:am?P(88,-12):P(42,-44-sq*10),farHand:am?P(68,-22):P(52,-54-sq*8),elbN:am?P(80,-46):P(36,-66),elbF:am?P(56,-44):P(62,-70),tilt:.55,mood:'yell'};first='V';tapAt='Vf';
   }else if(fam==='leg'&&att==='t'){
-    V=onBack({nearFoot:P(-78-sq*4,-44),farFoot:P(-48,-6),farHand:P(34,-36+w*5),nearHand:P(50,-30)});
-    A={f:hd,hip:P(-56,-18),chest:P(-116,-24),nearFoot:P(-6,-36),farFoot:P(-18,-12),kneeN:'up',kneeF:'up',nearHand:P(-80,-48-sq*4),farHand:P(-74,-40),elbN:'down',elbF:'down',footN:hd,footF:hd,tilt:-.05,mood:'yell'};
+    /* from inside the guard: attacker falls back, the victim's leg trapped under his armpit, legs entangled */
+    V=back({chest:P(48,-32+w*6),nearFoot:P(-84-sq*4,-50),kneeN:P(-40,-34),farFoot:P(-56,-20-w*12),farHand:P(30,-30+wg*6),nearHand:P(44,-20)});
+    A={f:hd,hip:P(-58,-16),chest:P(-118,-22),nearFoot:P(-6,-34),farFoot:P(-20,-12),kneeN:P(-30,-46),kneeF:P(-40,-30),nearHand:P(-84,-52-sq*4),farHand:P(-78,-44),elbN:P(-100,-34),elbF:P(-96,-30),footN:hd,footF:hd,tilt:-.05,mood:'yell'};first='V';tapAt='Vf';
   }else if(fam==='leg'){
-    V={f:hd,hip:P(-14,-38),chest:P(22,-88+sq*6),nearFoot:P(-86-sq*4,-44),farFoot:P(-40,-4),kneeN:'fwd',kneeF:'down',nearHand:P(40,-40),farHand:P(28,-50+w*5),elbN:'down',elbF:'down',tilt:-.2-sq*.15,mood:'hurt'};
-    A={f:hd,hip:P(-48,-20),chest:P(-108,-22),nearFoot:P(-24,-48),farFoot:P(-8,-28),kneeN:'up',kneeF:'up',nearHand:P(-88,-46),farHand:P(-82,-38),elbN:'down',elbF:'down',footN:hd,footF:hd,tilt:-.05,mood:'yell'};
+    /* from half guard bottom: attacker spins under onto the near leg, the victim sits back fighting it */
+    V={f:hd,hip:P(-14,-30),chest:P(30,-84+sq*6),nearFoot:P(-88-sq*4,-48),kneeN:P(-50,-34),farFoot:P(-40,-4),kneeF:'down',nearHand:P(40,-40),farHand:P(22,-50+wg*6),elbN:'down',elbF:'down',tilt:-.25-sq*.15,mood:'hurt'};
+    A={f:hd,hip:P(-50,-16),chest:P(-110,-20),nearFoot:P(-24,-48),farFoot:P(-8,-26),kneeN:P(-34,-58),kneeF:P(-30,-30),nearHand:P(-86,-50),farHand:P(-80,-42),elbN:P(-100,-32),elbF:P(-96,-28),footN:hd,footF:hd,tilt:-.05,mood:'yell'};first='V';tapAt='Vf';
   }else return null;
-  /* the victim taps when it is nearly over */
-  if(sub.prog>80){const tap=Math.abs(Math.sin(t*.55));V.farHand={x:V.farHand.x,y:V.farHand.y-14*tap};V.elbF='up'}
-  const ov=fam==='back'?sub._ov:null;
-  if(last==='V')return att==='t'?{T:A,B:V,order:'TB',ov,ovA:'T'}:{T:V,B:A,order:'BT',ov,ovA:'B'};
-  return att==='t'?{T:A,B:V,order:'BT'}:{T:V,B:A,order:'TB'}}
+  /* the victim taps (the free hand slaps the attacker/mat) when it is nearly over */
+  if(sub.prog>82&&tapAt){const tp=Math.abs(Math.sin(t*.42)),k=tapAt==='Vn'?'nearHand':'farHand',h=V[k];V[k]={x:h.x,y:h.y-12*tp};V[tapAt==='Vn'?'elbN':'elbF']='up'}
+  const T=att==='t'?A:V,B=att==='t'?V:A,firstIsT=(first==='A')===(att==='t');
+  return{T,B,order:firstIsT?'TB':'BT',ov,ovA:att==='t'?'T':'B',legOv}}
 function groundJ(S){
   const gr=S.gr,{cx,hd,pos,top,bot}=gr,P=(dx,dy)=>({x:cx+hd*dx,y:GY+dy}),t=S.frame,sub=S.sub;
   let T,B;
@@ -784,9 +808,9 @@ function groundJ(S){
   const held=sub||(S.mode==='ko'&&S.subEnd&&S.frame-S.subEnd.end<150?S.subEnd:null);
   if(held){const R=subPose(gr,held,t);if(R){const k=clamp((held.t||0)/34,0,1);
       T=stagedJ(T,R.T,k);B=stagedJ(B,R.B,k*1.15);order=R.order;if(R.ov&&k>.8)ov={list:R.ov,who:R.ovA==='T'?top:bot};
+      if(R.legOv&&k>.35){const r=solve(R.ovA==='T'?T:B);ov={list:R.legOv===2?[[r.shN,r.elbN,7,6,'A'],[r.elbN,r.handN,6.5,6,'A'],[r.handN,r.handN,0,0,'G']]:[[r.hipN,r.kneeN,10,8,'A'],[r.kneeN,r.footN,8,6,'A']],who:R.ovA==='T'?top:bot}}
       if(!sub){const e=clamp((S.frame-S.subEnd.end-90)/50,0,1),ee=e*e*(3-2*e);if(ee>0){const P0=groundJNoSub(S);T=blendJ(T,P0.T,ee);B=blendJ(B,P0.B,ee)}}}}
   else if(S.subOut&&S.frame-S.subOut.out<40){const u=(S.frame-S.subOut.out)/40,ee=u*u*(3-2*u),R=subPose(gr,Object.assign({},S.subOut,{t:99}),t);if(R){T=stagedJ(R.T,T,ee);B=stagedJ(R.B,B,ee)}}
-  if(held&&held.prog>85){const D=held.att===top?B:T,tap=Math.abs(Math.sin(t*.42));const base=held.att===top?vadd(B.chest,{x:hd*10,y:6}):vadd(T.chest,{x:hd*20,y:10});D.farHand={x:base.x,y:base.y-14*tap};D.elbF='up'}
   if(bot.state==='ko'||(S.mode==='ko'&&S.camFocus===bot.side)){B.nearHand=vadd(B.chest,{x:-hd*4,y:20});B.farHand=vadd(B.chest,{x:hd*10,y:18});B.mood='ko'}
   return{T,B,order,ov};
 }
