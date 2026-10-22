@@ -159,11 +159,27 @@ function sleeve(sh,el,wr,col){const {L,R,C}=limbPts(sh,el,wr,PROF.arm,1,0,.55,1.
 function glove(p,ang,o,dark){
   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(ang);
   if(o.kind==='ref'){ell(2,0,5.2,4.6,dark?'#16171a':'#24262b');ctx.restore();return}
-  const g=ctx.createLinearGradient(0,-8,0,8);g.addColorStop(0,dark?'#3a3d44':'#4b4f58');g.addColorStop(.5,dark?'#16171a':'#1d1f24');g.addColorStop(1,'#0b0c0e');
-  ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(-2,-7.2,13.5,14.4,6.5);ctx.fill();
-  ctx.fillStyle=dark?shade(o.corner,.7):o.corner;ctx.beginPath();ctx.roundRect(-7,-6.4,6.5,12.8,2);ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,.18)';ctx.beginPath();ctx.roundRect(1,-6,9,3,2);ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=.8;for(const yy of [-2.6,0,2.6]){ctx.beginPath();ctx.moveTo(8,yy);ctx.lineTo(11.2,yy);ctx.stroke()}
+  /* 4oz open-finger MMA glove seen from the side: corner-colored wrist strap, black leather back, thick knuckle pad, bare fingers curled under, thumb */
+  const sk=dark?shade(o.skinNow||'#d2a07a',.72):(o.skinNow||'#d2a07a'),skD=shade(sk,.7),cc=dark?shade(o.corner,.7):o.corner;
+  /* fingers curled under the pad (bare skin, the open-finger look) */
+  ctx.fillStyle=sk;ctx.beginPath();ctx.roundRect(4.5,1.8,8.2,5.6,2.6);ctx.fill();
+  ctx.strokeStyle=skD;ctx.lineWidth=.55;for(const xx of [6.6,8.7,10.7]){ctx.beginPath();ctx.moveTo(xx,2.6);ctx.lineTo(xx,6.9);ctx.stroke()}
+  /* leather back of the hand + padding */
+  const g=ctx.createLinearGradient(0,-8,0,4);g.addColorStop(0,dark?'#34373d':'#5a5f69');g.addColorStop(.35,dark?'#17181b':'#24262c');g.addColorStop(1,'#0a0b0d');
+  ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-1.5,-5.6);ctx.quadraticCurveTo(4,-7.6,10,-7);ctx.quadraticCurveTo(14.2,-6.2,14,-1.2);ctx.quadraticCurveTo(13.6,2.6,10.2,2.8);ctx.lineTo(-1.5,3.6);ctx.closePath();ctx.fill();
+  /* knuckle pad seam + stitching */
+  ctx.strokeStyle='rgba(0,0,0,.55)';ctx.lineWidth=.7;ctx.beginPath();ctx.moveTo(7.6,-6.6);ctx.quadraticCurveTo(6.6,-2,7.8,2.6);ctx.stroke();
+  ctx.setLineDash([.9,1.1]);ctx.strokeStyle='rgba(255,255,255,.28)';ctx.lineWidth=.45;ctx.beginPath();ctx.moveTo(-.8,-4.8);ctx.quadraticCurveTo(4,-6.6,9.8,-6.1);ctx.quadraticCurveTo(13.2,-5.4,13.1,-1.4);ctx.stroke();ctx.setLineDash([]);
+  /* leather sheen on the knuckles */
+  ctx.fillStyle=`rgba(255,255,255,${dark?.08:.22})`;ctx.beginPath();ctx.ellipse(10.2,-5,3.4,1.2,-.15,0,7);ctx.fill();
+  /* thumb with its leather loop */
+  ctx.fillStyle=sk;ctx.beginPath();ctx.ellipse(4.2,-6.9,3.2,1.7,-.25,0,7);ctx.fill();
+  ctx.fillStyle='#111';ctx.beginPath();ctx.roundRect(2.6,-8.3,2.4,2.6,.8);ctx.fill();
+  /* wrist strap: corner color, velcro band and a small white logo tab */
+  const sg=ctx.createLinearGradient(0,-6.6,0,6.6);sg.addColorStop(0,shade(cc,1.25));sg.addColorStop(.5,cc);sg.addColorStop(1,shade(cc,.6));
+  ctx.fillStyle=sg;ctx.beginPath();ctx.roundRect(-8.6,-6.2,7.6,11.4,2.2);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(-7.4,-6.2,1.2,11.4);
+  ctx.fillStyle=dark?'rgba(255,255,255,.35)':'rgba(255,255,255,.8)';ctx.beginPath();ctx.roundRect(-5.6,-2,3,4,.8);ctx.fill();
   ctx.restore();
 }
 function foot(ankle,f,col,o){
@@ -563,6 +579,8 @@ function poseStand(F,O,S){
   if(PK==='bow'){near={x:chest.x+f*8,y:chest.y+18};far={x:chest.x+f*4,y:chest.y+22};elbN='down';elbF='down'}
   if(st==='stroll'){near={x:hip.x+f*8+Math.sin(wk)*12,y:hip.y-4};far={x:hip.x-f*6-Math.sin(wk)*12,y:hip.y-2};elbN='fwd';elbF='fwd'}
   if(st==='dejected'){near={x:hip.x+f*13,y:hip.y-10};far={x:hip.x-f*13,y:hip.y-10};elbN='fwd';elbF='back'}
+  /* waiting for the decision: guard down, arms relaxed by the sides */
+  if(st==='idle'&&IC.Fight&&IC.Fight.S&&IC.Fight.S.mode==='decision'){near={x:hip.x+f*12,y:hip.y-4};far={x:hip.x-f*8,y:hip.y-2};elbN='down';elbF='down'}
   if(st==='ko'){near={x:x+f*22,y:276};far={x:x-f*8,y:282}}
   /* stamina_exhaustion_idle: hunched over, hands on the thighs, chest heaving */
   if(F.exh&&(st==='idle'||st==='walk')){const ph0=F.side==='a'?0:1,br=Math.sin(t*.24+ph0),sway=Math.sin(t*.05+ph0);
@@ -631,6 +649,9 @@ function poseRef(R,S){
   if(st==='start'){near={x:x+f*52,y:224};far={x:x+f*6,y:272}}
   if(st==='stop'){near={x:x+f*(30+Math.sin(t*.45)*16),y:176};far={x:x+f*(12-Math.sin(t*.45)*16),y:184};elbN='fwd';elbF='back'}
   if(st==='raise'){near={x:x+f*12,y:150};elbN='fwd'}
+  /* decision: referee stands between them holding both fighters' wrists, then lifts the winner's arm */
+  if(st==='hold'){near={x:x+f*44,y:236};far={x:x-f*40,y:238};elbN='down';elbF='down'}
+  if(st==='raiseW'){near={x:x+f*40,y:150};far={x:x-f*38,y:240};elbN='fwd';elbF='down'}
   if(st==='cover'){const b=Math.sin(t*.5)*3;hip.y=318;chest.x=x+f*24;chest.y=262;near={x:x+f*58,y:268+b};far={x:x+f*50,y:276-b};elbN='fwd';elbF='fwd'}
   if(st==='push'){chest.x=x+f*12;near={x:x+f*52,y:222};far={x:x+f*48,y:232};elbN='fwd';elbF='fwd'}
   return{f,hip,chest,tilt:st==='crouch'?.35:st==='cover'?.5:0,nearHand:near,farHand:far,nearFoot:{x:x+f*(cr>20||st==='cover'?30:20)+w,y:GY},farFoot:{x:x-f*(cr>20||st==='cover'?24:18)-w,y:GY},kneeN:'fwd',kneeF:st==='cover'?'up':'fwd',elbN,elbF};
@@ -1594,15 +1615,38 @@ function introOverlay(S){
   ctx.globalAlpha=1;
 }
 function decisionOverlay(S){
-  const r=S.result,t=S.decT;if(!r||!r.cards)return;
-  const bw=Math.min(WH*.8,380),bx=WH/2-bw/2,by=HH*.2;
-  ctx.fillStyle='rgba(10,12,16,.9)';ctx.beginPath();ctx.roundRect(bx,by,bw,170,8);ctx.fill();
-  ctx.textBaseline='alphabetic';
-  disp('심판 판정',WH/2,by+30,20,'#e8b33a','center');
-  r.cards.forEach((c,i)=>{if(t<50+i*40)return;const y=by+62+i*26;txt(`심판 ${i+1}`,bx+20,y,12,'#8e97a6','left','700');
-    disp(`${c[0]} - ${c[1]}`,WH/2,y,17,'#f2efe8','center');const w=c[0]>c[1]?S.a:c[1]>c[0]?S.b:null;txt(w?w.nick:'무승부',bx+bw-20,y,12,w?shade(w.corner,1.4):'#e9e6df','right','700')});
-  if(t>180){const w=r.winner?(r.winner==='a'?S.a:S.b):null;disp(w?`${r.detail} · ${w.nick}`:r.detail,WH/2,by+150,16,'#ffd75e','center')}
-}
+  const r=S.result,t=S.decT;if(!r||!r.cards)return;const D=IC.Fight.DECT,JN=['A','B','C'];
+  const fade=(t0,len=14)=>clamp((t-t0)/len,0,1),ez=k=>1-Math.pow(1-k,3);
+  ctx.save();ctx.textBaseline='alphabetic';
+  /* 1) "we go to the scorecards" title card */
+  if(t<D.judges[0]+10){const k=fade(8)*clamp((D.judges[0]+10-t)/12,0,1),y=HH*.24;ctx.globalAlpha=k;
+    ctx.fillStyle='rgba(6,8,12,.78)';ctx.fillRect(0,y-38,WH,64);ctx.fillStyle='#e8b33a';ctx.fillRect(0,y-38,WH,2);ctx.fillRect(0,y+24,WH,2);
+    txt('OFFICIAL DECISION',WH/2,y-14,11,'#e8b33a','center','800');disp('심판 채점 결과',WH/2,y+14,Math.min(30,WH*.055),'#ffffff','center');ctx.globalAlpha=1}
+  /* 2) judges' cards fill a lower-third one by one */
+  if(t>=D.judges[0]-6){const bw=Math.min(WH*.9,520),bh=74,bx=WH/2-bw/2,by=HH-bh-18,k=ez(fade(D.judges[0]-6,16));ctx.globalAlpha=k;
+    frost(bx,by,bw,bh,10,.88);chrome(bx,by,bw,bh,10,'#e8b33a');
+    txt('심판 채점',bx+14,by+16,10,'#e8b33a','left','800');txt(`${S.a.nick}  vs  ${S.b.nick}`,bx+bw-14,by+16,10,'rgba(233,230,223,.7)','right','700');
+    const cw=(bw-28-16)/3;r.cards.forEach((c,i)=>{const cx=bx+14+i*(cw+8),cy=by+24,kk=ez(fade(D.judges[i],10));
+      ctx.fillStyle='rgba(255,255,255,.06)';ctx.beginPath();ctx.roundRect(cx,cy,cw,42,6);ctx.fill();
+      if(kk<=0){txt(`심판 ${JN[i]}`,cx+cw/2,cy+26,11,'rgba(233,230,223,.35)','center','700');return}
+      const w=c[0]>c[1]?S.a:c[1]>c[0]?S.b:null;ctx.globalAlpha=k*kk;
+      if(w){ctx.fillStyle=w.corner;ctx.fillRect(cx,cy,3,42)}
+      txt(`심판 ${JN[i]}`,cx+10,cy+14,9.5,'rgba(233,230,223,.7)','left','700');
+      num(`${Math.max(c[0],c[1])}-${Math.min(c[0],c[1])}`,cx+10,cy+35,19,'#ffffff','left');
+      txt(w?w.nick:'무승부',cx+cw-8,cy+35,10.5,w?shade(w.corner,1.5):'#e9e6df','right','800');ctx.globalAlpha=k});
+    ctx.globalAlpha=1}
+  /* 3) "and the winner…" pause with a pulsing line */
+  if(t>=D.pause&&t<D.reveal+6){const k=fade(D.pause,10)*clamp((D.reveal+6-t)/6,0,1),p=.6+.4*Math.sin(t*.25);ctx.globalAlpha=k;
+    disp(r.winner?`${r.detail}로… 승자는`:'결과는',WH/2,HH*.28,Math.min(28,WH*.05),`rgba(255,255,255,${p})`,'center');ctx.globalAlpha=1}
+  /* 4) winner reveal: big corner-colored name plate */
+  if(t>=D.reveal){const w=r.winner?(r.winner==='a'?S.a:S.b):null,k=ez(fade(D.reveal,12)),pop=1+.18*Math.max(0,1-(t-D.reveal)/10),y=HH*.25;
+    ctx.globalAlpha=k;const col=w?w.corner:'#e8b33a',bw=Math.min(WH*.8,460);
+    const g=ctx.createLinearGradient(WH/2-bw/2,0,WH/2+bw/2,0);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.2,rgba(col,.85));g.addColorStop(.8,rgba(col,.85));g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;ctx.fillRect(WH/2-bw/2,y-40,bw,76);ctx.fillStyle='#ffd75e';ctx.fillRect(WH/2-bw*.35,y+36,bw*.7,2);
+    txt(w?`${w.side==='a'?'블루':'레드'} 코너 · ${r.detail} 승`:r.detail,WH/2,y-20,11,'rgba(255,255,255,.9)','center','800');
+    ctx.save();ctx.translate(WH/2,y+16);ctx.scale(pop,pop);disp(w?`"${w.nick}"`:'DRAW',0,0,Math.min(40,WH*.075),'#ffffff','center');ctx.restore();ctx.globalAlpha=1;
+    if(t<D.reveal+60)for(let i=0;i<10;i++){const a=i/10*Math.PI*2+t*.05,rr=(t-D.reveal)*4;ctx.fillStyle=`rgba(255,215,94,${Math.max(0,1-(t-D.reveal)/60)})`;ctx.fillRect(WH/2+Math.cos(a)*rr,y+Math.sin(a)*rr*.5,3,3)}}
+  ctx.restore()}
 function replayOverlay(S){
   const bh=HH*.09;ctx.fillStyle='#000';ctx.fillRect(0,0,WH,bh);ctx.fillRect(0,HH-bh,WH,bh);
   ctx.fillStyle='#d23a2c';ctx.beginPath();ctx.roundRect(12,bh+10,64,20,3);ctx.fill();ctx.textBaseline='middle';txt('REPLAY',44,bh+20,11,'#fff','center','700');

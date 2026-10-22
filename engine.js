@@ -828,6 +828,7 @@ function judgeRound(){
   const dd=S.ded||{a:0,b:0};if(dd.a||dd.b){for(const c of cards){c[0]-=dd.a;c[1]-=dd.b}S.ded={a:0,b:0}}
   return{a:Math.round(a),b:Math.round(b),cards,ded:dd.a||dd.b?{...dd}:null};
 }
+const DECT={judges:[110,175,240],pause:320,reveal:400};
 function decision(){
   const tot=[0,1,2].map(j=>S.rounds_.reduce((s,r)=>[s[0]+r.cards[j][0],s[1]+r.cards[j][1]],[0,0]));
   const votes=tot.map(t=>t[0]>t[1]?'a':t[1]>t[0]?'b':'d');
@@ -837,7 +838,7 @@ function decision(){
   if(winner){const w=winner==='a'?ca:cb;detail=w===3?'만장일치 판정':cd>0&&w===2?'다수 판정':'스플릿 판정'}
   else detail=cd===3?'만장일치 무승부':'스플릿 무승부';
   S.result={winner,method:winner?'판정':'무승부',detail,round:S.rounds,time:fmt(S.roundFrames),cards:tot};
-  S.winSide=winner;S.mode='decision';S.phaseT=260;S.decT=0;
+  S.winSide=winner;S.mode='decision';S.phaseT=500;S.decT=0;
   for(const F of [S.a,S.b]){if(S.gr)exitGround();if(S.cl)exitClinch();F.state='idle'}
   {const C=S.cage;S.a.x=C.x-70;S.b.x=C.x+70;S.a.z=S.b.z=C.z;S.ref.x=C.x;S.ref.z=C.z-60}S.a.f=1;S.b.f=-1;sfx('bell');
 }
@@ -1031,9 +1032,14 @@ function step(){
       if(stop){S.mode='fight';finish(other(L),'TKO','닥터 스톱 (컷)');say(`닥터가 고개를 젓습니다! ${L.nick}, 닥터 스톱!`)}
       else{S.mode='fight';L.cuts=4;banner('경기 재개','#9fe0a8',50);say(`닥터 OK 사인. ${L.nick}, 경기를 이어갑니다!`)}}
   }else if(S.mode==='decision'){
-    S.decT++;
-    const r=S.result;if(r&&r.cards){[50,90,130].forEach((t,i)=>{if(S.decT===t){const c=r.cards[i];sfx('tick');say(`심판 ${i+1}, ${Math.max(c[0],c[1])}-${Math.min(c[0],c[1])} ${c[0]===c[1]?'무승부':c[0]>c[1]?S.a.nick:S.b.nick}`)}});
-      if(S.decT===180){sfx('reveal');const w=r.winner?(r.winner==='a'?S.a:S.b):null;say(w?`${r.detail}로, 승자는… ${w.nick}!`:'무승부입니다!')}}
+    /* UFC-style reading: the announcer goes to the scorecards, reads each judge, pauses, then the referee raises the winner's hand */
+    S.decT++;const r=S.result,d=S.decT,DT=DECT;
+    if(r&&r.cards){
+      if(d===10){sfx('bell');say(`${S.rounds}라운드 종료! 승부는 심판 채점으로 갑니다!`)}
+      DT.judges.forEach((t,i)=>{if(d===t){const c=r.cards[i];sfx('tick');say(`심판 ${['A','B','C'][i]}, ${Math.max(c[0],c[1])} 대 ${Math.min(c[0],c[1])}`)}});
+      if(d===DT.pause){const w=r.winner?(r.winner==='a'?S.a:S.b):null;say(w?`${r.detail}로… 승자는…`:'결과는…')}
+      if(d===DT.reveal){sfx('reveal');sfx('big');const w=r.winner?(r.winner==='a'?S.a:S.b):null;say(w?`${w.side==='a'?'블루':'레드'} 코너! "${w.nick}" ${w.d.name}!`:'무승부입니다!');
+        if(w){w.state='celebrate';w.t=0;other(w).state='dejected'}S.heat=Math.max(S.heat||0,1)}}
     if(--S.phaseT<=0)startOutro();
   }else if(S.mode==='outro'){
     for(const F of [S.a,S.b])if(F.state==='ko')F.koT++;
@@ -1102,7 +1108,9 @@ function upRef(){
     else if(k>90&&W.state!=='ko'&&!S.gr)W.state='celebrate';
     const lz=S.gr?(S.gr.cz||0):(L.z||0);R.z=(R.z??-150)+((lz+14-(R.z??-150))*.12);
     const d=tx-R.x;R.x+=clamp(d*.18,-7.5,7.5);R.walk+=Math.min(1,Math.abs(d)*.06)*.38;R.f=lx>R.x?1:-1;R.state=st;R.moving=Math.abs(d)>3;inCage(R);return}
-  else if(S.mode==='outro'||S.mode==='decision'){const W=S.winSide?(S.winSide==='a'?a:b):null;tx=W?W.x+(W.x<400?42:-42):400;st=S.mode==='outro'&&W?'raise':'idle'}
+  else if(S.mode==='decision'){const W=S.winSide?(S.winSide==='a'?a:b):null,rev=S.decT>=DECT.reveal;tx=(a.x+b.x)/2;st=rev&&W?'raiseW':'hold';
+    R.z=(R.z??-60)+(((a.z||0)+8-(R.z??-60))*.1);const d=tx-R.x;R.x+=clamp(d*.1,-4,4);R.walk+=Math.min(1,Math.abs(d)*.04)*.22;R.moving=Math.abs(d)>3;R.f=rev&&W?(W.x>R.x?1:-1):1;R.state=st;R.raiseX=W?W.x:R.x;return}
+  else if(S.mode==='outro'){const W=S.winSide?(S.winSide==='a'?a:b):null;tx=W?W.x+(W.x<400?42:-42):400;st=W?'raise':'idle'}
   else if(S.mode==='foul'||S.mode==='doc'){const m=(a.x+b.x)/2;tx=m;st='stop'}
   else if(S.gr){tx=S.gr.cx-S.gr.hd*120;st='crouch'}
   else if(S.cl){tx=S.cl.cx+(S.cl.cx<400?110:-110);st='watch'}
@@ -1206,7 +1214,7 @@ function sim(a,b,rounds=3){
   return{winner:aw?'a':'b',method,detail,round};
 }
 
-IC.Fight={
+IC.Fight={DECT,
   start,tick,next,context,mash,sim,DIFF,POSN,SUBK,
   get S(){return S},
   setPlan,INJ,

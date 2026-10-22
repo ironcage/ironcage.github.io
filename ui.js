@@ -909,7 +909,7 @@ function loop(now){
   const w=cv.clientWidth,h=cv.clientHeight;
   if(USE3D){try{IC.R3D.render(S,w,h);IC.Draw.render(S,ctx,w,h,{project:IC.R3D.project})}catch(e){console.error(e);USE3D=false;gl.hidden=true}}
   else IC.Draw.render(S,ctx,w,h);
-  game.classList.toggle('walking',!!S.walk);game.classList.toggle('replaying',S.mode==='replay');game.classList.toggle('tutorial',!!(S.practice&&S.tasks));
+  game.classList.toggle('walking',!!S.walk);game.classList.toggle('replaying',S.mode==='replay');game.classList.toggle('deciding',S.mode==='decision'||S.mode==='outro');game.classList.toggle('tutorial',!!(S.practice&&S.tasks));
   Crowd.set(IC.Fight.intensity(),!!S.walk||S.mode==='between',(S.arena&&S.arena.roar)||1);
   if(IC.KO&&!S.demo&&!S.practice&&!(CFG&&CFG.online==='spec')&&['fight','ko','intro'].includes(S.mode)&&!S.walk){IC.KO.capture(USE3D?[gl,cv]:[cv],S);
     if(S.mode==='ko'&&S.result&&!S.koSeen){S.koSeen=1;const r=S.result,W=r.winner==='a'?S.a:S.b,L=W===S.a?S.b:S.a;
