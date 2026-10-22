@@ -474,7 +474,7 @@ function addJ(J,d,g){if(!d)return J;const o={...J};for(const q in g){if(!d[q]||!
   /* guard hands ride with the head (that is where they protect) */
   for(const q of ['nearHand','farHand'])if(!(q in g)&&d.head){const gh=(g.head||0)*.5+(g.chest||0)*.5,mx={x:(d.head.x+d.chest.x)/2,y:(d.head.y+d.chest.y)/2};o[q]={x:J[q].x+mx.x*gh,y:J[q].y+mx.y*gh}}
   for(const q of ['nearFoot','farFoot'])if(o[q])o[q].y=Math.min(o[q].y,GY);return o}
-const MC_ATK={jab:{k:'Punching',lim:'nH'},cross:{k:'Cross_Punch',lim:'fH'},hook:{k:'Hook_Punch',lim:'fH',hand:'nH'},midkick:{k:'Roundhouse_Kick',lim:'nF',swap:1,axis:'y',h:1.15},highkick:{k:'Roundhouse_Kick',lim:'nF',swap:1,axis:'y',h:1.7}};
+const MC_ATK={jab:{k:'Punching',lim:'nH'},cross:{k:'Cross_Punch',lim:'fH'},hook:{k:'Hook_2',lim:'nH'},midkick:{k:'Roundhouse_Kick',lim:'nF',swap:1,axis:'y',h:1.15},highkick:{k:'Roundhouse_Kick',lim:'nF',swap:1,axis:'y',h:1.7}};
 /* map the game's windup/active/recovery frames onto the capture: start → impact → settle */
 function mcAttack(F,base){const A=F.A,m=A&&MC_ATK[A.anim];if(!m||!mcInfo(m.k))return base;
   const imp=m.imp??(m.imp=mcPeak(m.k,m.lim,m.axis)),s0=imp*.35,s1=Math.min(1,imp+(1-imp)*.55),t=F.t,w=A.w,a=Math.max(1,A.a),r=Math.max(1,A.r);
