@@ -229,7 +229,9 @@ let SCREEN='home',P={};
 const V={},A={};
 function go(s,p){if(!(CINE&&CINE.o.keep))releaseGl();if(typeof Crowd!=='undefined')Crowd.stop();if(s==='quick'||s==='legend'||s==='legsel')s='home';if(typeof Net!=='undefined'&&Net.mr&&!['oroom','oresult','online','opick'].includes(s))Net.leaveMatch();if(s!=='oresult'&&typeof removeOverlay==='function')removeOverlay();stopLoop();Announcer.stop();if(!(s==='home'&&SCREEN==='home'))Sound.music(false);if(immersive)setImmersive(false);document.querySelector('.app').classList.remove('wide');if(s!=='home')stopDemo();SCREEN=s;P=p||{};game.hidden=true;scr.hidden=false;render();window.scrollTo(0,0);if(s==='home'){startDemo();homeMusic()}}
 function render(){if(!(CINE&&CINE.o.keep))releaseGl();const tb=!!TABOF[SCREEN];document.body.classList.toggle('tabbed',tb);scr.innerHTML=(tb?tabBar():'')+V[SCREEN](P);after();if(tb){const on=scr.querySelector('.tb.on');if(on)on.scrollIntoView({block:'nearest',inline:'center'})}}
-function after(){if(SCREEN==='weigh')requestAnimationFrame(runWeigh);if(SCREEN==='chub')requestAnimationFrame(runPress);if(SCREEN==='cpost'){requestAnimationFrame(runBelt);requestAnimationFrame(runTaunt)}scr.querySelectorAll('canvas[data-pid]').forEach(el=>{const id=el.dataset.pid,d=id==='__wopp'?(DATA.wildc&&DATA.wildc.next):id==='__tmp'?P._tmp:id.startsWith('hof:')?((DATA.hof||[])[+id.slice(4)]||{}).f:id.startsWith('leg:')?LEG[+id.slice(4)]:id.startsWith('net:')?NETF[id.slice(4)]:getF(id);if(d)IC.Draw.portrait(el,d,el.dataset.side||'a',el.dataset.mode||'full')})}
+function after(){if(SCREEN==='weigh')requestAnimationFrame(runWeigh);if(SCREEN==='chub')requestAnimationFrame(runPress);if(SCREEN==='cpost'){requestAnimationFrame(runBelt);requestAnimationFrame(runTaunt)}drawPortraits()}
+function drawPortraits(){scr.querySelectorAll('canvas[data-pid]').forEach(el=>{const id=el.dataset.pid,d=id==='__wopp'?(DATA.wildc&&DATA.wildc.next):id==='__tmp'?P._tmp:id.startsWith('hof:')?((DATA.hof||[])[+id.slice(4)]||{}).f:id.startsWith('leg:')?LEG[+id.slice(4)]:id.startsWith('net:')?NETF[id.slice(4)]:getF(id);if(d)IC.Draw.portrait(el,d,el.dataset.side||'a',el.dataset.mode||'full')})}
+IC.onFaceLoad=()=>{if(!scr.hidden)try{drawPortraits()}catch(e){}};
 scr.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el||el.disabled)return;Sound.init();const f=A[el.dataset.act];if(f)f(el.dataset,el)});
 scr.addEventListener('input',e=>{const el=e.target.closest('[data-bind]');if(el&&A.bind)A.bind(el.dataset,el)});
 scr.addEventListener('change',e=>{const el=e.target.closest('[data-change]');if(el&&A[el.dataset.change])A[el.dataset.change](el.dataset,el)});
@@ -303,12 +305,17 @@ function photoKey(d){if(!d||!d.look)return null;const L=d.look,lum=skinLum(L.ski
   let e=lum<120?'black':POOL_ETH[d.from]||'white';if(e==='asian'&&lum<150)e='latin';if(e==='white'&&lum<160)e='latin';
   const hs=L.hairStyle,h=hs==='bald'||hs==='buzz'?'shaved':hs==='long'||hs==='bun'?'long':hs==='mohawk'?'mohawk':'short';
   return `${e}_${h}_${L.beard?'b':'n'}`}
-const POOL=new Set([]);/* keys of art/pool/<key>.jpg that exist */
+const POOL=new Set(["asian_long_b", "asian_long_n", "asian_shaved_b", "asian_shaved_n", "asian_short_b", "black_long_b", "black_long_n", "black_shaved_b", "black_shaved_n", "cauc_short_n", "latin_long_b", "latin_long_n", "latin_shaved_b", "latin_shaved_n", "latin_short_b", "latin_short_n", "white_long_b", "white_long_n", "white_mohawk_b", "white_mohawk_n", "white_shaved_b", "white_shaved_n", "white_short_b", "white_short_n"]);/* keys of art/pool/<key>.jpg that exist */
 function photoOf(id,d){if(CHART[id])return `art/ch_${CHART[id]}.jpg`;const k=photoKey(d);return k&&POOL.has(k)?`art/pool/${k}.jpg`:null}
 /* <img> when a photo exists, otherwise the drawn canvas */
 function fpic(id,d,o={}){const src=photoOf(id,d);return src?`<img class="fph ${o.cls||''}" src="${src}" alt="" loading="lazy"${o.flip?' style="transform:scaleX(-1)"':''}>`:`<canvas class="${o.cls||''}" data-pid="${esc(id)}"${o.side?` data-side="${o.side}"`:''} data-mode="${o.mode||'bust'}"></canvas>`}
 
-IC.facePath=d=>{if(!d)return null;const id=d.id==='__tmp'?null:d.id;if(id&&CHART[id])return `art/face/ch_${CHART[id]}.png`;const k=photoKey(d);return k&&POOL.has(k)?`art/face/${k}.png`:null};
+/* nearest available face: same group/hair → other beard → same group other hair → neighbouring group */
+const POOL_NEAR={cauc:['white','latin'],white:['cauc','latin'],latin:['white','black'],asian:['latin','white'],black:['latin']};
+const HAIR_NEAR={shaved:['short','mohawk','long'],short:['shaved','mohawk','long'],mohawk:['shaved','short','long'],long:['short','shaved','mohawk']};
+function poolNearest(k){if(!k)return null;if(POOL.has(k))return k;const [e,h,b]=k.split('_'),nb=b==='b'?'n':'b';
+  for(const E of [e,...(POOL_NEAR[e]||[])])for(const H of [h,...HAIR_NEAR[h]])for(const B of [b,nb]){const t=`${E}_${H}_${B}`;if(POOL.has(t))return t}return null}
+IC.facePath=d=>{if(!d)return null;const id=d.id==='__tmp'?null:d.id;if(id&&CHART[id])return `art/face/ch_${CHART[id]}.png`;const k=poolNearest(photoKey(d));return k?`art/face/${k}.png`:null};
 function champsOf(){const c=DATA.career;return CLASSES.map(C=>{let id=null;
   if(c&&((IC.CLSMAP||{})[c.cls]||c.cls)===C.id&&c.order&&c.order.length)id=c.order[0];
   if(!id){const l=ROSTER.filter(f=>((IC.CLSMAP||{})[f.cls]||f.cls)===C.id).sort((x,y)=>y.ovr-x.ovr);id=l[0]&&l[0].id}

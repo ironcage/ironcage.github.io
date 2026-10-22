@@ -193,8 +193,14 @@ function faceOf(F){const d=F.d,key=(d&&(d.id||d.name))||JSON.stringify(F.look||{
     skinK:own?1:.9+r()*.2,belly:r()};
   FACEC.set(key,v);return v}
 /* ---- photo faces: an AI portrait face pasted on the drawn head (menus + fights) ---- */
-const FACES={};
-function faceImgOf(F){const d=F&&F.d;if(!d||!d.id||!IC.facePath)return null;const src=IC.facePath(d);if(!src)return null;let im=FACES[src];if(!im){im=FACES[src]=new Image();im.src=src}return im.complete&&im.naturalWidth?im:null}
+const FACES={},FSKIN={};
+/* average cheek colour of a face photo, so the drawn body matches the face */
+function faceSkinOf(F){const im=faceImgOf(F);if(!im)return null;const k=im.src;if(FSKIN[k]!==undefined)return FSKIN[k];
+  try{const c=document.createElement('canvas');c.width=c.height=16;const x=c.getContext('2d');x.drawImage(im,0,0,16,16);const d=x.getImageData(4,6,8,5).data;let r=0,g=0,b=0,n=0;
+    for(let i=0;i<d.length;i+=4){const l=(d[i]+d[i+1]+d[i+2])/3;if(d[i+3]>200&&l>40&&l<235){r+=d[i];g+=d[i+1];b+=d[i+2];n++}}
+    FSKIN[k]=n?'#'+[r,g,b].map(v=>Math.round(Math.min(255,v/n*1.15)).toString(16).padStart(2,'0')).join(''):null}catch(e){FSKIN[k]=null}return FSKIN[k]}
+function lookOf(F){const L=F.look||{};const fs=faceSkinOf(F);return fs&&fs!==L.skin?Object.assign({},L,{skin:fs}):L}
+function faceImgOf(F){const d=F&&F.d;if(!d||!d.id||!IC.facePath)return null;const src=IC.facePath(d);if(!src)return null;let im=FACES[src];if(!im){im=FACES[src]=new Image();im.onload=()=>{clearTimeout(faceImgOf.t);faceImgOf.t=setTimeout(()=>{try{IC.onFaceLoad&&IC.onFaceLoad()}catch(e){}},80)};im.src=src}return im.complete&&im.naturalWidth?im:null}
 function faceOverlay(im,cx,cy,rx,ry,dm,cuts){ctx.save();ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.clip();
   ctx.drawImage(im,cx-rx*1.08,cy-ry*1.02,rx*2.16,ry*2.12);
   if(dm>.12){ctx.globalCompositeOperation='multiply';ctx.fillStyle=`rgba(200,90,100,${Math.min(.55,(dm-.12)*.7)})`;ctx.fillRect(cx-rx,cy-ry,rx*2,ry*2);ctx.globalCompositeOperation='source-over';
@@ -368,7 +374,7 @@ const BUILD={fly:[.86,.92],bw:[.92,.96],fw:[.93,.96],lw:[1,1],ww:[1.06,1.02],mw:
 function buildOf(F){if(F.kind==='ref'||F.noBuild)return null;const d=F.d;if(!d||!d.cls)return null;const b=BUILD[d.cls]||BUILD[(IC.CLSMAP||{})[d.cls]]||[1,1];
   const C=(IC.CLASSES8||[]).find(c=>c.id===d.cls);let sy=b[1];if(C&&d.height){const mid=(C.h[0]+C.h[1])/2;sy*=1+clamp((d.height-mid)/360,-.04,.04)}return [b[0],sy]}
 function fighterLook(F,J){
-  const L=F.look;
+  const L=lookOf(F);
   return{look:L,kind:'fighter',logo:'IC',shirt:F.walkShirt?shade(F.walkShirt,.55):null,skinNow:F.flash?shade(L.skin,1.3):L.skin,trunk:L.trunk,corner:F.corner,tattoo:L.tattoo,
     head:F.head??100,body:F.body??100,legs:F.legs??100,cuts:F.cuts||0,sweat:clamp(1-(F.st??100)/100,0,1)*.8+.15,
     rocked:F.rocked>0&&F.state!=='ko',t:F._t||0,mood:J.mood,face:faceOf(F),belly:F.d&&/^(hw|lhw)$/.test(F.d.cls)&&faceOf(F).belly>.5?(faceOf(F).belly-.5)*2:0};
@@ -1225,7 +1231,7 @@ function burstFW(x,y,t,col,r){if(t<0||t>70)return;const k=t/70;ctx.save();ctx.gl
 /* front-facing stage reveal: truss, LED walls, smoking tunnel, runway and spark fountains */
 /* ---------- front view: a fighter walking straight at the camera (entrance runway) ---------- */
 function drawFront(F,t,o2={}){
-  const L=F.look||{},P=faceOf(F),hair0=P.hairTone?P.hairTone:L.hair||'#2a1f1a',hair=P.gray>0?mixc(hair0,'#b9b9b9',P.gray*.55):hair0,beardC=P.gray>0?mixc(hair0,'#c8c8c8',P.gray*.7):hair0,skin=P.skinK&&P.skinK!==1?shade(L.skin||'#d2a07a',P.skinK):(L.skin||'#d2a07a'),skinD=shade(skin,.78);
+  const L=lookOf(F),P=faceOf(F),hair0=P.hairTone?P.hairTone:L.hair||'#2a1f1a',hair=P.gray>0?mixc(hair0,'#b9b9b9',P.gray*.55):hair0,beardC=P.gray>0?mixc(hair0,'#c8c8c8',P.gray*.7):hair0,skin=P.skinK&&P.skinK!==1?shade(L.skin||'#d2a07a',P.skinK):(L.skin||'#d2a07a'),skinD=shade(skin,.78);
   const trunk=L.trunk||'#333',shirt=F.walkShirt?shade(F.walkShirt,.55):null,perf=o2.perf,ph=o2.walk||0,pt=o2.pt||0;
   const sw=Math.sin(ph),bob=-Math.abs(Math.cos(ph))*4;
   const bd=o2.noBuild?[1,1]:buildOf(F)||[1,1];ctx.save();ctx.scale(bd[0],bd[1]);

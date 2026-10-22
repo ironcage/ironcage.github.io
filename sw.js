@@ -1,6 +1,6 @@
 /* 아이언 케이지 — 서비스 워커 (오프라인 실행)
    게임 파일을 바꿔 올릴 때는 아래 VERSION 숫자를 하나 올려 주세요. 그래야 폰에 있는 옛 버전이 새 버전으로 바뀝니다. */
-const VERSION = 'iron-cage-pwa-v45';
+const VERSION = 'iron-cage-pwa-v46';
 const FONT_CACHE = 'iron-cage-fonts';
 const APP_FILES = [
   './',
@@ -22,6 +22,30 @@ const APP_FILES = [
   './art/face/ch_ww.png',
   './art/face/ch_mw.png',
   './art/face/ch_hw.png',
+  './art/face/asian_long_b.png',
+  './art/face/asian_long_n.png',
+  './art/face/asian_shaved_b.png',
+  './art/face/asian_shaved_n.png',
+  './art/face/asian_short_b.png',
+  './art/face/black_long_b.png',
+  './art/face/black_long_n.png',
+  './art/face/black_shaved_b.png',
+  './art/face/black_shaved_n.png',
+  './art/face/cauc_short_n.png',
+  './art/face/latin_long_b.png',
+  './art/face/latin_long_n.png',
+  './art/face/latin_shaved_b.png',
+  './art/face/latin_shaved_n.png',
+  './art/face/latin_short_b.png',
+  './art/face/latin_short_n.png',
+  './art/face/white_long_b.png',
+  './art/face/white_long_n.png',
+  './art/face/white_mohawk_b.png',
+  './art/face/white_mohawk_n.png',
+  './art/face/white_shaved_b.png',
+  './art/face/white_shaved_n.png',
+  './art/face/white_short_b.png',
+  './art/face/white_short_n.png',
   './title.jpg',
   './ui.js',
   './manifest.json',
