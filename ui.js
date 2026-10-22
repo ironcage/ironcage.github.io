@@ -374,7 +374,7 @@ V.home=()=>{
     belt=c.isChamp?`<button class="bbelt" data-act="nav" data-to="crank"><span><small>MY BELT</small><b>${esc(clsName(c.cls))}<br>챔피언</b><em>방어 ${c.titleDef||0}회${(c.belts||[]).length>1?` · ${c.belts.length}체급`:''}</em></span><img src="art/belt.webp" alt="챔피언 벨트"></button>`
       :`<button class="bbelt" data-act="nav" data-to="crank"><span><small>노리는 벨트</small><b>${esc(clsName(c.cls))}<br>챔피언십</b><em>${c.tier==='regional'?'먼저 IRON CAGE 입성':idx>0&&idx<=15?`타이틀까지 ${idx}계단`:'랭킹 진입부터'}</em>${cc&&c.tier!=='regional'?`<em>챔피언 "${esc(cc.d.nick)}"</em>`:''}</span><img src="art/belt.webp" alt="챔피언 벨트"></button>`}
   else{const lw=ch.find(x=>x.C.id==='lw')||ch[0];
-    fo=`<section class="bfo"><canvas class="bfa sil" data-pid="lw_0" data-mode="front"></canvas><span class="bfq">?</span>${lw&&CHART[lw.id]?`<img class="bfb img" src="art/ch_${CHART[lw.id]}.jpg" alt="">`:''}<i class="bfsh"></i>
+    fo=`<section class="bfo"><canvas class="bfa sil" data-pid="lw_0" data-mode="front"></canvas><span class="bfq">?</span>${lw?`<canvas class="bfb" data-pid="${esc(lw.id)}" data-side="b" data-mode="front"></canvas>`:''}<i class="bfsh"></i>
       <span class="bflab">YOUR STORY STARTS HERE</span><span class="bfvs">VS</span>
       <span class="bfn a"><b>당신의 선수</b><small>무명 신인</small></span>${lw?`<span class="bfn b"><b>"${esc(lw.d.nick)}"</b><small>${lw.C.name} 챔피언</small></span>`:''}</section>`;
     bar=`<div class="blt"><span>커리어 모드 · 지역 단체에서 데뷔</span><button data-act="career">선수 만들기</button></div>`;
