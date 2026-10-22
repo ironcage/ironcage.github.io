@@ -319,7 +319,9 @@ function poolNearest(k){if(!k)return null;if(POOL.has(k))return k;const [e,h,b]=
 const POOLV=new Set([]);
 function headKey(d){if(!d)return null;const id=d.id==='__tmp'?null:d.id;if(id&&CHART[id])return 'ch_'+CHART[id];return poolNearest(photoKey(d))}
 IC.headHasViews=d=>POOLV.has(headKey(d));
-IC.facePath=(d,view)=>{const k=headKey(d);if(!k)return null;return POOLV.has(k)?`art/head/${k}_${view||'front'}.png`:`art/head/${k}.png`};
+/* photo heads switched off for now (drawn heads everywhere); flip to true to bring them back */
+const PHOTO_HEADS=false;
+IC.facePath=(d,view)=>{if(!PHOTO_HEADS)return null;const k=headKey(d);if(!k)return null;return POOLV.has(k)?`art/head/${k}_${view||'front'}.png`:`art/head/${k}.png`};
 function champsOf(){const c=DATA.career;return CLASSES.map(C=>{let id=null;
   if(c&&((IC.CLSMAP||{})[c.cls]||c.cls)===C.id&&c.order&&c.order.length)id=c.order[0];
   if(!id){const l=ROSTER.filter(f=>((IC.CLSMAP||{})[f.cls]||f.cls)===C.id).sort((x,y)=>y.ovr-x.ovr);id=l[0]&&l[0].id}
@@ -1257,7 +1259,7 @@ V.ccreate=()=>{P._tmp=previewData();const pv=P._tmp;
   <label class="field"><span class="lbl">체급</span><select id="crCls" data-change="crSel" data-k="cls">${CLASSES.map(c=>`<option value="${c.id}" ${c.id===CR.cls?'selected':''}>${c.name} (${c.kg}kg)</option>`).join('')}</select></label></div>
   <div class="field"><span class="lbl">파이팅 스타일</span>${seg('crStyle',Object.keys(STYLES),CR.style,k=>STYLES[k].name)}</div>
   ${sbars(pv.s)}
-  ${facePicker('crFace',CR.face)}
+  ${PHOTO_HEADS?facePicker('crFace',CR.face):''}
   <div class="grid2"><div class="field"><span class="lbl">피부</span>${sw('crSkin',IC.SKIN_OPTIONS,CR.skin)}</div><div class="field"><span class="lbl">머리색</span>${sw('crHair',IC.HAIR,CR.hair)}</div>
   <div class="field"><span class="lbl">트렁크</span>${sw('crTrunk',IC.TRUNKS,CR.trunk)}</div>
   <div class="field"><span class="lbl">헤어 · 수염</span>${seg('crHs',['short','buzz','bald','long','bun','mohawk'],CR.hairStyle,v=>({short:'짧은',buzz:'버즈',bald:'삭발',long:'장발',bun:'묶음',mohawk:'모히칸'})[v])}${seg('crBeard',['no','yes'],CR.beard?'yes':'no',v=>v==='yes'?'수염 있음':'수염 없음')}</div></div>
@@ -1363,7 +1365,7 @@ V.chub=()=>{const c=ensureC(DATA.career),me=meData(c),idx=c.order.indexOf('me'),
   <div class="panel">${main}</div>
   ${hubPanel(c)}
   <div class="panel"><div class="row">
-    <button class="btn" data-act="nav" data-to="cstats">능력치${c.pts>0?` · 포인트 ${c.pts}`:''}</button><button class="btn" data-act="nav" data-to="cgym">체육관</button><button class="btn" data-act="nav" data-to="cspec">필살기</button><button class="btn" data-act="songOpen" data-id="me">입장곡</button><button class="btn" data-act="nav" data-to="cface">얼굴</button>
+    <button class="btn" data-act="nav" data-to="cstats">능력치${c.pts>0?` · 포인트 ${c.pts}`:''}</button><button class="btn" data-act="nav" data-to="cgym">체육관</button><button class="btn" data-act="nav" data-to="cspec">필살기</button><button class="btn" data-act="songOpen" data-id="me">입장곡</button>${PHOTO_HEADS?'<button class="btn" data-act="nav" data-to="cface">얼굴</button>':''}
     <button class="btn" data-act="nav" data-to="crank">랭킹</button><button class="btn" data-act="nav" data-to="cclass" ${c.phase==='fight'?'disabled':''}>체급 변경</button><button class="btn" data-act="nav" data-to="chist">전적</button><button class="btn" data-act="nav" data-to="cevents">지난 이벤트</button><button class="btn" data-act="nav" data-to="csns">SNS</button><button class="btn" data-act="nav" data-to="cphone">휴대폰${unread(c)?` <em class="badge">${unread(c)}</em>`:''}</button><button class="btn" data-act="nav" data-to="cretire">은퇴</button></div>
   ${c.news.length?`<h3>${clsName(c.cls)} 소식</h3><div class="log">${c.news.slice(0,5).map(n=>`<div>${esc(n)}</div>`).join('')}</div>`:''}</div>`};
 A.cReroll=()=>{const c=DATA.career;if(c.phase!=='offers')return;c.rerolled=(c.rerolled||0)+1;const old=c.offers.map(o=>o.opp);c.recent=[...(c.recent||[]),...old];c.offers=makeOffers(c);c.recent=c.recent.slice(0,4);save();render()};
