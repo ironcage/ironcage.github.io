@@ -722,10 +722,18 @@ body.tabbed .chc .chk{color:var(--bgold)}
 /* PWA: offline cache (service worker). Relative path so it works on GitHub Pages sub-folders. */
 if('serviceWorker' in navigator&&location.protocol!=='file:'){addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').then(r=>{try{r.update()}catch(e){}}).catch(e=>console.warn('SW 등록 실패',e))});
   /* a new version took over: reload right away unless a fight is running (then reload on the next return to the menu) */
-  /* stale-install rescue: if the server has a newer build than the one running, wipe caches and reload once */
-  addEventListener('load',()=>{setTimeout(()=>{fetch('./data.js?ts='+Date.now(),{cache:'no-store'}).then(r=>r.text()).then(t=>{const m=/IC\.VER='(\d+)'/.exec(t),cur=window.IC&&IC.VER;
-    if(m&&cur&&m[1]!==cur&&sessionStorage.getItem('icfix')!==m[1]){sessionStorage.setItem('icfix',m[1]);const g=document.getElementById('game');if(g&&!g.hidden)return;
-      (window.caches?caches.keys().then(ks=>Promise.all(ks.filter(k=>k!=='iron-cage-fonts').map(k=>caches.delete(k)))):Promise.resolve()).then(()=>navigator.serviceWorker.getRegistration()).then(r=>r&&r.update()).finally(()=>location.reload())}}).catch(()=>{})},1500)});
+  /* update check: on launch, whenever the app comes back to the screen, and every 2 minutes on the menus.
+     A newer build on the server → wipe the caches and reload (waits until the current fight is over). */
+  const ICUP={busy:()=>{const g=document.getElementById('game');return g&&!g.hidden},running:false,last:0};
+  function icCheck(){if(ICUP.running||Date.now()-ICUP.last<20000)return;ICUP.running=true;ICUP.last=Date.now();
+    fetch('./data.js?ts='+Date.now(),{cache:'no-store'}).then(r=>r.text()).then(t=>{const m=/IC\.VER='(\d+)'/.exec(t),cur=window.IC&&IC.VER;
+      if(!(m&&cur&&+m[1]>+cur))return;const tried=JSON.parse(sessionStorage.getItem('icfix')||'{}');if(tried.v===m[1]&&Date.now()-tried.t<60000)return;
+      const doit=()=>{sessionStorage.setItem('icfix',JSON.stringify({v:m[1],t:Date.now()}));(window.caches?caches.keys().then(ks=>Promise.all(ks.filter(k=>k!=='iron-cage-fonts').map(k=>caches.delete(k)))):Promise.resolve()).then(()=>navigator.serviceWorker.getRegistration()).then(r=>r&&r.update()).catch(()=>{}).finally(()=>location.reload())};
+      if(!ICUP.busy())doit();else{const iv=setInterval(()=>{if(!ICUP.busy()){clearInterval(iv);doit()}},1500)}}).catch(()=>{}).finally(()=>{ICUP.running=false})}
+  addEventListener('load',()=>setTimeout(icCheck,1200));
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){ICUP.last=0;icCheck();navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{})}});
+  addEventListener('focus',()=>icCheck());addEventListener('pageshow',()=>{ICUP.last=0;icCheck()});
+  setInterval(()=>{if(document.visibilityState==='visible'&&!ICUP.busy())icCheck()},120000);
   const hadCtl=!!navigator.serviceWorker.controller;let reloaded=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtl||reloaded)return;const busy=()=>{const g=document.getElementById('game');return g&&!g.hidden};
     const go=()=>{if(reloaded)return;reloaded=true;location.reload()};if(!busy())go();else{const iv=setInterval(()=>{if(!busy()){clearInterval(iv);go()}},1500)}})}
