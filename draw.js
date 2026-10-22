@@ -230,7 +230,18 @@ function photoHead(im,cx,cy,fw,dm,cuts,sq=1){const k=fw/94,W=160*k,H=200*k;ctx.s
 function headView(F){if(F.state==='ko')return F.koK==='face'?'down':'up';
   if(typeof S!=='undefined'&&S&&S.gr&&!S.gr.done){if(S.gr.top===F)return 'down';if(S.gr.bot===F)return 'up'}
   if(F.state==='hit'||(F.flash||0)>0||(F.stun||0)>0)return 'tq';return 'side'}
-function drawHead(F,c,ang,f,o){const view=headView(F);let im=faceImgOf(F,view),multi=!!(im&&IC.headHasViews&&IC.headHasViews(F.d));if(!im)return drawHead0(F,c,ang,f,o);
+/* drawn heads face the camera most of the time and turn to profile for strikes, clinch, ground and KO;
+   the turn is a quick squash so it reads as the head rotating */
+function wantsProfile(F){const st=F.state,S=IC.Fight&&IC.Fight.S;if(S&&S.gr&&(S.gr.top===F||S.gr.bot===F))return true;
+  return st==='attack'||st==='clinch'||st==='ko'||st==='slip'||st==='stuffed'||st==='sprawl'||(F.A&&F.A.kind==='shoot')}
+function drawHeadFront(F,c,ang,o,sx){const P=o.face||{hs:1},mood=o.mood||(F.state==='hit'||F.rocked>0?'hurt':F.exh?'tired':null);
+  ctx.save();ctx.translate(c.x,c.y);ctx.rotate(ang);ctx.scale(.8*sx,.8);ctx.beginPath();ctx.ellipse(0,-3,25,26,0,0,Math.PI*2);ctx.clip();ctx.translate(0,212);
+  drawFront(F,0,{walk:0,perf:'hud',noBuild:true,dmg:{head:F.head??100,cuts:F.cuts||0,mood},blink:o.blink,t:o.t||0,sweat:o.sweat});ctx.restore()}
+function drawHead(F,c,ang,f,o){const view=headView(F);let im=faceImgOf(F,view),multi=!!(im&&IC.headHasViews&&IC.headHasViews(F.d));
+  if(!im&&o.kind==='fighter'&&F.d&&!F.noFront){const tgt=wantsProfile(F)?1:0;F._hv=F._hv==null?tgt:F._hv+(tgt-F._hv)*.35;const k=F._hv;
+    if(k<.5){drawHeadFront(F,c,ang,o,Math.max(.25,1-2*k));return}
+    if(k<.98){ctx.save();ctx.translate(c.x,c.y);ctx.scale(Math.max(.25,2*k-1),1);ctx.translate(-c.x,-c.y);drawHead0(F,c,ang,f,o);ctx.restore();return}}
+  if(!im)return drawHead0(F,c,ang,f,o);
   const P=o.face||{hs:1},dm=clamp((100-(F.head==null?100:F.head))/100,0,1);ctx.save();ctx.translate(c.x,c.y);ctx.rotate(ang);ctx.scale(P.hs||1,P.hs||1);
   if(multi){ctx.scale(f,1);photoHeadV(im,0,-1,34,dm,F.head<85?F.cuts:0,view)}else photoHead(im,f*1.6,.5,24,dm,F.head<85?F.cuts:0,.9);ctx.restore()}
 /* multi-view head: 200x200 sprite, head (crown to chin) normalised to 150px and centred; side views face right */
@@ -802,7 +813,8 @@ function panel(i,a,b,front){
 }
 function post(v,front){
   const f=PR(v.x,v.z),t=PR(v.x,v.z,240),w=9*f.s;
-  ctx.globalAlpha=front?.3:1;
+  if(front)return;/* near-side posts were drawn see-through over the fighters; leave them out */
+  ctx.globalAlpha=1;
   const g=ctx.createLinearGradient(f.x-w,0,f.x+w,0);g.addColorStop(0,'#0b0c0f');g.addColorStop(.5,'#2c3038');g.addColorStop(1,'#0b0c0f');
   ctx.fillStyle=g;ctx.fillRect(f.x-w,t.y,w*2,f.y-t.y);
   const pad=PR(v.x,v.z,170),pb=PR(v.x,v.z,70);ctx.fillStyle='#101116';ctx.fillRect(f.x-w*1.35,pad.y,w*2.7,pb.y-pad.y);
