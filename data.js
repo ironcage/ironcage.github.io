@@ -249,16 +249,8 @@ const SKIN_OPTIONS = ['#f0cdb0','#e2b48c','#d2a07a','#b47a52','#8a5a3c','#5a3824
 
 const SONGS=[
  {n:'Iron Will',g:'rock',gn:'헤비 록',bpm:150,key:1,d:'묵직한 기타 리프와 몰아치는 드럼'},
- {n:'강철의 행진',g:'rock',gn:'헤비 록',bpm:140,key:1.12,d:'느리게 짓누르는 행진곡풍 메탈'},
- {n:'Bloodline',g:'rock',gn:'헤비 록',bpm:166,key:.89,d:'숨 쉴 틈 없는 스래시 템포'},
- {n:'언더독',g:'hiphop',gn:'힙합',bpm:88,key:1,d:'붐뱁 드럼과 깊은 808 베이스'},
  {n:'No Mercy',g:'hiphop',gn:'시네마틱 힙합',bpm:90,key:1.12,big:true,verb:.42,crowd:1.5,d:'웅장한 현악·브라스 위에 묵직한 비트, 관중 박수'},
- {n:'골목의 왕',g:'hiphop',gn:'힙합',bpm:80,key:.94,d:'어둡고 느린 거리의 비트'},
  {n:'Warpath',g:'epic',gn:'에픽 오케스트라',bpm:76,key:1,d:'타이코 북과 웅장한 현악'},
- {n:'최후의 전사',g:'epic',gn:'에픽 오케스트라',bpm:68,key:1.12,d:'영화 예고편 같은 긴장감'},
- {n:'Valhalla',g:'epic',gn:'에픽 오케스트라',bpm:84,key:.84,d:'전장으로 향하는 북소리'},
- {n:'Neon Riot',g:'edm',gn:'일렉트로닉',bpm:128,key:1,d:'관중을 뛰게 만드는 클럽 비트'},
- {n:'Blackout',g:'edm',gn:'일렉트로닉',bpm:134,key:.89,d:'어두운 신스와 강한 킥'},
- {n:'심장박동',g:'edm',gn:'일렉트로닉',bpm:122,key:1.19,d:'밝고 경쾌한 신스 아르페지오'}];
-IC.VER='86';Object.assign(IC,{ROSTER_ALL,CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
+ {n:'Neon Riot',g:'edm',gn:'일렉트로닉',bpm:128,key:1,d:'관중을 뛰게 만드는 클럽 비트'}];
+IC.VER='87';Object.assign(IC,{ROSTER_ALL,CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
 })(window.IC);
