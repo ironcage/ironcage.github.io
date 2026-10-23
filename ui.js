@@ -1695,7 +1695,8 @@ A.cFight=()=>{const c=DATA.career,o=c.fight,a=meData(c),b=getF(o.opp,c),oi=c.ord
   const isRival=!!(c.rival&&b.id===c.rival.id),pat=isRival&&c.pat?Object.fromEntries(Object.entries(c.pat).map(([k,v])=>[k,Math.min(6,v*1.4)])):null;
   /* career difficulty follows the promotion tier: regional = rookie, IRON CAGE = pro, title / super fight = champion */
   if(o.title||o.kc)c.tfDone=true;
-  const diff=c.league==='super'?(hofScore(c).total>=HOF_NEED?'hof':'legend'):(o.title||o.kc)?'hard':(c.tier==='regional'||o.local||o.contender)?'easy':'normal';
+  /* title fights are legend-level; from the 3rd defence on the AI fights like a hall-of-famer; top-5 ranked opponents are champion-level */
+  const diff=c.league==='super'?(hofScore(c).total>=HOF_NEED?'hof':'legend'):o.kc?'hof':o.title?(c.isChamp&&(c.titleDef||0)>=2?'hof':'legend'):(c.tier==='regional'||o.local)?'easy':(o.contender||(c.peak!=null&&c.order&&c.order.indexOf('me')>=0&&c.order.indexOf('me')<=5))?'hard':'normal';
   const lab2=(c.league==='super'?'슈퍼리그 · ':'')+label+` · ${DIFFS[diff].label} 난이도`;
   go('tale',{a,b,rounds:o.rounds,label:lab2,rivalRead:isRival?patNote(c.pat):null,title:o.title,mustWeigh:true,risk,scout:c.camp&&c.camp.scout,backTo:'chub',run:(w={})=>{if(w.weigh&&!w.weigh.a.ok){o.penalty=.2;save()}startFight({arena:o.title||o.kc?3:(c.tier==='regional'||o.local||o.contender)?1:(c.order.indexOf('me')>15&&(oi<0||oi>15))?4:2,weigh:w.weigh,oppMul:(o.oppMul||1)*(c.league==='super'?1.1:1),diff,pat,a,b,rounds:o.rounds,title:o.title,label:lab2,condition:.8+.2*c.energy/100,myMul:campMul(c),scoutMul:c.camp&&c.camp.scout?.93:1,onResult:res=>careerResult(res)})}})};
 function patNote(p){if(!p)return '아직 분석된 패턴이 없습니다.';const L={kick:'킥',shoot:'태클',head:'안면 펀치'},top=Object.entries(p).filter(([k])=>L[k]).sort((a,b)=>b[1]-a[1])[0];
@@ -1868,12 +1869,12 @@ V.chist=()=>{const c=DATA.career;
   ${c.history.length?`<div class="tw"><table><thead><tr><th>상대</th><th>결과</th><th>방식</th><th>라운드</th><th>이후 순위</th></tr></thead><tbody>${c.history.map(h=>`<tr><td>${esc(h.opp)}${h.title?' 🏆':''}</td><td class="${h.res==='승'?'a':h.res==='패'?'b':''}">${h.res}</td><td>${esc(h.method)} · ${esc(h.detail)}</td><td>${h.round}R ${h.time}</td><td>${h.rank}</td></tr>`).join('')}</tbody></table></div>`:'<p>아직 경기 기록이 없습니다.</p>'}</div>`};
 let retireArm=false;
 /* ---------- hall of fame ---------- */
-const HOF_NEED=40,HOF_FIRST=80;
+const HOF_NEED=150,HOF_FIRST=250;/* a real hall-of-famer: long, dominant career with several belts and defences */
 function hofScore(c){const h=c.history||[],w=h.filter(x=>x.res==='승'),fin=w.filter(x=>x.method!=='판정').length,tw=w.filter(x=>x.title).length,b=(c.belts||[]).length;
   const rows=[['승리',c.rec[0],c.rec[0]*1.5],['피니시 승',fin,fin],['타이틀 획득',c.titles,c.titles*12],['타이틀 방어',c.titleDef,c.titleDef*6],['킹 오브 케이지',c.kc||0,(c.kc||0)*15]];
   if(b>1)rows.push(['다체급 챔피언',b+'체급',(b-1)*15]);
   if(c.tier!=='regional'&&c.peak<=5)rows.push(['최고 순위',rankLabel(c.peak),c.peak===0?10:5]);
-  if(c.rec[1])rows.push(['패배',c.rec[1],-c.rec[1]*.5]);
+  if(c.rec[1])rows.push(['패배',c.rec[1],-c.rec[1]*2]);
   const total=Math.max(0,Math.round(rows.reduce((a,r)=>a+r[2],0)));return{rows,total,tw}}
 const LEGD=[
  ['fly','마사키 레이토','번개손','일본','karate',[24,3,0],0,9,'7년간 9차 방어, 한 번도 판정 위기에 몰리지 않은 플라이급의 시계'],
@@ -1924,7 +1925,7 @@ V.hof=()=>{const c=DATA.career,H=DATA.hof||[];
   ${worldHofPanel()}
   ${c?`<div class="panel"><div class="eyebrow">현역 · ${esc(c.name)}</div><h3>헌액 진척도</h3>${hofBar(c)}<p>${hofScore(c).total>=HOF_NEED?'지금 은퇴해도 명예의 전당에 들어갑니다.':`은퇴할 때 ${HOF_NEED}점을 넘기면 헌액됩니다. 타이틀(+12)과 방어(+6)가 가장 큰 점수입니다.`}</p></div>`:''}
   <div class="panel"><div class="eyebrow">커리어 윙</div><h3>나의 헌액자 ${H.length}명</h3>${H.length?`<div class="plaques">${H.map(hofPlaque).join('')}</div>`:'<p>아직 헌액된 커리어 선수가 없습니다. 커리어에서 챔피언이 된 뒤 은퇴하면 이곳에 명판이 걸립니다.</p>'}</div>
-  <div class="panel"><div class="eyebrow">레전드 윙</div><h3>창립 헌액자</h3><div class="plaques">${LEG.map((l,i)=>plaque({pid:'leg:'+i,gold:true,tag:'창립 헌액 · '+clsName(l.cls)+' 레전드',name:l.name,nick:l.nick,from:l.from,cls:l.cls,style:l.style,rec:l.rec,belts:l.belts,def:l.def,line:l.line})).join('')}</div></div>`};
+`};
 V.cretire=()=>{const c=DATA.career,h=hofScore(c),ok=h.total>=HOF_NEED;
   return `${back('chub','← 커리어')}<div class="panel"><div class="eyebrow">은퇴</div><h2 class="big">${esc(c.name)}</h2>
   <p>${c.rec.join('-')} · 타이틀 ${c.titles}회 · 방어 ${c.titleDef}회 · 최고 순위 ${c.tier==='regional'?'지역 단체':rankLabel(c.peak)}.</p>
