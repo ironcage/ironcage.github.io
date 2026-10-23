@@ -1889,12 +1889,38 @@ function plaque(o){return `<div class="plaque${o.gold?' gold':''}"><canvas data-
   <div class="eyebrow">${esc(o.tag)}</div><b class="pn">${esc(o.name)}</b><span class="pk">"${esc(o.nick)}" · ${esc(o.from)} · ${clsName(o.cls)} · ${STYLES[o.style]?STYLES[o.style].name:''}</span>
   <div class="pst"><div><b>${o.rec.join('-')}</b><span>전적</span></div><div><b>${o.belts}</b><span>벨트</span></div><div><b>${o.def}</b><span>방어</span></div>${o.score!=null?`<div><b>${o.score}</b><span>점수</span></div>`:''}</div>
   ${o.line?`<p class="pl">${esc(o.line)}</p>`:''}${o.quote?`<p class="pquote">“${esc(o.quote)}”</p>`:''}</div></div>`}
+/* ---------- world hall of fame: Firebase Firestore over plain REST (no SDK, works in iOS home-screen apps) ---------- */
+const FB={pid:'iron-cage-daee5',key:'AIzaSyBzgZeHnHkjGQApZ18FAv2hHYumkYbGM9M',
+  base(){return `https://firestore.googleapis.com/v1/projects/${this.pid}/databases/(default)/documents`},
+  enc(v){if(typeof v==='string')return{stringValue:v};if(typeof v==='boolean')return{booleanValue:v};if(Number.isInteger(v))return{integerValue:String(v)};if(typeof v==='number')return{doubleValue:v};if(Array.isArray(v))return{arrayValue:{values:v.map(x=>this.enc(x))}};return{nullValue:null}},
+  dec(f){if(!f)return null;if('stringValue' in f)return f.stringValue;if('integerValue' in f)return +f.integerValue;if('doubleValue' in f)return f.doubleValue;if('booleanValue' in f)return f.booleanValue;if('arrayValue' in f)return (f.arrayValue.values||[]).map(x=>this.dec(x));return null},
+  async add(col,obj){const fields={};for(const k in obj)fields[k]=this.enc(obj[k]);const r=await fetch(`${this.base()}/${col}?key=${this.key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields})});if(!r.ok)throw new Error('fb '+r.status);return r.json()},
+  async top(col,field,n){const r=await fetch(`${this.base()}:runQuery?key=${this.key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({structuredQuery:{from:[{collectionId:col}],orderBy:[{field:{fieldPath:field},direction:'DESCENDING'}],limit:n}})});if(!r.ok)throw new Error('fb '+r.status);const j=await r.json();
+    return (Array.isArray(j)?j:[]).filter(x=>x.document).map(x=>{const o={id:x.document.name.split('/').pop()};for(const k in x.document.fields)o[k]=this.dec(x.document.fields[k]);return o})}};
+const WHOF={list:null,err:false,busy:false,t:0};
+function devId(){if(!DATA.dev){DATA.dev='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);save()}return DATA.dev}
+function loadWorldHof(force){if(WHOF.busy||(!force&&WHOF.list&&Date.now()-WHOF.t<60000))return;WHOF.busy=true;
+  FB.top('hof','score',50).then(L=>{WHOF.list=L;WHOF.err=false}).catch(()=>{WHOF.err=true}).finally(()=>{WHOF.busy=false;WHOF.t=Date.now();if(SCREEN==='hof')render()})}
+async function shareHof(x){if(!x||x.shared)return;let f='';try{f=JSON.stringify(x.f||{});if(f.length>8000)f=''}catch(e){}
+  await FB.add('hof',{name:String(x.name||'').slice(0,24),nick:String(x.nick||'').slice(0,24),from:String(x.from||'').slice(0,24),cls:String(x.cls||''),style:String(x.style||''),rec:(x.rec||[0,0,0]).slice(0,3).map(n=>n|0),belts:x.belts|0,def:x.titleDef|0,score:Math.round(x.score||0),first:!!x.first,high:String(x.high||'').slice(0,200),f,at:Date.now(),dev:devId()});
+  x.shared=true;save();WHOF.t=0}
+A.hofShare=async()=>{const L=(DATA.hof||[]).filter(x=>!x.shared);if(!L.length)return;toast('세계 명예의 전당에 올리는 중…');let ok=0;for(const x of L){try{await shareHof(x);ok++}catch(e){}}
+  toast(ok?`🌍 ${ok}명 세계 명예의 전당에 올라갔어요!`:'지금은 올릴 수 없어요. 인터넷을 확인해 주세요');loadWorldHof(true);render()};
+A.hofReload=()=>{loadWorldHof(true);render()};
+function worldHofPanel(){loadWorldHof();const L=WHOF.list,un=(DATA.hof||[]).filter(x=>!x.shared).length;
+  const body=WHOF.err&&!L?'<p>지금은 세계 명예의 전당에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.</p><div class="row"><button class="btn sm" data-act="hofReload">다시 시도</button></div>'
+    :!L?'<p>불러오는 중…</p>'
+    :!L.length?'<p>아직 아무도 없어요. 커리어에서 챔피언이 되고 은퇴해 첫 헌액자가 되어 보세요!</p>'
+    :`<div class="plaques">${L.map((x,i)=>{let f=null;try{f=x.f?JSON.parse(x.f):null}catch(e){}if(f)NETF['wh'+i]=f;
+      return plaque({pid:f?'net:wh'+i:'leg:0',gold:i<3||x.first,tag:`세계 ${i+1}위 · ${x.score}점${x.dev&&x.dev===DATA.dev?' · 나':''}`,name:x.name,nick:x.nick,from:x.from,cls:x.cls,style:x.style,rec:x.rec,belts:x.belts,def:x.def,score:x.score,line:x.high})}).join('')}</div>`;
+  return `<div class="panel"><div class="eyebrow">🌍 세계 명예의 전당</div><h3>모든 플레이어의 헌액자</h3>${body}${un?`<div class="row"><button class="btn-go sm" data-act="hofShare">내 헌액자 ${un}명 세계에 올리기</button></div>`:''}</div>`}
 function hofPlaque(x,i){return plaque({pid:'hof:'+i,gold:x.first,tag:`제${x.no}기 헌액${x.first?' · 퍼스트 밸럿':''}`,name:x.name,nick:x.nick,from:x.from,cls:x.cls,style:x.style,rec:x.rec,belts:x.belts,def:x.titleDef,score:x.score,line:x.high,quote:x.quote})}
 function hofBar(c){const h=hofScore(c),pct=Math.min(100,h.total/HOF_FIRST*100);
   return `<div class="hofbar"><div class="hb"><i style="width:${pct}%"></i><em style="left:${HOF_NEED/HOF_FIRST*100}%"></em></div><div class="between-row"><span>${h.total}점</span><span>헌액 ${HOF_NEED} · 퍼스트 밸럿 ${HOF_FIRST}</span></div></div>
   <div class="tw"><table><tbody>${h.rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td style="text-align:right;color:${r[2]<0?'var(--red-t)':'var(--gold)'}">${r[2]>0?'+':''}${Math.round(r[2]*10)/10}</td></tr>`).join('')}</tbody></table></div>`}
 V.hof=()=>{const c=DATA.career,H=DATA.hof||[];
   return `${back('home')}<div class="hofhead"><div class="eyebrow">IRON CAGE</div><h2>명예의 전당</h2><p>케이지 위에서 시대를 지배한 이들의 이름이 새겨지는 곳</p></div>
+  ${worldHofPanel()}
   ${c?`<div class="panel"><div class="eyebrow">현역 · ${esc(c.name)}</div><h3>헌액 진척도</h3>${hofBar(c)}<p>${hofScore(c).total>=HOF_NEED?'지금 은퇴해도 명예의 전당에 들어갑니다.':`은퇴할 때 ${HOF_NEED}점을 넘기면 헌액됩니다. 타이틀(+12)과 방어(+6)가 가장 큰 점수입니다.`}</p></div>`:''}
   <div class="panel"><div class="eyebrow">커리어 윙</div><h3>나의 헌액자 ${H.length}명</h3>${H.length?`<div class="plaques">${H.map(hofPlaque).join('')}</div>`:'<p>아직 헌액된 커리어 선수가 없습니다. 커리어에서 챔피언이 된 뒤 은퇴하면 이곳에 명판이 걸립니다.</p>'}</div>
   <div class="panel"><div class="eyebrow">레전드 윙</div><h3>창립 헌액자</h3><div class="plaques">${LEG.map((l,i)=>plaque({pid:'leg:'+i,gold:true,tag:'창립 헌액 · '+clsName(l.cls)+' 레전드',name:l.name,nick:l.nick,from:l.from,cls:l.cls,style:l.style,rec:l.rec,belts:l.belts,def:l.def,line:l.line})).join('')}</div></div>`};
@@ -1909,7 +1935,7 @@ A.cRetire=()=>{if(!retireArm){retireArm=true;render();return}retireArm=false;con
   DATA.hof=DATA.hof||[];let idx=-1;
   if(h.total>=HOF_NEED){const tw=(c.history||[]).filter(x=>x.res==='승'&&x.title),last=tw[tw.length-1];
     const high=tw.length?`${tw.length}번의 타이틀전 승리 · 첫 벨트는 ${last.opp}를 ${last.method==='판정'?'판정으로':last.round+'라운드 '+last.method+'로'} 꺾고 획득`:`${(c.history||[]).filter(x=>x.res==='승'&&x.method!=='판정').length}번의 피니시 승리`;
-    DATA.hof.unshift({no:DATA.hof.length+1,first:h.total>=HOF_FIRST,score:h.total,f:meData(c),name:c.name,nick:c.nick,from:c.from,cls:c.cls,style:c.style,rec:c.rec.slice(),belts:(c.belts||[]).length,titleDef:c.titleDef,high,quote:''});idx=0;unlock(['hof'])}
+    DATA.hof.unshift({no:DATA.hof.length+1,first:h.total>=HOF_FIRST,score:h.total,f:meData(c),name:c.name,nick:c.nick,from:c.from,cls:c.cls,style:c.style,rec:c.rec.slice(),belts:(c.belts||[]).length,titleDef:c.titleDef,high,quote:''});idx=0;unlock(['hof']);shareHof(DATA.hof[0]).then(()=>toast('🌍 세계 명예의 전당에도 이름이 올라갔어요!')).catch(()=>{})}
   const name=c.name;DATA.career=null;save();go('hofc',{idx,name,score:h.total});if(idx>=0)Sound.play('reveal')};
 const SPEECH=['체육관 동료들, 그리고 나를 믿어 준 모든 팬에게 이 명판을 바칩니다.','나는 재능이 없었다. 그냥 아무도 나보다 오래 버티지 못했을 뿐이다.','케이지는 나에게 모든 것을 줬다. 이제 다음 세대 차례다.','내 이름 옆에 붙은 패배들까지, 전부 자랑스럽다.'];
 V.hofc=p=>{if(p.idx<0)return `<div class="panel"><div class="eyebrow">은퇴</div><h2 class="big">${esc(p.name)}, 글러브를 내려놓다</h2>
