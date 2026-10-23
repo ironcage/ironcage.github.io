@@ -1217,7 +1217,7 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <h3>업적 ${Object.keys(DATA.ach||{}).length} / ${ACH.length}</h3><div class="achgrid">${ACH.map(a=>`<div class="${(DATA.ach||{})[a.id]?'on':''}"><b>${esc(a.n)}</b><span>${esc(a.d)}</span></div>`).join('')}</div>
   <h3>은퇴한 선수</h3>${DATA.archive.length?`<div class="tw"><table><thead><tr><th>선수</th><th>체급</th><th>전적</th><th>타이틀</th><th>최고 순위</th></tr></thead><tbody>${DATA.archive.map(x=>`<tr><td>${esc(x.name)}</td><td>${clsName(x.cls)}</td><td>${x.rec.join('-')}</td><td>${x.titles}</td><td>${rankLabel(x.peak)}</td></tr>`).join('')}</tbody></table></div>`:'<p>아직 은퇴한 커리어 선수가 없습니다.</p>'}</div>
   <div class="panel"><div class="eyebrow">설정</div>
-  <div class="field"><span class="lbl">기본 난이도</span>${diffSeg()}</div>
+  <div class="field"><span class="lbl">기본 난이도</span>${diffSeg()}<small class="hint2">커리어는 단체 등급 따라 자동: 지역 단체 루키 · IRON CAGE 프로 · 타이틀전 챔피언</small></div>
   <div class="field"><span class="lbl">라운드 시간</span>${secSeg()}</div>
   <div class="field"><span class="lbl">선수 입장·소개</span>${seg('walk',['on','off'],s.walkout!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <div class="field"><span class="lbl">경기 중 코치 지시</span>${seg('coachS',['on','off'],s.coach!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
@@ -1236,7 +1236,7 @@ A.tour=()=>{if(DATA.tour&&DATA.tour.stage!=='done')go('bracket');else go('tsetup
 V.tsetup=()=>{const list=IC.byClass(TS.cls).slice().sort((a,b)=>b.ovr-a.ovr);
   return `${back('home')}<div class="panel"><div class="eyebrow">토너먼트</div><h2 class="big">8인 녹아웃</h2><p>한 체급 8명이 8강, 4강, 결승을 치릅니다. 내 경기는 직접, 나머지는 시뮬레이션으로 진행됩니다. 결승은 5라운드.</p>
   ${classTabs(TS.cls,'tcls')}<div class="flist">${list.map((f,i)=>frow(f,{act:'tpick',rank:i,sel:f.id===TS.me?'a':''})).join('')}</div>
-  <div class="field"><span class="lbl">난이도</span>${diffSeg()}</div>
+  <div class="field"><span class="lbl">난이도</span>${diffSeg()}<small class="hint2">커리어는 단체 등급 따라 자동: 지역 단체 루키 · IRON CAGE 프로 · 타이틀전 챔피언</small></div>
   <button class="btn-go" data-act="tstart" ${TS.me?'':'disabled'}>대진 추첨</button></div>`};
 A.tcls=d=>{TS.cls=d.v;TS.me=null;render()};
 A.tpick=d=>{TS.me=TS.me===d.id?null:d.id;render()};
@@ -1652,8 +1652,9 @@ A.cFight=()=>{const c=DATA.career,o=c.fight,a=meData(c),b=getF(o.opp,c),oi=c.ord
   const risk=(c.energy<35?.35:c.energy<55?.12:.02)+(c.cutRisk||0);
   /* rival: always the same fighter for this save, and he fights you with what he has learned about your habits */
   const isRival=!!(c.rival&&b.id===c.rival.id),pat=isRival&&c.pat?Object.fromEntries(Object.entries(c.pat).map(([k,v])=>[k,Math.min(6,v*1.4)])):null;
-  const diff=c.league==='super'?(hofScore(c).total>=HOF_NEED?'hof':'legend'):undefined;
-  const lab2=(c.league==='super'?'슈퍼리그 · ':'')+label+(diff==='hof'?' · 명예의 전당 난이도':'');
+  /* career difficulty follows the promotion tier: regional = rookie, IRON CAGE = pro, title / super fight = champion */
+  const diff=c.league==='super'?(hofScore(c).total>=HOF_NEED?'hof':'legend'):(o.title||o.kc)?'hard':(c.tier==='regional'||o.local||o.contender)?'easy':'normal';
+  const lab2=(c.league==='super'?'슈퍼리그 · ':'')+label+` · ${DIFFS[diff].label} 난이도`;
   go('tale',{a,b,rounds:o.rounds,label:lab2,rivalRead:isRival?patNote(c.pat):null,title:o.title,mustWeigh:true,risk,scout:c.camp&&c.camp.scout,backTo:'chub',run:(w={})=>{if(w.weigh&&!w.weigh.a.ok){o.penalty=.2;save()}startFight({arena:o.title||o.kc?3:(c.tier==='regional'||o.local||o.contender)?1:(c.order.indexOf('me')>15&&(oi<0||oi>15))?4:2,weigh:w.weigh,oppMul:(o.oppMul||1)*(c.league==='super'?1.1:1),diff,pat,a,b,rounds:o.rounds,title:o.title,label:lab2,condition:.8+.2*c.energy/100,myMul:campMul(c),scoutMul:c.camp&&c.camp.scout?.93:1,onResult:res=>careerResult(res)})}})};
 function patNote(p){if(!p)return '아직 분석된 패턴이 없습니다.';const L={kick:'킥',shoot:'태클',head:'안면 펀치'},top=Object.entries(p).filter(([k])=>L[k]).sort((a,b)=>b[1]-a[1])[0];
   return top&&top[1]>1.5?`라이벌이 당신의 ${L[top[0]]} 습관을 분석했습니다. 그 공격엔 대비가 되어 있어요.`:'라이벌이 당신을 연구했지만 뚜렷한 습관은 못 찾았습니다.'}
