@@ -248,9 +248,6 @@ const COUNTRIES = ['대한민국','미국','브라질','일본','러시아','멕
 const SKIN_OPTIONS = ['#f0cdb0','#e2b48c','#d2a07a','#b47a52','#8a5a3c','#5a3824'];
 
 const SONGS=[
- {n:'Iron Will',g:'rock',gn:'헤비 록',bpm:150,key:1,d:'묵직한 기타 리프와 몰아치는 드럼'},
- {n:'No Mercy',g:'hiphop',gn:'시네마틱 힙합',bpm:90,key:1.12,big:true,verb:.42,crowd:1.5,d:'웅장한 현악·브라스 위에 묵직한 비트, 관중 박수'},
- {n:'Warpath',g:'epic',gn:'에픽 오케스트라',bpm:76,key:1,d:'타이코 북과 웅장한 현악'},
- {n:'Neon Riot',g:'edm',gn:'일렉트로닉',bpm:128,key:1,d:'관중을 뛰게 만드는 클럽 비트'}];
-IC.VER='87';Object.assign(IC,{ROSTER_ALL,CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
+ {n:'No Mercy',g:'hiphop',gn:'시네마틱 힙합',bpm:90,key:1.12,big:true,verb:.42,crowd:1.5,d:'웅장한 현악·브라스 위에 묵직한 비트, 관중 박수'}];
+IC.VER='88';Object.assign(IC,{ROSTER_ALL,CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
 })(window.IC);
