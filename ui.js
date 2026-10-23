@@ -423,7 +423,7 @@ V.home=()=>{
   return `${brk}${fo}${bar}<div class="bgrid">${left}${right}</div>${belt}
   <div class="sech bsech"><h3>CHAMPIONS</h3><span>6개 체급의 왕좌</span></div>
   <div class="chrow">${ch.map(x=>`<button class="chc${x.id==='me'?' me':''}" data-act="nav" data-to="roster">${CHART[x.id]?`<img class="chimg" src="art/ch_${CHART[x.id]}.jpg" alt="" loading="lazy">`:`<canvas data-pid="${esc(x.id)}" data-mode="bust"></canvas>`}<span class="chk">${x.C.name}</span><span class="chn">"${esc(x.d.nick)}"</span><span class="chr">${(x.d.rec||[0,0,0]).join('-')}</span></button>`).join('')}</div>
-  <div class="hfoot">${hmChip()}<p>난이도 ${DIFFS[DATA.settings.diff].label} · 라운드 ${DATA.settings.roundSec/60}분 · v${(IC.VER||'')}</p><div class="row"><button class="btn sm" data-act="nav" data-to="records">기록 · 설정</button><button class="btn sm" data-act="nav" data-to="wipe">게임 초기화</button></div></div>`;
+  <div class="hfoot">${hmChip()}<p>라운드 ${DATA.settings.roundSec/60}분 · v${(IC.VER||'')}</p><div class="row"><button class="btn sm" data-act="nav" data-to="records">기록 · 설정</button><button class="btn sm" data-act="nav" data-to="wipe">게임 초기화</button></div></div>`;
 };
 const modeTile=(act,to,k,name,line,stat,cls='',tag='')=>`<button class="mt ${cls}${tag?' hasrib':''}" data-act="${act}"${to?` data-to="${to}"`:''}>${tag?`<em class="rib">${tag}</em>`:''}<span class="mic">${ico(k)}</span><span class="mtn">${name}</span><span class="mtd">${line}</span><span class="mts">${stat}</span></button>`;
 V.compete=()=>`<div class="sech"><h3>대회</h3><span>하룻밤의 토너먼트부터 체육관 대항전까지</span></div><div class="modes2">
@@ -571,7 +571,7 @@ A.wcReset=()=>{const c=DATA.wildc;if(!c.resetArm){c.resetArm=true;render();retur
 A.wcTrain=d=>{const c=DATA.wildc,x=c.train&&c.train[+d.i];if(!x)return;for(const k in x.k)c.s[k]=clamp(c.s[k]+x.k[k],20,99);if(x.dirty)c.dirty+=x.dirty;c.msg=`${x.n} — ${x.d}`;c.train=null;save();render()};
 A.wcEv=d=>{const c=DATA.wildc,ev=c.ev==='b'?WEVB[c.back]:WEV[c.ev];if(!ev)return;const out=ev.a[+d.i][1](c);for(const k in c.s)c.s[k]=clamp(c.s[k],20,99);c.msg=out;c.ev=null;c.next=null;save();render()};
 A.wcFight=()=>{const c=DATA.wildc,o=c.next||(c.next=wOpp(c)),T=WTIERS[Math.min(c.tier,WTIERS.length-1)],me=wFighter(c);
-  startFight({a:me,b:o,rounds:o.boss?5:3,roundSec:T.gim==='siren'?90:undefined,wild:true,arena:T.arena,gim:T.gim,noWalk:true,dirtyA:c.dirty,label:`야생 리그 · ${T.n}${o.boss?' · 보스전':''}`,onResult:res=>{
+  startFight({a:me,b:o,rounds:o.boss?5:3,diff:o.boss?'hard':'normal',roundSec:T.gim==='siren'?90:undefined,wild:true,arena:T.arena,gim:T.gim,noWalk:true,dirtyA:c.dirty,label:`야생 리그 · ${T.n}${o.boss?' · 보스전':''}`,onResult:res=>{
     const R=DATA.records;R.wild=R.wild||{w:0,l:0,d:0};const B=WBACK[c.back],fame=B.fame||1;let won=res.winner==='a';c.fights++;
     if(T.gim==='siren'&&res.method==='판정'){res.winner=null;won=false}c.hard=0;c.soft=0;c.next=null;c.resetArm=false;
     if(won){c.rec[0]++;R.wild.w++;R.fin[res.method]=(R.fin[res.method]||0)+1;const g=(res.method==='판정'?3:res.method==='서브미션'?5:6)+(res.wildN||0)+(o.boss?10:0);c.infamy+=g*fame;c.tw++;
@@ -723,7 +723,7 @@ A.gymFight=d=>{const G=DATA.gymm,p=G.roster.find(x=>x.id===d.id);if(!p)return;co
 V.gymbout=()=>{const g=P.gf;return `${back('gymm','← 체육관')}<div class="panel"><div class="eyebrow">체육관 대항전 · ${esc(g.rv.name)}</div><h2 class="big" style="font-size:clamp(24px,6vw,36px)">${esc(g.a.name)} vs ${esc(g.opp.name)}</h2>
   <p>${clsName(g.a.cls)} · 종합 ${g.a.ovr} vs ${g.opp.ovr}</p><div class="row"><button class="btn-go" data-act="gymPlay">직접 싸우기</button><button class="btn" data-act="gymSim">시뮬레이션</button></div></div>`};
 A.gymSim=()=>{const g=P.gf,r=IC.Fight.sim(g.a,g.opp,3);const won=g.done(r);go('gymm')};
-A.gymPlay=()=>{const g=P.gf;startFight({a:g.a,b:g.opp,rounds:3,label:`체육관 대항전 · ${g.rv.name}`,onResult:res=>{g.done(res);go('result',{res,label:'체육관 대항전',cont:[['체육관으로','nav:gymm']]})}})};
+A.gymPlay=()=>{const g=P.gf;startFight({a:g.a,b:g.opp,rounds:3,diff:'normal',label:`체육관 대항전 · ${g.rv.name}`,onResult:res=>{g.done(res);go('result',{res,label:'체육관 대항전',cont:[['체육관으로','nav:gymm']]})}})};
 
 /* ---------- grand prix: 16 fighters, one night, damage carries ---------- */
 const GPS=['16강','8강','4강','결승'],GPR=[1,1,2,3];let GPC='lw',GPME=null;
@@ -750,7 +750,7 @@ V.gpb=()=>{const G=DATA.gp,nm=id=>{const f=getF(id);return f?esc(f.name):''};
   <div class="log">${G.log.slice(0,10).map(l=>`<div>${esc(l)}</div>`).join('')}</div></div>`};
 A.gpsim=()=>{gpAdvance();save();render()};A.gpnew=()=>{DATA.gp=null;save();go('gpset')};
 A.gpfight=()=>{const G=DATA.gp,s=G.stage,i=G.br[s].findIndex(m=>m.includes(G.me)),m=G.br[s][i],a=getF(G.me),b=getF(m[0]===G.me?m[1]:m[0]);
-  startFight({a,b,rounds:GPR[s],startHp:{...G.hp},label:`그랑프리 ${GPS[s]} · ${clsName(G.cls)}`,onResult:res=>{
+  startFight({a,b,rounds:GPR[s],diff:['normal','normal','hard','legend'][s]||'normal',startHp:{...G.hp},label:`그랑프리 ${GPS[s]} · ${clsName(G.cls)}`,onResult:res=>{
     const won=res.winner==='a';G.win[s][i]=won?G.me:b.id;G.log.unshift(`${GPS[s]} · ${won?a.name:b.name} ${res.method} 승 (내 경기)`);
     if(won){G.hp={h:Math.min(100,res.hp.a.h+30),b:Math.min(100,res.hp.a.b+22),l:Math.min(100,res.hp.a.l+18)}}else G.out=true;
     gpAdvance();if(G.out)while(G.stage!=='done')gpAdvance();save();
@@ -981,7 +981,7 @@ function startFight(cfg){if(Sound._mus&&Sound._mus.menu)Sound.music(false);
   CFG=cfg;Sound.on=DATA.settings.sound;Sound.init();Crowd.start();if(IC.KO)IC.KO.reset();
   scr.hidden=true;game.hidden=false;between.hidden=true;pad.hidden=false;hintEl.hidden=false;
   $('#glabel').textContent=cfg.label||'';
-  stopDemo();IC.opts.nums=!!DATA.settings.nums;IC.opts.haptic=DATA.settings.haptic!==false;IC.Fight.start({walkout:!cfg.online&&!cfg.noWalk&&DATA.settings.walkout!==false,replay:!cfg.online&&DATA.settings.replay!==false,remote:cfg.online==='host',coach:DATA.settings.coach!==false,a:cfg.a,b:cfg.b,rounds:cfg.rounds||3,roundSec:cfg.roundSec||DATA.settings.roundSec,diff:cfg.diff||DATA.settings.diff,title:cfg.title,practice:cfg.practice,condition:cfg.condition,wild:!!cfg.wild,pat:cfg.pat||null,gim:cfg.gim||null,arena:cfg.arena!=null?cfg.arena:cfg.practice?0:cfg.title?3:cfg.online?2:cfg.wild?1:2,
+  stopDemo();IC.opts.nums=!!DATA.settings.nums;IC.opts.haptic=DATA.settings.haptic!==false;IC.Fight.start({walkout:!cfg.online&&!cfg.noWalk&&DATA.settings.walkout!==false,replay:!cfg.online&&DATA.settings.replay!==false,remote:cfg.online==='host',coach:DATA.settings.coach!==false,a:cfg.a,b:cfg.b,rounds:cfg.rounds||3,roundSec:cfg.roundSec||DATA.settings.roundSec,diff:cfg.diff||'normal',title:cfg.title,practice:cfg.practice,condition:cfg.condition,wild:!!cfg.wild,pat:cfg.pat||null,gim:cfg.gim||null,arena:cfg.arena!=null?cfg.arena:cfg.practice?0:cfg.title?3:cfg.online?2:cfg.wild?1:2,
     onRound:showBetween,onEnd:res=>{stopLoop();res.ach=checkFightAch(res,cfg);setTimeout(()=>cfg.onResult(res),30)}});
   const S=IC.Fight.S;
   try{if(!cfg.practice){const ov=f=>f.ovr!=null?f:Object.assign({},f,{ovr:IC.ovrOf(f.s,f.style)});S.odds=oddsOf(ov(cfg.a),ov(cfg.b))}}catch(e){S.odds=null}
@@ -1197,7 +1197,7 @@ function checkFightAch(r,cfg){
   if(won){ids.push('first');if(r.method==='KO')ids.push('ko');if(r.method==='서브미션'){ids.push('sub');DATA.subsWon=DATA.subsWon||{};DATA.subsWon[r.detail]=1;if(Object.keys(DATA.subsWon).length>=3)ids.push('subs3')}
     if(r.method!=='판정'&&r.round===1&&/^0:[0-2]\d$/.test(r.time))ids.push('flash');
     if(r.method==='KO'&&Object.values(SPM).some(x=>x.name===r.detail))ids.push('special');
-    if(r.heartA)ids.push('heart');if(r.method==='판정'&&r.rounds&&r.rounds.length>=5)ids.push('dec');if((cfg&&cfg.diff||DATA.settings.diff)==='legend')ids.push('legend')}
+    if(r.heartA)ids.push('heart');if(r.method==='판정'&&r.rounds&&r.rounds.length>=5)ids.push('dec');if((cfg&&cfg.diff)==='legend'||(cfg&&cfg.diff)==='hof')ids.push('legend')}
   if((r.perfects||0)>=3)ids.push('parry3');
   return unlock(ids);
 }
@@ -1226,7 +1226,7 @@ function songTip(){if(SCREEN!=='home'||document.querySelector('.lockpop'))return
   document.body.appendChild(el);el.querySelector('input').addEventListener('change',e=>{const inp=e.target;el.remove();A.myPick({},inp)});
   el.addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.k;if(k||e.target===el)el.remove()})}
 function startTutorial(){const L=IC.byClass('lw').slice().sort((a,b)=>b.ovr-a.ovr),a=L[1]||L[0],b=L[L.length-1];
-  startFight({a,b,rounds:1,label:'튜토리얼 · 기본 조작',tut:true,practice:{ai:'defend',inf:true},onResult:res=>go('home')})}
+  startFight({a,b,rounds:1,diff:'easy',label:'튜토리얼 · 기본 조작',tut:true,practice:{ai:'defend',inf:true},onResult:res=>go('home')})}
 const PR={cls:'lw',a:null,b:null,ai:'defend',inf:true};
 V.practice=()=>{const list=IC.byClass(PR.cls).slice().sort((a,b)=>b.ovr-a.ovr);
   return `${back('home')}<div class="panel"><div class="eyebrow">연습</div><h2 class="big">기술 익히기</h2>
@@ -1257,7 +1257,6 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <h3>업적 ${Object.keys(DATA.ach||{}).length} / ${ACH.length}</h3><div class="achgrid">${ACH.map(a=>`<div class="${(DATA.ach||{})[a.id]?'on':''}"><b>${esc(a.n)}</b><span>${esc(a.d)}</span></div>`).join('')}</div>
   <h3>은퇴한 선수</h3>${DATA.archive.length?`<div class="tw"><table><thead><tr><th>선수</th><th>체급</th><th>전적</th><th>타이틀</th><th>최고 순위</th></tr></thead><tbody>${DATA.archive.map(x=>`<tr><td>${esc(x.name)}</td><td>${clsName(x.cls)}</td><td>${x.rec.join('-')}</td><td>${x.titles}</td><td>${rankLabel(x.peak)}</td></tr>`).join('')}</tbody></table></div>`:'<p>아직 은퇴한 커리어 선수가 없습니다.</p>'}</div>
   <div class="panel"><div class="eyebrow">설정</div>
-  <div class="field"><span class="lbl">기본 난이도</span>${diffSeg()}<small class="hint2">커리어는 단체 등급 따라 자동: 지역 단체 루키 · IRON CAGE 프로 · 타이틀전 챔피언</small></div>
   <div class="field"><span class="lbl">라운드 시간</span>${secSeg()}</div>
   <div class="field"><span class="lbl">🎵 내가 원하는 노래</span><div class="row"><label class="btn-go sm" style="cursor:pointer">📁 음악 파일 고르기<input type="file" accept="audio/*" multiple data-change="myPick" hidden></label><span class="mut">${MySong.list.length?`내 노래 ${MySong.list.length}곡 · 입장곡 화면에서 고르고 지울 수 있어요`:'폰의 mp3·m4a를 입장곡·홈 음악으로 (여러 곡 가능)'}</span></div></div>
   <div class="field"><span class="lbl">선수 입장·소개</span>${seg('walk',['on','off'],s.walkout!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
@@ -1277,7 +1276,6 @@ A.tour=()=>{{const u=locked('tour');if(u){lockPop(u);return}}if(DATA.tour&&DATA.
 V.tsetup=()=>{const list=IC.byClass(TS.cls).slice().sort((a,b)=>b.ovr-a.ovr);
   return `${back('home')}<div class="panel"><div class="eyebrow">토너먼트</div><h2 class="big">8인 녹아웃</h2><p>한 체급 8명이 8강, 4강, 결승을 치릅니다. 내 경기는 직접, 나머지는 시뮬레이션으로 진행됩니다. 결승은 5라운드.</p>
   ${classTabs(TS.cls,'tcls')}<div class="flist">${list.map((f,i)=>frow(f,{act:'tpick',rank:i,sel:f.id===TS.me?'a':''})).join('')}</div>
-  <div class="field"><span class="lbl">난이도</span>${diffSeg()}<small class="hint2">커리어는 단체 등급 따라 자동: 지역 단체 루키 · IRON CAGE 프로 · 타이틀전 챔피언</small></div>
   <button class="btn-go" data-act="tstart" ${TS.me?'':'disabled'}>대진 추첨</button></div>`};
 A.tcls=d=>{TS.cls=d.v;TS.me=null;render()};
 A.tpick=d=>{TS.me=TS.me===d.id?null:d.id;render()};
@@ -1308,7 +1306,7 @@ A.tnew=()=>{DATA.tour=null;save();go('tsetup')};
 A.tsimall=()=>{while(DATA.tour.stage!=='done')tAdvance();save();render()};
 A.tfight=()=>{const T=DATA.tour,s=T.stage,i=T.br[s].findIndex(m=>m.includes(T.me)),m=T.br[s][i];
   const a=getF(T.me),b=getF(m[0]===T.me?m[1]:m[0]),rounds=s===2?5:3;
-  go('tale',{a,b,rounds,title:s===2,label:`토너먼트 ${STG[s]}`,backTo:'bracket',run:(o={})=>startFight({weigh:o.weigh,a,b,rounds,title:s===2,label:`토너먼트 ${STG[s]} · ${clsName(T.cls)}`,onResult:res=>{
+  go('tale',{a,b,rounds,title:s===2,label:`토너먼트 ${STG[s]}`,backTo:'bracket',run:(o={})=>startFight({weigh:o.weigh,a,b,rounds,title:s===2,diff:['normal','hard','legend'][s]||'normal',label:`토너먼트 ${STG[s]} · ${clsName(T.cls)}`,onResult:res=>{
     const R=DATA.records;
     if(res.winner==='a'){T.win[s][i]=T.me;R.fin[res.method]=(R.fin[res.method]||0)+1;T.log.unshift(`${STG[s]} · ${a.name} ${res.method} 승 (${res.round}R)`)}
     else{T.win[s][i]=b.id;T.out=true;T.log.unshift(`${STG[s]} · ${b.name} ${res.method||'판정'} 승`)}
