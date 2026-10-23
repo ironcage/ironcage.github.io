@@ -247,7 +247,7 @@ function genFillers(cls,seed){
 /* ---------- router ---------- */
 let SCREEN='home',P={};
 const V={},A={};
-function go(s,p){if(!(CINE&&CINE.o.keep))releaseGl();if(typeof Crowd!=='undefined')Crowd.stop();if(s==='quick'||s==='legend'||s==='legsel')s='home';if(typeof Net!=='undefined'&&Net.mr&&!['oroom','oresult','online','opick'].includes(s))Net.leaveMatch();if(s!=='oresult'&&typeof removeOverlay==='function')removeOverlay();stopLoop();Announcer.stop();if(!(s==='home'&&SCREEN==='home'))Sound.music(false);if(immersive)setImmersive(false);document.querySelector('.app').classList.remove('wide');if(s!=='home')stopDemo();SCREEN=s;P=p||{};game.hidden=true;scr.hidden=false;render();window.scrollTo(0,0);if(s==='home'){startDemo();homeMusic();setTimeout(()=>{try{checkUnlocks();if(!document.getElementById('titleScr')&&!document.querySelector('.lockpop')){if(!DATA.tutDone)tutOffer();else if(!DATA.settings.songTip&&!MySong.name)songTip()}}catch(e){}},500)}}
+function go(s,p){if(!(CINE&&CINE.o.keep))releaseGl();if(typeof Crowd!=='undefined')Crowd.stop();if(s==='quick'||s==='legend'||s==='legsel')s='home';if(typeof Net!=='undefined'&&Net.mr&&!['oroom','oresult','online','opick'].includes(s))Net.leaveMatch();if(s!=='oresult'&&typeof removeOverlay==='function')removeOverlay();stopLoop();Announcer.stop();if(!(menuOk(s)&&Sound._mus&&Sound._mus.menu))Sound.music(false);if(immersive)setImmersive(false);document.querySelector('.app').classList.remove('wide');if(s!=='home')stopDemo();SCREEN=s;P=p||{};game.hidden=true;scr.hidden=false;render();window.scrollTo(0,0);if(menuOk(s)&&s!=='home')homeMusic();if(s==='home'){startDemo();homeMusic();setTimeout(()=>{try{checkUnlocks();if(!document.getElementById('titleScr')&&!document.querySelector('.lockpop')){if(!DATA.tutDone)tutOffer();else if(!DATA.settings.songTip&&!MySong.name)songTip()}}catch(e){}},500)}}
 function render(){if(!(CINE&&CINE.o.keep))releaseGl();const tb=!!TABOF[SCREEN];document.body.classList.toggle('tabbed',tb);scr.innerHTML=(tb?tabBar():'')+V[SCREEN](P);after();if(tb){const on=scr.querySelector('.tb.on');if(on)on.scrollIntoView({block:'nearest',inline:'center'})}}
 function after(){if(SCREEN==='weigh')requestAnimationFrame(runWeigh);if(SCREEN==='chub')requestAnimationFrame(runPress);if(SCREEN==='cpost'){requestAnimationFrame(runBelt);requestAnimationFrame(runTaunt)}drawPortraits()}
 function drawPortraits(){scr.querySelectorAll('canvas[data-pid]').forEach(el=>{const id=el.dataset.pid,d=id==='__wopp'?(DATA.wildc&&DATA.wildc.next):id==='__tmp'?P._tmp:id.startsWith('hof:')?((DATA.hof||[])[+id.slice(4)]||{}).f:id.startsWith('leg:')?LEG[+id.slice(4)]:id.startsWith('net:')?NETF[id.slice(4)]:getF(id);if(d)IC.Draw.portrait(el,d,el.dataset.side||'a',el.dataset.mode||'full')})}
@@ -276,15 +276,17 @@ function seg(act,opts,cur,lab){return `<div class="seg">${opts.map(o=>`<button d
 /* ---------- home-screen music ---------- */
 const HOME_THEME={n:'IRON CAGE 메인 테마',g:'epic',gn:'오케스트럴 에픽',bpm:96,key:1,crowd:.45,verb:.4,big:true};
 const homeSongs=()=>[...MySong.songs(),HOME_THEME,...IC.SONGS];
-function homeMusic(force){if(DATA.settings.homeMusic===false||!DATA.settings.sound)return;if(SCREEN!=='home')return;if(!Sound.ac){return}
-  if(Sound._mus&&!force)return;Sound.music(false);const L=homeSongs(),i=(DATA.settings.homeSong|0)%L.length;setTimeout(()=>{if(SCREEN==='home'&&!Sound._mus)Sound.music(true,Object.assign({},L[i],{vol:.32}))},force?650:0)}
+/* menu music: the picked song keeps playing on every menu screen of every mode; screens with their own sound (song preview, weigh-in, belt ceremony) and fights pause it */
+const NOMUS=['song','weigh','cpost'],menuOk=s=>!NOMUS.includes(s);
+function homeMusic(force){if(DATA.settings.homeMusic===false||!DATA.settings.sound)return;if(!menuOk(SCREEN)||(typeof game!=='undefined'&&game&&!game.hidden))return;if(!Sound.ac){return}
+  if(Sound._mus&&!force)return;Sound.music(false);const L=homeSongs(),i=(DATA.settings.homeSong|0)%L.length;setTimeout(()=>{if(menuOk(SCREEN)&&!(typeof game!=='undefined'&&game&&!game.hidden)&&!Sound._mus){Sound.music(true,Object.assign({},L[i],{vol:.32}));const mark=()=>{if(Sound._mus)Sound._mus.menu=true};mark();setTimeout(mark,400);setTimeout(mark,1500)}},force?650:0)}
 A.hmNext=()=>{Sound.init();const L=homeSongs();DATA.settings.homeSong=((DATA.settings.homeSong|0)+1)%L.length;DATA.settings.homeMusic=true;save();homeMusic(true);render()};
 A.hmToggle=()=>{Sound.init();DATA.settings.homeMusic=DATA.settings.homeMusic===false;save();if(DATA.settings.homeMusic)homeMusic(true);else Sound.music(false);render()};
 A.hm=d=>{DATA.settings.homeMusic=d.v==='on';save();render()};
 const hmChip=()=>{const on=DATA.settings.homeMusic!==false&&DATA.settings.sound,L=homeSongs(),g=L[(DATA.settings.homeSong|0)%L.length];
   return `<div class="hmchip"><span class="eq${on?' on':''}"><i></i><i></i><i></i></span><span class="hmn">${on?'♪ '+esc(g.n):'음악 꺼짐'}</span><label class="hmmy">＋ 내 노래${DATA.settings.songSeen?'':'<em>NEW</em>'}<input type="file" accept="audio/*" multiple data-change="myPick" hidden></label><button data-act="hmNext" aria-label="다음 곡">⏭</button><button data-act="hmToggle" aria-label="음악 켜기/끄기">${on?'🔊':'🔇'}</button></div>`};
-addEventListener('keydown',()=>{if(SCREEN==='home'&&!Sound._mus&&DATA.settings.homeMusic!==false&&DATA.settings.sound){Sound.init();setTimeout(()=>homeMusic(),30)}},true);
-addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('[data-act],.tile'))return;if(SCREEN==='home'&&!Sound._mus&&DATA.settings.homeMusic!==false&&DATA.settings.sound){Sound.on=true;Sound.init();setTimeout(()=>homeMusic(),30)}},true);
+addEventListener('keydown',()=>{if(menuOk(SCREEN)&&!Sound._mus&&DATA.settings.homeMusic!==false&&DATA.settings.sound){Sound.init();setTimeout(()=>homeMusic(),30)}},true);
+addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('[data-act],.tile'))return;if(menuOk(SCREEN)&&!Sound._mus&&DATA.settings.homeMusic!==false&&DATA.settings.sound){Sound.on=true;Sound.init();setTimeout(()=>homeMusic(),30)}},true);
 const diffSeg=()=>seg('setDiff',Object.keys(DIFFS).filter(k=>k!=='hof'),DATA.settings.diff,k=>DIFFS[k].label);
 const secSeg=()=>seg('setSec',[60,120,180],DATA.settings.roundSec,v=>v/60+'분');
 A.setDiff=d=>{DATA.settings.diff=d.v;save();render()};
@@ -974,7 +976,7 @@ function loop(now){
   raf=requestAnimationFrame(loop);
 }
 let CFG=null,USE3D=false;
-function startFight(cfg){
+function startFight(cfg){if(Sound._mus&&Sound._mus.menu)Sound.music(false);
   CFG=cfg;Sound.on=DATA.settings.sound;Sound.init();Crowd.start();if(IC.KO)IC.KO.reset();
   scr.hidden=true;game.hidden=false;between.hidden=true;pad.hidden=false;hintEl.hidden=false;
   $('#glabel').textContent=cfg.label||'';
