@@ -691,11 +691,70 @@ body.tabbed .chc .chk{color:var(--bgold)}
 .fpk.auto{color:#fff;font:700 13px var(--body)}
 .game.deciding .pad{opacity:0;pointer-events:none;transition:opacity .4s}
 .hint2{display:block;margin-top:6px;font-size:11.5px;color:var(--muted,#9aa3b2)}
+
+/* ===== v74 unified broadcast skin: every screen in the home screen's black / red / gold fight-night look ===== */
+body{--bred:#d20a11;--bgold:#d9a520;--bcond:"Bebas Neue","Oswald",var(--display);--bosw:"Oswald","IBM Plex Sans KR",sans-serif}
+html,body{background:#070708}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(90% 60% at 50% -10%,rgba(210,10,17,.14),transparent 60%),repeating-linear-gradient(115deg,transparent 0 26px,rgba(255,255,255,.012) 26px 27px)}
+/* sub-screen header = same bar as the tabbed home */
+.top{margin:0 -16px;padding:9px 16px;border-radius:0;background:linear-gradient(180deg,#121214,#0b0b0c);border:0;border-bottom:1px solid rgba(217,165,32,.55);box-shadow:0 8px 20px rgba(0,0,0,.5)}
+.brand{position:relative;padding-bottom:4px;font:400 25px/1 var(--bcond);letter-spacing:.12em;background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#fff}
+.brand b{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#fff}
+.brand::after{content:"";position:absolute;left:0;bottom:0;width:46px;height:3px;background:var(--bred)}
+.topinfo{font:600 11.5px/1.2 var(--body);color:#a5a5a5}
+.back{align-self:flex-start;padding:6px 18px 6px 12px;background:var(--bred);color:#fff;font:700 12.5px/1 var(--bosw);letter-spacing:.1em;clip-path:polygon(0 0,100% 0,calc(100% - 10px) 100%,0 100%);border-radius:0}
+.back:active{transform:scale(.97)}
+/* panels: black broadcast cards with a gold hairline and faint stripes */
+.panel{background:linear-gradient(180deg,#141416 0%,#0c0c0d 100%);border:1px solid rgba(217,165,32,.24);border-top-color:rgba(217,165,32,.4);border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.45)}
+.panel::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:repeating-linear-gradient(115deg,transparent 0 22px,rgba(255,255,255,.018) 22px 23px)}
+.panel>*{position:relative;z-index:1}
+.panel:has(> h2.big){background:radial-gradient(80% 120% at 85% 0%,rgba(150,8,12,.38),transparent 60%),linear-gradient(180deg,#151517,#0b0b0c);border-left:3px solid var(--bred)}
+h2.big{font-size:clamp(30px,6.4vw,50px);letter-spacing:.01em}
+/* eyebrow = red slanted label, like FIGHT OFFER on the home hero */
+.eyebrow{align-self:flex-start;padding:4px 16px 4px 10px;background:var(--bred);color:#fff;font:700 11px/1.15 var(--bosw);letter-spacing:.16em;clip-path:polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%)}
+.eyebrow::before{display:none}
+.between-row .eyebrow,.overlay .eyebrow{align-self:auto}
+/* buttons */
+.btn{border-radius:3px;background:#101011;border:1px solid rgba(217,165,32,.32);color:#eee}
+.btn:hover{border-color:var(--bgold);color:#fff}
+.btn-go{border-radius:3px;color:#fff;background:linear-gradient(180deg,#ef2a31,#b60b11 55%,#7d0509);box-shadow:0 0 0 1px rgba(255,170,170,.35) inset,0 -3px 0 rgba(60,0,0,.45) inset,0 10px 24px rgba(210,10,17,.35);letter-spacing:.02em}
+.btn-go.blue{border-radius:3px}
+.btn-go:disabled{box-shadow:none}
+/* stat boxes = home "tale of the tape" cells */
+.kv div{background:#0d0d0e;border:1px solid rgba(217,165,32,.26);border-radius:2px;border-top:2px solid rgba(217,165,32,.55)}
+.kv span{font:700 10.5px/1.2 var(--bosw);letter-spacing:.12em;color:var(--bgold);text-transform:uppercase}
+.kv b{font:400 23px/1.05 var(--bcond);letter-spacing:.03em}
+.advice{background:#0d0d0e;border-left:3px solid var(--bred);border-radius:0}
+.lbl{font:700 11px/1.2 var(--bosw);letter-spacing:.12em;color:var(--bgold);text-transform:uppercase}
+/* segmented pickers */
+.seg button{border-radius:2px;background:#101011;border:1px solid rgba(255,255,255,.1);color:#9a9a9a}
+.seg button[aria-pressed="true"]{background:var(--bred);border-color:var(--bred);color:#fff;box-shadow:0 0 14px rgba(210,10,17,.35)}
+/* tables: broadcast stat sheet */
+table{border-collapse:separate;border-spacing:0}
+thead th{background:#0d0d0e;color:var(--bgold);font:700 11px/1.2 var(--bosw);letter-spacing:.12em;text-transform:uppercase;border-bottom:2px solid var(--bred)}
+tbody tr:nth-child(even) td{background:rgba(255,255,255,.025)}
+/* mode tiles and hero headers on sub screens */
+.mt{border-radius:4px;border-color:rgba(217,165,32,.26)}
+.hofhead{border-radius:4px;border-color:rgba(217,165,32,.5);background:radial-gradient(ellipse at 50% 0%,rgba(232,179,58,.26),transparent 70%),radial-gradient(70% 120% at 50% 120%,rgba(150,8,12,.35),transparent 70%),#0b0b0c}
+.credit{opacity:.55}
+
+/* option cards (weight class, gym, plans, specials) */
+.act,.tile{position:relative;border-radius:3px!important;background:linear-gradient(180deg,#121213,#0c0c0d)!important;border:1px solid rgba(217,165,32,.24)!important;transition:border-color .15s,transform .1s}
+.act:hover,.tile:hover{border-color:var(--bgold)!important}
+.act:active,.tile:active{transform:scale(.985)}
+.act.on{border-color:var(--bred)!important;box-shadow:inset 0 0 0 1px var(--bred),0 0 16px rgba(210,10,17,.25)}
+.act.on::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--bred)}
+.act b{letter-spacing:.01em}
+
+/* tale of the tape: spotlit corner boxes */
+.vsc{border-radius:3px!important;border:1px solid rgba(255,255,255,.08)!important;overflow:hidden;position:relative}
+.vsbox .vsc:first-child{background:radial-gradient(90% 70% at 50% 18%,rgba(61,127,240,.42),rgba(8,14,30,.95) 72%)!important;border-top:3px solid #3d7ff0!important}
+.vsbox .vsc:last-child{background:radial-gradient(90% 70% at 50% 18%,rgba(224,74,58,.42),rgba(30,8,8,.95) 72%)!important;border-top:3px solid var(--bred)!important}
 </style>
 
 <div class="app">
   <div class="top">
-    <button class="brand" id="home" aria-label="메인 메뉴">아이언 <b>케이지</b></button>
+    <button class="brand" id="home" aria-label="메인 메뉴">IRON <b>CAGE</b></button>
     <div class="topinfo" id="topinfo"></div>
   </div>
   <div class="scr" id="scr"></div>
