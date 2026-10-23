@@ -73,7 +73,7 @@ function limb(p0,p1,p2,P,k,base,o={}){
   if(TEXON&&!o.flat){const kind=P===PROF.arm?'arm':P===PROF.leg?'leg':null;if(kind){ctx.save();ctx.clip();const wU=C[4].w,wL=C[12].w;
       texSeg(TEXON[kind+'u'],p0,p1,wU);texSeg(TEXON[kind+'l'],p1,p2,wL);
       ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.55;ctx.fillStyle=g;ctx.fill();ctx.restore()}}
-  if(!o.flat){ctx.save();ctx.clip();ctx.strokeStyle='rgba(185,215,255,.42)';ctx.lineWidth=1.3;ctx.beginPath();smoothPath(C.slice(1,15).map(c=>({x:c.pt.x-c.n.x*(c.w-.9)*up,y:c.pt.y-c.n.y*(c.w-.9)*up})),true);ctx.stroke();ctx.restore()}
+  if(!o.flat){ctx.save();ctx.clip();ctx.strokeStyle='rgba(185,215,255,.22)';ctx.lineWidth=1;ctx.beginPath();smoothPath(C.slice(1,15).map(c=>({x:c.pt.x-c.n.x*(c.w-.9)*up,y:c.pt.y-c.n.y*(c.w-.9)*up})),true);ctx.stroke();ctx.restore()}
   ctx.strokeStyle='rgba(28,12,6,.55)';ctx.lineWidth=1.05;ctx.lineJoin='round';ctx.stroke();
   if(!o.flat){
     ctx.save();ctx.clip();
@@ -82,7 +82,7 @@ function limb(p0,p1,p2,P,k,base,o={}){
     // occlusion in the crease of the joint
     const cj=C[8],og=ctx.createRadialGradient(cj.pt.x-cj.n.x*cj.w*up,cj.pt.y-cj.n.y*cj.w*up,0,cj.pt.x,cj.pt.y,cj.w*1.6);og.addColorStop(0,'rgba(60,25,15,.28)');og.addColorStop(1,'rgba(60,25,15,0)');ctx.fillStyle=og;ctx.fillRect(cj.pt.x-20,cj.pt.y-20,40,40);
     /* muscle contours: a soft crease between the muscle heads, kneecap / elbow point, and sweat beads in the light */
-    if(!o.noContour){const cr=(i0,i1,sideK,al)=>{ctx.strokeStyle=`rgba(70,30,18,${al})`;ctx.lineWidth=.75;ctx.beginPath();smoothPath(C.slice(i0,i1).map((c,j,arr)=>({x:c.pt.x+c.n.x*c.w*sideK*up*Math.sin((j+1)/(arr.length+1)*Math.PI),y:c.pt.y+c.n.y*c.w*sideK*up*Math.sin((j+1)/(arr.length+1)*Math.PI)})),true);ctx.stroke()};
+    if(false){const cr=(i0,i1,sideK,al)=>{ctx.strokeStyle=`rgba(70,30,18,${al})`;ctx.lineWidth=.75;ctx.beginPath();smoothPath(C.slice(i0,i1).map((c,j,arr)=>({x:c.pt.x+c.n.x*c.w*sideK*up*Math.sin((j+1)/(arr.length+1)*Math.PI),y:c.pt.y+c.n.y*c.w*sideK*up*Math.sin((j+1)/(arr.length+1)*Math.PI)})),true);ctx.stroke()};
       cr(2,7,-.15,.22);cr(10,15,.25,.18);const kc=C[8];ell(kc.pt.x+kc.n.x*kc.w*.25*up,kc.pt.y+kc.n.y*kc.w*.25*up,kc.w*.42,kc.w*.32,'rgba(255,238,220,.16)');
       if(o.sheen>.12)for(const i of [3,6,11,13]){const c=C[i];ell(c.pt.x+c.n.x*c.w*.5*up,c.pt.y+c.n.y*c.w*.5*up,.8,.55,`rgba(255,255,255,${Math.min(.8,o.sheen*2.2)})`)}}
     if(o.sheen>0){ctx.strokeStyle=`rgba(255,255,255,${o.sheen})`;ctx.lineWidth=1.4;ctx.beginPath();smoothPath(C.slice(2,14).map(c=>({x:c.pt.x+c.n.x*c.w*.55*up,y:c.pt.y+c.n.y*c.w*.55*up})),true);ctx.stroke()}
@@ -356,7 +356,7 @@ function drawHead0(F,c,ang,f,o){
   const cap=(a=1)=>{ctx.globalAlpha=a;ctx.beginPath();ctx.moveTo(-rx+.1,4);ctx.quadraticCurveTo(-rx-2,-12,-2,-ry-1.4);ctx.quadraticCurveTo(8,-ry-1.8,fx-.3,-8.4);ctx.quadraticCurveTo(7,-10.6,3,-9.6);ctx.quadraticCurveTo(-4,-8,-6,-1);ctx.quadraticCurveTo(-8,3,-rx+.1,4);ctx.fill();ctx.globalAlpha=1};
   if(hv==='bald'){ell(2,-11,5,2.4,'rgba(255,255,255,.2)',-.3)}
   else if(hv==='shaved'){cap(.22);ell(2,-11,5,2.4,'rgba(255,255,255,.16)',-.3)}
-  else if(hv==='buzz'){cap(.6);ctx.fillStyle='rgba(0,0,0,.22)';for(let i=0;i<40;i++){const a=Math.PI*(1.05+((i*37)%40)/40*.85),rr=.55+((i*53)%10)/22;ctx.fillRect(Math.cos(a)*rx*rr+1,Math.sin(a)*ry*rr-1,.5,.5)}ctx.fillStyle=hairC}
+  else if(hv==='buzz'){cap(.6);}
   else if(hv==='lines'){cap(.6);ctx.strokeStyle=skin;ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(-9,-4);ctx.quadraticCurveTo(-4,-9,1,-6);ctx.moveTo(-8,-1);ctx.lineTo(-3,-3);ctx.stroke()}
   else if(hv==='fade'){cap(.35);ctx.beginPath();ctx.ellipse(1,-12.5,9,4.4,-.1,0,7);ctx.fill()}
   else{cap(1);
@@ -373,7 +373,7 @@ function drawHead0(F,c,ang,f,o){
     if(hv==='topknot'){ell(-2,-ry-3,4,4,hairC);ctx.fillRect(-3.4,-ry-1,2.8,2)}
     if(P.dye&&hv!=='fauxdye'){ctx.fillStyle=P.dye;ctx.globalAlpha=.85;ctx.beginPath();ctx.moveTo(fx-1,-8.6);ctx.quadraticCurveTo(6,-ry-1,0,-ry-.6);ctx.quadraticCurveTo(5,-11,fx-1,-8.6);ctx.fill();ctx.globalAlpha=1}
     ctx.save();ctx.beginPath();ctx.moveTo(-rx+.1,4);ctx.quadraticCurveTo(-rx-2,-12,-2,-ry-1.4);ctx.quadraticCurveTo(8,-ry-1.8,fx-.3,-8.4);ctx.quadraticCurveTo(7,-10.6,3,-9.6);ctx.quadraticCurveTo(-4,-8,-6,-1);ctx.quadraticCurveTo(-8,3,-rx+.1,4);ctx.clip();
-      ctx.lineCap='round';for(let i=0;i<16;i++){const u=i/15,x0=fx-2-u*(rx+fx-1),y0=-9.5-Math.sin(u*Math.PI)*4.5;ctx.strokeStyle=i%3?'rgba(0,0,0,.22)':'rgba(255,255,255,.16)';ctx.lineWidth=i%3?.55:.45;ctx.beginPath();ctx.moveTo(x0,y0);ctx.quadraticCurveTo(x0-3,y0+2.5+u*2,x0-4.5-u*2,y0+6+u*4);ctx.stroke()}
+      ctx.lineCap='round';for(let i=0;i<0;i++){const u=i/15,x0=fx-2-u*(rx+fx-1),y0=-9.5-Math.sin(u*Math.PI)*4.5;ctx.strokeStyle=i%3?'rgba(0,0,0,.22)':'rgba(255,255,255,.16)';ctx.lineWidth=i%3?.55:.45;ctx.beginPath();ctx.moveTo(x0,y0);ctx.quadraticCurveTo(x0-3,y0+2.5+u*2,x0-4.5-u*2,y0+6+u*4);ctx.stroke()}
       const hg=ctx.createLinearGradient(0,-ry-2,0,4);hg.addColorStop(0,'rgba(255,255,255,.14)');hg.addColorStop(.45,'rgba(255,255,255,0)');hg.addColorStop(1,'rgba(0,0,0,.28)');ctx.fillStyle=hg;ctx.fillRect(-rx-4,-ry-4,rx*2+8,ry+10);ctx.restore();
     ctx.fillStyle='rgba(255,255,255,.12)';ctx.beginPath();ctx.ellipse(1,-12.5,5,1.6,-.2,0,7);ctx.fill()}
   if(P.gray>.2&&hv!=='bald'){ctx.fillStyle=`rgba(225,225,225,${P.gray*.55})`;ctx.beginPath();ctx.ellipse(-5,-1,3.4,4.8,.2,0,7);ctx.fill()}
@@ -388,7 +388,7 @@ function drawHead0(F,c,ang,f,o){
     else if(bs==='horse'){ctx.globalAlpha=.95;ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(10.4,10.6+jy*.5);ctx.lineTo(10.6,6.2);ctx.quadraticCurveTo(12.4,4.6,14,5.8);ctx.stroke()}
     else if(bs==='soul'){ctx.globalAlpha=.95;ell(12.2,8.6,1,1.3,beardC)}
     else{ctx.globalAlpha=.9;ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(-1.5,4);ctx.quadraticCurveTo(3,11+jy,8,12.8+jy);ctx.quadraticCurveTo(11.6,12.6+jy,12.4,10+jy*.6);ctx.stroke()}
-    ctx.globalAlpha=1;if(bs!=='stubble'){ctx.fillStyle='rgba(0,0,0,.25)';for(let i=0;i<26;i++){const u=((i*37)%26)/26,v=((i*61)%26)/26;ctx.fillRect(1+u*11,4+v*(7+jj),.55,.55)}}}
+    ctx.globalAlpha=1;}
   // cuts & blood
   const cuts=Math.min(5,o.cuts|0);
   if(o.head<85&&cuts>0){const gx=ex-1,gy=-8.6;ctx.lineCap='round';ctx.strokeStyle='#5e0710';ctx.lineWidth=1+cuts*.18;ctx.beginPath();ctx.moveTo(gx-2.4,gy+.4);ctx.quadraticCurveTo(gx,gy-.5,gx+2.6,gy+.2);ctx.stroke();
@@ -526,7 +526,7 @@ function mcAttack(F,base){const A=F.A,m=A&&MC_ATK[A.anim];if(!m||!mcInfo(m.k))re
   let u;if(t<w+a*.4)u=lerp(s0,imp,Math.min(1,t/(w+a*.4)));else u=lerp(imp,s1,Math.min(1,(t-w-a*.4)/(a*.6+r)));
   const d0=mcDelta(F,m.k,s0,m.swap),d=mcDelta(F,m.k,u,m.swap);if(!d||!d0)return base;
   for(const q in d)d[q]={x:d[q].x-d0[q].x,y:d[q].y-d0[q].y};/* motion relative to the windup start, not the clip's first frame */
-  const kick=/kick/.test(A.anim),g=kick?{hip:.08,chest:.1,head:.1,nearHand:.1,nearFoot:0}:A.anim==='hook'?{hip:.4,chest:.35,head:.35,nearFoot:.2,farFoot:.2}:{hip:.6,chest:.85,head:.8,nearFoot:.2,farFoot:.25};
+  const kick=/kick/.test(A.anim),g=kick?{hip:0,chest:0,head:0,nearHand:0,nearFoot:0}:A.anim==='hook'?{hip:.4,chest:.35,head:.35,nearFoot:.2,farFoot:.2}:{hip:.6,chest:.85,head:.8,nearFoot:.2,farFoot:.25};
   if(kick){d.hip.y=0;d.nearFoot={x:0,y:0};d.nearHand.y=Math.max(-12,Math.min(12,d.nearHand.y))}
   const edge=clamp(Math.min(1,t/3,(w+a+r-t)/4),0,1);for(const q in g)g[q]*=edge;const o=addJ(base,d,g);
   /* the free hand guards the chin, in front of the face rather than over the head */
@@ -536,7 +536,7 @@ function mcLoop(F,key,t,speed=1,o={}){const I=mcInfo(key);if(!I)return null;cons
 function kickPath(F,A,x,f,an){const H={lowkick:34,midkick:104,highkick:162}[an],R={lowkick:104,midkick:112,highkick:112}[an];
   /* rear-leg round kick seen from the side: the knee drives straight up in FRONT (never folds backwards), the shin snaps out on an arc,
      then the knee re-chambers in front and the foot steps back down. Knee positions are given as points so the leg can't bend the wrong way. */
-  const hipY=GY-92,B0={x:x-f*24,y:GY},C={x:x+f*(an==='lowkick'?18:30),y:GY-(an==='lowkick'?42:44+H*.14)}/* chamber: knee up in front, shin hanging under it (not folded back under the hips) */,T={x:x+f*R,y:GY-H},M={x:x+f*(an==='lowkick'?62:44),y:GY-H-(an==='lowkick'?6:20)};
+  const hipY=GY-92,B0={x:x-f*24,y:GY},C={x:x+f*(an==='lowkick'?18:30),y:GY-(an==='lowkick'?42:44+H*.14)}/* chamber: knee up in front, shin hanging under it (not folded back under the hips) */,T={x:x+f*R,y:GY-H},M={x:(x+f*(an==='lowkick'?18:30)+x+f*R)/2,y:(GY-(an==='lowkick'?42:44+H*.14)+GY-H)/2};/* straight line from chamber to target: no swinging arc */
   const sm=p=>p*p*(3-2*p),eo=p=>1-Math.pow(1-p,3),bz=(a,b,c,p)=>({x:(1-p)*(1-p)*a.x+2*(1-p)*p*b.x+p*p*c.x,y:(1-p)*(1-p)*a.y+2*(1-p)*p*b.y+p*p*c.y});
   const Kc={x:x+f*(an==='lowkick'?30:40),y:hipY-(an==='highkick'?24:an==='midkick'?8:-26)};/* chambered knee: in front, about hip height */
   const lift={x:x+f*2,y:GY-30},K0={x:x+f*10,y:GY-50};/* path control while stepping up / down; K0 = relaxed knee, in front */
@@ -675,9 +675,9 @@ function poseStand(F,O,S){
   /* body mechanics: shoulders turn into punches, hips open on kicks, rear heel lifts on power shots */
   let twist=0,hipTwist=0;
   if(st==='attack'){
-    const tw={jab:-.35,cross:1,hook:-.9,upper:.7,bodyshot:.9,overhand:1.15,superman:1,spinfist:1.2,lowkick:.2,midkick:.4,highkick:.5,spinkick:.6,qmark:.5,tornado:.9,flyknee:.3}[an]||0;
+    const tw={jab:-.35,cross:1,hook:-.9,upper:.7,bodyshot:.9,overhand:1.15,superman:1,spinfist:1.2,lowkick:0,midkick:0,highkick:0,spinkick:.6,qmark:.5,tornado:.9,flyknee:.3}[an]||0;
     twist=tw*Math.max(E,-.6);
-    hipTwist={lowkick:.45,midkick:.5,highkick:.55,spinkick:1.2,qmark:1,tornado:1.3,cross:.45,overhand:.5,hook:-.3}[an]*Math.max(0,E)||0;
+    hipTwist={lowkick:0,midkick:0,highkick:0,spinkick:1.2,qmark:1,tornado:1.3,cross:.45,overhand:.5,hook:-.3}[an]*Math.max(0,E)||0;
     if(['cross','overhand','upper','bodyshot','superman'].includes(an))back={x:back.x+f*4*e,y:back.y-5*e};
     if(['lowkick','midkick','highkick','spinkick','qmark','tornado'].includes(an)){front={x:front.x-f*2*e,y:front.y-2*e};chest.x-=f*3*e}
   }
