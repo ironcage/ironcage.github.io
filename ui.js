@@ -371,9 +371,9 @@ function tickerItems(){const c=DATA.career,R=DATA.records,ch=champsOf(),out=[];
   const fin=(R.fin.KO||0)+(R.fin.TKO||0)+(R.fin['서브미션']||0);out.push(`💥 내 피니시 승 <b>${fin}회</b>`);
   out.push('🥊 6개 체급 · '+ROSTER.length+'명의 파이터가 기다립니다');return out}
 /* ================= FC-style hub: tab bar on top, my career fighter on home ================= */
-const TABS=[{k:'home',n:'홈'},{k:'career',n:'커리어'},{k:'wild',n:'야생 리그'},{k:'compete',n:'대회'},{k:'practice',n:'연습'},{k:'online',n:'온라인'},{k:'archive',n:'기록'}];
-const TABOF={home:'home',chub:'career',ccreate:'career',wild:'wild',compete:'compete',practice:'practice',online:'online',archive:'archive'};
-A.tab=d=>{const k=d.k;{const u=locked(k);if(u){lockPop(u);return}}if(k===TABOF[SCREEN]&&k!=='career')return;try{IC.Haptic&&IC.Haptic.tap()}catch(e){}if(k==='career')A.career();else go(k)};
+const TABS=[{k:'home',n:'홈'},{k:'career',n:'커리어'},{k:'wild',n:'야생 리그'},{k:'compete',n:'대회'},{k:'practice',n:'연습'},{k:'online',n:'온라인'},{k:'archive',n:'기록'},{k:'hof',n:'명예의 전당'}];
+const TABOF={home:'home',chub:'career',ccreate:'career',wild:'wild',compete:'compete',practice:'practice',online:'online',archive:'archive',hof:'hof'};
+A.tab=d=>{const k=d.k;{const u=k==='hof'?null:locked(k);if(u){lockPop(u);return}}if(k===TABOF[SCREEN]&&k!=='career')return;try{IC.Haptic&&IC.Haptic.tap()}catch(e){}if(k==='career')A.career();else go(k)};
 function tabStep(dir){const cur=TABOF[SCREEN];if(!cur)return;const i=TABS.findIndex(t=>t.k===cur),n=TABS[(i+dir+TABS.length)%TABS.length];A.tab({k:n.k})}
 /* swipe left/right anywhere on a tabbed screen = next/prev tab (like LB/RB) */
 {let sx=0,sy=0,ok=false;scr.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;ok=!!TABOF[SCREEN]&&!e.target.closest('.tbs,.chrow,.ticker,input,select,textarea,canvas.sw')},{passive:true});
@@ -382,7 +382,7 @@ function tabStep(dir){const cur=TABOF[SCREEN];if(!cur)return;const i=TABS.findIn
 
 function tabBar(){const cur=TABOF[SCREEN],c=DATA.career,ur=c?unread(c):0;
   return `<header class="bh"><button class="blogo" data-act="tab" data-k="home">IRON CAGE</button><div class="bhr"><button class="bhi" data-act="${c?'nav':'career'}" data-to="cphone" aria-label="휴대폰">📱${ur?`<em class="badge">${ur}</em>`:''}</button><button class="bhi" data-act="nav" data-to="records" aria-label="기록 · 설정">⚙</button></div></header>
-  <nav class="btabs" aria-label="모드"><div class="tbs" id="tbs">${TABS.map(t=>`<button class="tb${t.k===cur?' on':''}" data-act="tab" data-k="${t.k}"${t.k===cur?' aria-current="page"':''}><span>${locked(t.k)?'🔒 ':''}${t.n}</span></button>`).join('')}</div></nav>`}
+  <nav class="btabs" aria-label="모드"><div class="tbs" id="tbs">${TABS.map(t=>`<button class="tb${t.k===cur?' on':''}" data-act="tab" data-k="${t.k}"${t.k===cur?' aria-current="page"':''}><span>${t.k!=='hof'&&locked(t.k)?'🔒 ':''}${t.n}</span></button>`).join('')}</div></nav>`}
 
 /* ladder rows around me: champion + the ranks closest to me */
 function ladder(c){const L=c.order||[],me=L.indexOf('me'),want=new Set([0,1,2,3]);
@@ -1919,7 +1919,7 @@ function hofBar(c){const h=hofScore(c),pct=Math.min(100,h.total/HOF_FIRST*100);
   return `<div class="hofbar"><div class="hb"><i style="width:${pct}%"></i><em style="left:${HOF_NEED/HOF_FIRST*100}%"></em></div><div class="between-row"><span>${h.total}점</span><span>헌액 ${HOF_NEED} · 퍼스트 밸럿 ${HOF_FIRST}</span></div></div>
   <div class="tw"><table><tbody>${h.rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td style="text-align:right;color:${r[2]<0?'var(--red-t)':'var(--gold)'}">${r[2]>0?'+':''}${Math.round(r[2]*10)/10}</td></tr>`).join('')}</tbody></table></div>`}
 V.hof=()=>{const c=DATA.career,H=DATA.hof||[];
-  return `${back('home')}<div class="hofhead"><div class="eyebrow">IRON CAGE</div><h2>명예의 전당</h2><p>케이지 위에서 시대를 지배한 이들의 이름이 새겨지는 곳</p></div>
+  return `<div class="hofhead"><div class="eyebrow">IRON CAGE</div><h2>명예의 전당</h2><p>케이지 위에서 시대를 지배한 이들의 이름이 새겨지는 곳</p></div>
   ${worldHofPanel()}
   ${c?`<div class="panel"><div class="eyebrow">현역 · ${esc(c.name)}</div><h3>헌액 진척도</h3>${hofBar(c)}<p>${hofScore(c).total>=HOF_NEED?'지금 은퇴해도 명예의 전당에 들어갑니다.':`은퇴할 때 ${HOF_NEED}점을 넘기면 헌액됩니다. 타이틀(+12)과 방어(+6)가 가장 큰 점수입니다.`}</p></div>`:''}
   <div class="panel"><div class="eyebrow">커리어 윙</div><h3>나의 헌액자 ${H.length}명</h3>${H.length?`<div class="plaques">${H.map(hofPlaque).join('')}</div>`:'<p>아직 헌액된 커리어 선수가 없습니다. 커리어에서 챔피언이 된 뒤 은퇴하면 이곳에 명판이 걸립니다.</p>'}</div>
