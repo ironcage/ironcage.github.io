@@ -343,10 +343,12 @@ function poolNearest(k){if(!k)return null;if(POOL.has(k))return k;const [e,h,b]=
 const POOLV=new Set(["ch_fly", "ch_fw", "ch_hw", "ch_lw", "ch_mw", "ch_ww", "u_g_bw_gp3avr", "u_g_fly_lwrmvv", "u_g_fw_cexg2y", "u_g_lhw_16nnu2e", "u_g_lw_19pe5vl", "u_g_mw_182726z", "u_g_ww_hebf2g", "u_hw_25", "u_lw_2", "u_mw_16", "u_ww_8"]);
 const UNIQ=new Set(["g_bw_gp3avr", "g_fly_lwrmvv", "g_fw_cexg2y", "g_lhw_16nnu2e", "g_lw_19pe5vl", "g_mw_182726z", "g_ww_hebf2g", "hw_25", "lw_2", "mw_16", "ww_8"]);
 function headKey(d){if(!d)return null;const id=d.id==='__tmp'?null:d.id;if(id&&CHART[id])return 'ch_'+CHART[id];if(id&&UNIQ.has(id))return 'u_'+id;return poolNearest(photoKey(d))}
-IC.headHasViews=d=>POOLV.has(headKey(d));
+IC.headHasViews=d=>!!IC.pilot(d)||POOLV.has(headKey(d));
 /* photo heads switched off for now (drawn heads everywhere); flip to true to bring them back */
 const PHOTO_HEADS=false;/* off until every fighter's set is finished and blends naturally (user 10/23 22:25) */
-IC.facePath=(d,view)=>{if(!PHOTO_HEADS)return null;const k=headKey(d);if(!k)return null;return POOLV.has(k)?`art/head/${k}_${view||'front'}.png`:null};
+/* pilot (test only, off in the game): one fighter with a painted 5-view + expression set */
+const PILOT={lw_0:{key:'lw0',skin:'#d29576'}};IC.pilot=d=>IC.pilotOn&&d&&PILOT[d.id]||null;
+IC.facePath=(d,view)=>{{const pl=IC.pilot(d);if(pl)return `art/pilot/${pl.key}_${view||'front'}.png`}if(!PHOTO_HEADS)return null;const k=headKey(d);if(!k)return null;return POOLV.has(k)?`art/head/${k}_${view||'front'}.png`:null};
 function champsOf(){const c=DATA.career;return CLASSES.map(C=>{let id=null;
   if(c&&((IC.CLSMAP||{})[c.cls]||c.cls)===C.id&&c.order&&c.order.length)id=c.order[0];
   if(!id){const l=ROSTER.filter(f=>((IC.CLSMAP||{})[f.cls]||f.cls)===C.id).sort((x,y)=>y.ovr-x.ovr);id=l[0]&&l[0].id}

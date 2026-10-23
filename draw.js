@@ -54,6 +54,11 @@ function limbPts(p0,p1,p2,P,k,s0=0,s1=2,ex=0){
   return{L,R,C};
 }
 function smoothPath(pts,move){if(move)ctx.moveTo(pts[0].x,pts[0].y);else ctx.lineTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length-1;i++){const m={x:(pts[i].x+pts[i+1].x)/2,y:(pts[i].y+pts[i+1].y)/2};ctx.quadraticCurveTo(pts[i].x,pts[i].y,m.x,m.y)}const l=pts[pts.length-1];ctx.lineTo(l.x,l.y)}
+/* pilot: photo skin textures mapped onto the drawn limbs and torso (test only) */
+const TEXC={};let TEXON=null;
+function texImg(src){let im=TEXC[src];if(!im){im=TEXC[src]=new Image();im.src=src}return im.complete&&im.naturalWidth?im:null}
+function texSet(F){const pl=IC.pilot&&F&&F.d&&F.kind!=='ref'&&IC.pilot(F.d);if(!pl)return null;const g=n=>texImg(`art/pilot/${pl.key}_${n}.png`);return{armu:g('armu'),arml:g('arml'),legu:g('legu'),legl:g('legl'),torso:g('torso')}}
+function texSeg(im,a,b,w){if(!im)return;const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);ctx.save();ctx.translate(a.x,a.y);ctx.rotate(Math.atan2(dy,dx));ctx.drawImage(im,-w*.3,-w*1.15,len+w*.6,w*2.3);ctx.restore()}
 function limb(p0,p1,p2,P,k,base,o={}){
   const {L,R,C}=limbPts(p0,p1,p2,P,k);
   ctx.beginPath();smoothPath(L,true);const e=C[C.length-1],st=C[0];
@@ -65,6 +70,9 @@ function limb(p0,p1,p2,P,k,base,o={}){
   const g=ctx.createLinearGradient(mx+n0.x*r*up,my+n0.y*r*up,mx-n0.x*r*up,my-n0.y*r*up);
   g.addColorStop(0,shade(base,1.14));g.addColorStop(.35,base);g.addColorStop(.78,shade(base,.8));g.addColorStop(1,shade(base,.64));
   ctx.fillStyle=g;ctx.fill();
+  if(TEXON&&!o.flat){const kind=P===PROF.arm?'arm':P===PROF.leg?'leg':null;if(kind){ctx.save();ctx.clip();const wU=C[4].w,wL=C[12].w;
+      texSeg(TEXON[kind+'u'],p0,p1,wU);texSeg(TEXON[kind+'l'],p1,p2,wL);
+      ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.55;ctx.fillStyle=g;ctx.fill();ctx.restore()}}
   ctx.strokeStyle='rgba(40,18,10,.16)';ctx.lineWidth=.7;ctx.stroke();
   if(!o.flat){
     ctx.save();ctx.clip();
@@ -100,7 +108,9 @@ function drawTorso(F,hip,chest,f,o){
   const base=o.shirt||o.skinNow;
   torsoPath(L);
   const g=ctx.createLinearGradient(17,0,-17,0);g.addColorStop(0,shade(base,1.08));g.addColorStop(.42,base);g.addColorStop(1,shade(base,.62));
-  ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='rgba(20,10,8,.3)';ctx.lineWidth=.9;ctx.stroke();
+  ctx.fillStyle=g;ctx.fill();
+  if(TEXON&&TEXON.torso&&!o.shirt){ctx.save();ctx.clip();ctx.drawImage(TEXON.torso,-17,-L-7,36,L+12);ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.5;ctx.fillStyle=g;ctx.fill();ctx.restore()}
+  ctx.strokeStyle='rgba(20,10,8,.3)';ctx.lineWidth=.9;ctx.stroke();
   if(o.belly>0){ctx.beginPath();ctx.ellipse(6+2.5*o.belly,-L*.24,10+3*o.belly,13+2*o.belly,.05,0,7);ctx.fill();torsoPath(L)}
   const tl=ctx.createRadialGradient(7,-L*.85,2,7,-L*.85,26);tl.addColorStop(0,'rgba(255,248,235,.22)');tl.addColorStop(1,'rgba(255,248,235,0)');ctx.fillStyle=tl;ctx.fill();
   if(o.shirt){
@@ -237,13 +247,17 @@ function wantsProfile(F){/* side profile during the fight; face the camera only 
 function drawHeadFront(F,c,ang,o,sx){const P=o.face||{hs:1},mood=o.mood||(F.state==='hit'||F.rocked>0?'hurt':F.exh?'tired':null);
   ctx.save();ctx.translate(c.x,c.y);ctx.rotate(ang);ctx.scale(.8*sx,.8);ctx.beginPath();ctx.ellipse(0,-3,25,26,0,0,Math.PI*2);ctx.clip();ctx.translate(0,212);
   drawFront(F,0,{walk:0,perf:'hud',noBuild:true,dmg:{head:F.head??100,cuts:F.cuts||0,mood},blink:o.blink,t:o.t||0,sweat:o.sweat});ctx.restore()}
-function drawHead(F,c,ang,f,o){const view=headView(F);let im=faceImgOf(F,view),multi=!!(im&&IC.headHasViews&&IC.headHasViews(F.d));
+function exprView(F,view){if(!(IC.pilot&&IC.pilot(F.d)))return view;/* expression sets: shout on power shots and celebrations, grimace when hurt */
+  const A=F.A,pw=A&&F.state==='attack'&&/cross|hook|overhand|upper|kick|knee|special|super|spin/.test(A.anim||'');
+  if(view==='side'||view==='tq'){if(F.state==='hit'||(F.rocked||0)>0||(F.stun||0)>0)return 'hurttq';if(pw||F.state==='celebrate'||(F.state==='perf'&&/chest|taunt/.test(F.perfK||'')))return 'yelltq'}
+  if(view==='front'){if((F.head??100)<35||F.state==='ko')return 'hurt';if(F.state==='celebrate')return 'yell'}return view}
+function drawHead(F,c,ang,f,o){const view=exprView(F,headView(F));let im=faceImgOf(F,view),multi=!!(im&&IC.headHasViews&&IC.headHasViews(F.d));
   if(!im&&o.kind==='fighter'&&F.d&&!F.noFront){const tgt=wantsProfile(F)?1:0;F._hv=F._hv==null?tgt:F._hv+(tgt-F._hv)*.35;const k=F._hv;
     if(k<.5){drawHeadFront(F,c,ang,o,Math.max(.25,1-2*k));return}
     if(k<.98){ctx.save();ctx.translate(c.x,c.y);ctx.scale(Math.max(.25,2*k-1),1);ctx.translate(-c.x,-c.y);drawHead0(F,c,ang,f,o);ctx.restore();return}}
   if(!im)return drawHead0(F,c,ang,f,o);
   const P=o.face||{hs:1},dm=clamp((100-(F.head==null?100:F.head))/100,0,1);ctx.save();ctx.translate(c.x,c.y);ctx.rotate(ang);ctx.scale(P.hs||1,P.hs||1);
-  if(multi){ctx.scale(f,1);photoHeadV(im,0,-1,34,dm,F.head<85?F.cuts:0,view)}else photoHead(im,f*1.6,.5,24,dm,F.head<85?F.cuts:0,.9);ctx.restore()}
+  if(multi){if(IC.pilot&&IC.pilot(F.d)){/* photos look wrong when the whole head spins: keep at most a small tilt */ctx.rotate(-ang+clamp(ang-(f>0?0:0),-.22,.22)*.6)}ctx.scale(f,1);photoHeadV(im,0,-1,IC.pilot&&IC.pilot(F.d)?30:34,dm,F.head<85?F.cuts:0,view)}else photoHead(im,f*1.6,.5,24,dm,F.head<85?F.cuts:0,.9);ctx.restore()}
 /* multi-view head: 200x200 sprite, head (crown to chin) normalised to 150px and centred; side views face right */
 function photoHeadV(im,cx,cy,hh,dm,cuts,view){const k=hh/150,W=200*k;ctx.drawImage(im,cx-W/2,cy-W/2,W,W);
   const u=hh*.34,ox=view==='front'?0:view==='tq'?u*.25:u*.55;ctx.save();ctx.translate(cx+ox,cy+u*.15);ctx.scale(view==='front'?1:.7,1);
@@ -367,7 +381,8 @@ function drawBody(F,J){
   const ax=J.hip.x,ay=Math.max(J.hip.y,J.nearFoot.y,J.farFoot.y),M=p=>p&&{x:ax+(p.x-ax)*bd[0],y:ay+(p.y-ay)*bd[1]};
   ctx.save();ctx.translate(ax,ay);ctx.scale(bd[0],bd[1]);ctx.translate(-ax,-ay);const r=drawBody0(F,J);ctx.restore();
   return{head:M(r.head),handN:M(r.handN),handF:M(r.handF),footF:M(r.footF)}}
-function drawBody0(F,J){
+function drawBody0(F,J){TEXON=texSet(F);try{return drawBody0_(F,J)}finally{TEXON=null}}
+function drawBody0_(F,J){
   /* stance depth: the lead (forward) arm and leg sit on the camera side only when the fighter's lead side faces the camera.
      orthodox facing right / southpaw facing left → lead limbs near; otherwise they swing behind the torso */
   const sw=!!J.swapD;if(sw)J=Object.assign({},J,{nearHand:J.farHand,farHand:J.nearHand,nearFoot:J.farFoot,farFoot:J.nearFoot,kneeN:J.kneeF,kneeF:J.kneeN,elbN:J.elbF,elbF:J.elbN,footN:J.footF,footF:J.footN});
