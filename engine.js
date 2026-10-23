@@ -83,7 +83,7 @@ const weakLeg=F=>Math.min(F.lgL??100,F.lgR??100)<30;
    and a landed blow that happened since the last lift is felt on the next lift. Needs Settings › Sounds & Haptics › System Haptics ON. */
 const Haptic={last:0,act:-1e9,queue:0,iosOK:/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document,
   tick(){const n=performance.now();if(n-this.last<25)return false;this.last=n;
-    try{const l=document.createElement('label');l.ariaHidden='true';l.style.display='none';const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');l.appendChild(i);document.head.appendChild(l);l.click();document.head.removeChild(l)}catch(e){}return true},
+    try{/* iOS 18 Safari: clicking a native switch inside a user gesture plays the system haptic. It must live in <body> and be rendered (display:none suppresses it), so it is kept 1px, transparent and off-screen */if(!this._l){const l=document.createElement('label');l.setAttribute('aria-hidden','true');l.style.cssText='position:fixed;left:-20px;top:0;width:1px;height:1px;opacity:.01;overflow:hidden;pointer-events:none';const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');i.tabIndex=-1;l.appendChild(i);document.body.appendChild(l);this._l=l}const l=this._l;l.click();(()=>0)(l)}catch(e){}return true},
   on(){return !(IC.opts&&IC.opts.haptic===false)},
   tap(){if(!this.on())return;if(navigator.vibrate&&!this.iosOK){try{navigator.vibrate(12)}catch(e){}return}this.queue=Math.max(this.queue,1)},
   lift(e){if(!this.on()||!this.iosOK)return;this.act=performance.now();const t=e&&e.target,pad=t&&t.closest&&t.closest('#pad,#stage,.tbtn,.pbtn,.stick,[data-hap]');
