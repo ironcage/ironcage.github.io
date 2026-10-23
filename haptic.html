@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>진동 테스트</title>
+<style>
+body{margin:0;padding:20px 16px 40px;background:#0b0b0c;color:#eee;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif}
+h1{font-size:22px;margin:0 0 6px}p{color:#aaa;font-size:14px;line-height:1.5;margin:0 0 16px}
+.t{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;margin:10px 0;background:#161618;border:1px solid #333;border-left:4px solid #d20a11}
+.t b{font-size:16px}.t small{display:block;color:#999;font-size:12px;margin-top:3px}
+button{font-size:16px;font-weight:700;padding:12px 18px;border:0;border-radius:6px;background:#d20a11;color:#fff}
+input[switch]{transform:scale(1.6);margin-right:10px}
+#log{font-size:12px;color:#888;margin-top:14px}
+</style></head><body>
+<h1>📳 아이폰 진동 테스트</h1>
+<p>각 칸을 하나씩 눌러 보고, <b>진동이 느껴진 번호</b>를 알려 주세요.<br>아이폰 설정 → 사운드 및 햅틱 → <b>시스템 햅틱</b>이 켜져 있어야 해요.</p>
+<div class="t"><div><b>1. 진짜 스위치 직접 누르기</b><small>아이폰 기본 스위치를 손가락으로 켜고 끄기</small></div><input type="checkbox" switch></div>
+<div class="t"><div><b>2. 숨은 스위치 (화면 안)</b><small>지금 게임이 쓰는 방식</small></div><button id="b2">눌러보기</button></div>
+<div class="t"><div><b>3. 숨은 스위치 (완전히 숨김)</b><small>다른 방식</small></div><button id="b3">눌러보기</button></div>
+<div class="t"><div><b>4. 숨은 스위치 (누르는 순간)</b><small>손가락이 닿자마자</small></div><button id="b4">눌러보기</button></div>
+<div class="t"><div><b>5. 일반 진동 기능</b><small>안드로이드 방식 (아이폰은 보통 안 됨)</small></div><button id="b5">눌러보기</button></div>
+<div id="log"></div>
+<script>
+const log=t=>{document.getElementById('log').textContent=t+' · '+new Date().toLocaleTimeString()};
+let L2=null;
+function sw(mode){let l;
+  if(mode==='vis'){if(!L2){L2=document.createElement('label');L2.style.cssText='position:fixed;left:-20px;top:0;width:1px;height:1px;opacity:.01;overflow:hidden';const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');L2.appendChild(i);document.body.appendChild(L2)}l=L2;l.click();return}
+  l=document.createElement('label');l.style.display='none';const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');l.appendChild(i);document.body.appendChild(l);l.click();l.remove()}
+document.getElementById('b2').addEventListener('click',()=>{sw('vis');log('2번 실행')});
+document.getElementById('b3').addEventListener('click',()=>{sw('none');log('3번 실행')});
+document.getElementById('b4').addEventListener('touchend',e=>{sw('vis');log('4번 실행')});
+document.getElementById('b5').addEventListener('click',()=>{const ok=navigator.vibrate?navigator.vibrate(200):false;log('5번 실행 · '+(ok?'지원됨':'지원 안 됨'))});
+log((navigator.standalone?'홈 화면 앱':'사파리')+' · '+navigator.userAgent.match(/OS [\d_]+/)?.[0]);
+</script></body></html>
