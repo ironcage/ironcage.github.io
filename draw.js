@@ -1179,7 +1179,7 @@ function aisleScene(S){
     ctx.restore();
   }
   /* cage-side ritual: the cutman greases the face, the commission checks gloves and body, then a hug with the coach */
-  if(W0.rit>0&&W0.rit<120){const r=W0.rit,ox=ax+56+Math.max(0,r-82)*1.6,face=r<45,check=r>=45&&r<82;
+  if((W0.ritV??W0.rit)>0&&(W0.ritV??W0.rit)<120){const r=W0.ritV??W0.rit,ox=ax+56+Math.max(0,r-82)*1.6,face=r<45,check=r>=45&&r<82;
     const o={kind:'ref',logo:'',look:{skin:'#d9a47e',hair:'#2a2a2a',hairStyle:'buzz',beard:false},skinNow:'#d9a47e',shirt:'#101114',pants:true,corner:'#888',head:100,body:100,legs:100,cuts:0,sweat:0,t};
     const w=Math.sin(t*.5),nh=face?{x:ax+14,y:207+w*4}:check?{x:ax+12,y:262+Math.abs(w)*10}:{x:ox-4,y:286},fh=face?{x:ax+20,y:214}:check?{x:ax+18,y:244+Math.abs(Math.sin(t*.5+1))*10}:{x:ox+6,y:288};
     ctx.save();ctx.translate(ox,GY);ctx.scale(.93,.93);ctx.translate(-ox,-GY);shadowAt(ox,40);
@@ -1205,7 +1205,7 @@ function computeCam(S){
   if(S.cl){fx=S.cl.cx;z=1.48}
   if(S.gr){fx=S.gr.cx;fy=318+az*ZYd;z=1.55}
   if(S.mode==='intro'){const p=1-S.phaseT/(S.introLen||110);fx=400;z=lerp(1,1.12,p);fy=255;
-    if(S.walk){const k=S.walk.k||'';const F=/^blue/.test(k)?a:/^red/.test(k)?b:null,an=/Ann$/.test(k);if(F){fx=F.x;z=an?1.4:1.3;fy=an?215:225}else{fx=400;z=k==='faceoff'||k==='touch'?1.32:1.3;fy=k==='faceoff'?236:250}}}
+    if(S.walk){const k=S.walk.k||'';const F=/^blue/.test(k)?a:/^red/.test(k)?b:null,an=/Ann$/.test(k);if(F){fx=F.x;z=an?1.4:1.3;fy=an?215:225}else{fx=400;z=k==='faceoff'||k==='touch'||k==='rules'?1.32:1.3;fy=k==='faceoff'||k==='rules'?236:250}}}
   if(S.mode==='ko'||S.replay){const L=S.camFocus==='a'?a:b;fx=S.gr?S.gr.cx:L.x;z=S.replay?1.85:1.62;fy=S.gr?320:300}
   if(S.mode==='outro'){const Wn=S.winSide==='a'?a:S.winSide==='b'?b:null;fx=Wn?Wn.x:400;z=1.38;fy=250}
   if(S.mode==='decision'){fx=400;z=1.2;fy=255}
@@ -1642,7 +1642,7 @@ function cagePyro(S,P){if(!P)return;const AR=S.arena||{k:'main'},L=TIERL[AR.k]??
 /* broadcast "tale of the tape" slide */
 function koRate(d){const r=d.rec||[0,0,0],w=r[0]||0;return clamp(Math.round(25+((d.s&&d.s.pow)||70)*.5-20+(IC.hash?IC.hash(d.name||'')%15:0)),10,88)}
 function tapeSlide(S,t){const A=S.a.d,B=S.b.d,p=clamp(t/18,0,1),e=1-Math.pow(1-p,3),w=Math.min(WH*.86,560),OD=S.odds,oh=OD?40:0,h=Math.min(HH*.88,300+oh),x=WH/2-w/2,y=Math.max(8,HH*.06)+(1-e)*30;
-  ctx.save();ctx.globalAlpha=e*clamp((230-t)/14,0,1);frost(x,y,w,h,16,.82);chrome(x,y,w,h,16,'#e8b33a');
+  ctx.save();ctx.globalAlpha=e*clamp((300-t)/14,0,1);frost(x,y,w,h,16,.82);chrome(x,y,w,h,16,'#e8b33a');
   ctx.textAlign='center';ctx.textBaseline='middle';num('TALE OF THE TAPE',WH/2,y+18,12,'#e8b33a','center');
   const hy=y+44;for(const [F,side] of [[S.a,-1],[S.b,1]]){const cxp=WH/2+side*w*.3;ctx.fillStyle=F.corner;ctx.fillRect(cxp-w*.16,hy-14,w*.32,3);disp(`"${F.nick}"`,cxp,hy+4,Math.min(20,w*.04),'#fff','center');txt(F.name,cxp,hy+22,10.5,'rgba(220,226,236,.8)','center','600')}
   disp('VS',WH/2,hy+8,22,'#e8b33a','center');
@@ -1701,7 +1701,7 @@ function walkOverlay(S){
     txt(F.name,x+16,y+68,13,'#e9e6df','left','700');
     txt(`${rec[0]}-${rec[1]}-${rec[2]} · ${IC.STYLES[d.style].name} · ${d.from} · ${d.height||''}cm · 종합 ${d.ovr}`,x+16,y+85,10.5,'rgba(233,230,223,.75)','left','600');
   }
-  if(isA&&W.rit>0&&W.rit<120){const r=W.rit,cap=r<45?'🧴 컷맨 · 바셀린 & 얼굴 체크':r<82?'🧤 커미션 · 글러브와 몸 검사':'🤝 코치와 포옹 · 케이지 입장';ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 14px "IBM Plex Sans KR",sans-serif';
+  if(isA&&W.cap){const cap=W.cap;ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 14px "IBM Plex Sans KR",sans-serif';
     const tw=ctx.measureText(cap).width+30,by=HH-58;ctx.fillStyle='rgba(8,9,12,.88)';ctx.fillRect(WH/2-tw/2,by,tw,32);ctx.fillStyle=F.corner;ctx.fillRect(WH/2-tw/2,by,4,32);ctx.fillStyle='#fff';ctx.fillText(cap,WH/2+2,by+16);ctx.restore()}
   /* announcer intro: fighting-out-of line, record line, then the nickname slams in (Bruce-Buffer style) */
   if(F&&isAnn&&t<128){const d=F.d,rec=d.rec||[0,0,0],cy=HH*.3,out=clamp((t-104)/22,0,1);ctx.save();ctx.globalAlpha=1-out;ctx.textAlign='center';ctx.textBaseline='middle';
@@ -1889,7 +1889,7 @@ function renderOverlay(S0,c,cssW,cssH,o3d){
     if(!S.demo&&S.mode!=='outro'&&S.mode!=='decision'&&!S.walk){hud(S);comboOverlay(S)}
     if(S.mode==='intro')introOverlay(S);
     if(S.mode==='decision')decisionOverlay(S);
-    if(!S.demo&&(!S.walk||/faceoff|touch/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
+    if(!S.demo&&(!S.walk||/faceoff|touch|officials/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
     if(S.mode==='outro'&&S.winSide){ctx.textBaseline='alphabetic';txt('승자',WH/2,HH*.42-46,12,'rgba(233,230,223,.8)','center','700')}
   }
   ctx.restore();
@@ -1898,7 +1898,7 @@ function render(S0,c,cssW,cssH,o3d){
   ctx=c;if(o3d)return renderOverlay(S0,c,cssW,cssH,o3d);VH=cssW&&cssH?clamp(W*cssH/cssW,300,1100):H;
   const S=S0.mode==='replay'&&S0.rp?IC.Fight.replayView():S0;ADS=S0.arena&&S0.arena.k==='under'?ADSU:ADS0;
   const inAisle=S.walk&&/Aisle$/.test(S.walk.k||'');
-  if(inAisle){aisleScene(S)}else{
+  if(inAisle){aisleScene(S)}else{S._xf=S.walk&&/In$/.test(S.walk.k||'')&&S.walk.t<26?S.walk.t:-1;
   computeCam(S);VPX=cam.x;
   ctx.save();
   let sx=0,sy=0;if(S.shake>.5){sx=(Math.random()-.5)*S.shake*1.3;sy=(Math.random()-.5)*S.shake*1.3}
@@ -1920,6 +1920,9 @@ function render(S0,c,cssW,cssH,o3d){
   for(const t of S.texts){if(t.num&&!OPT.nums)continue;ctx.globalAlpha=Math.min(1,t.l/20);ctx.font=`${t.num?20:18}px "Black Han Sans",sans-serif`;ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.65)';ctx.strokeText(t.t,t.x,t.y);ctx.fillStyle=t.col;ctx.fillText(t.t,t.x,t.y)}
   ctx.globalAlpha=1;ctx.restore();
   }
+  /* no hard cut from the tunnel to the cage: the aisle shot dissolves into the cage shot */
+  if(S._xf>=0&&S.walk){const W0=S.walk,k0=W0.k,ax0=W0.ax;W0.k=k0.replace(/In$/,'Aisle');W0.ax=Math.max(ax0,600);const a0=ctx.globalAlpha;
+    try{ctx.save();ctx.globalAlpha=Math.pow(1-S._xf/26,1.4);aisleScene(S);ctx.restore()}catch(e){}finally{W0.k=k0;W0.ax=ax0;ctx.globalAlpha=a0}}
   // broadcast look: overhead light rig, a lit canvas under the lights, punchy grade and fine film grain
   if(!(S.arena&&S.arena.k==='under')&&!S.demo&&!(S.walk&&/Aisle$/.test(S.walk.k||'')))broadcastGrade(S);
   // screen fx
@@ -1941,7 +1944,7 @@ function render(S0,c,cssW,cssH,o3d){
     if(!S.demo&&S.mode!=='outro'&&S.mode!=='decision'&&!S.walk){hud(S);comboOverlay(S)}
     if(S.mode==='intro')introOverlay(S);
     if(S.mode==='decision')decisionOverlay(S);
-    if(!S.demo&&(!S.walk||/faceoff|touch/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
+    if(!S.demo&&(!S.walk||/faceoff|touch|officials/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
     if(S.mode==='outro'&&S.winSide){const Wn=S.winSide==='a'?S.a:S.b;ctx.textBaseline='alphabetic';txt('승자',WH/2,HH*.42-46,12,'rgba(233,230,223,.8)','center','700')}
   }
   ctx.restore();

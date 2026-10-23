@@ -260,5 +260,5 @@ const SONGS=[
  {n:'Neon Riot',g:'edm',gn:'일렉트로닉',bpm:128,key:1,d:'관중을 뛰게 만드는 클럽 비트'},
  {n:'Blackout',g:'edm',gn:'일렉트로닉',bpm:134,key:.89,d:'어두운 신스와 강한 킥'},
  {n:'심장박동',g:'edm',gn:'일렉트로닉',bpm:122,key:1.19,d:'밝고 경쾌한 신스 아르페지오'}];
-IC.VER='85';Object.assign(IC,{ROSTER_ALL,CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
+IC.VER='86';Object.assign(IC,{ROSTER_ALL,CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
 })(window.IC);
