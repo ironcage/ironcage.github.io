@@ -483,20 +483,26 @@ function mcAttack(F,base){const A=F.A,m=A&&MC_ATK[A.anim];if(!m||!mcInfo(m.k))re
   let u;if(t<w+a*.4)u=lerp(s0,imp,Math.min(1,t/(w+a*.4)));else u=lerp(imp,s1,Math.min(1,(t-w-a*.4)/(a*.6+r)));
   const d0=mcDelta(F,m.k,s0,m.swap),d=mcDelta(F,m.k,u,m.swap);if(!d||!d0)return base;
   for(const q in d)d[q]={x:d[q].x-d0[q].x,y:d[q].y-d0[q].y};/* motion relative to the windup start, not the clip's first frame */
-  const kick=/kick/.test(A.anim),g=kick?{hip:.4,chest:.4,head:.4,nearHand:.4,nearFoot:.1}:{hip:.6,chest:.85,head:.8,nearFoot:.2,farFoot:.25};
+  const kick=/kick/.test(A.anim),g=kick?{hip:.4,chest:.4,head:.4,nearHand:.4,nearFoot:.1}:A.anim==='hook'?{hip:.4,chest:.35,head:.35,nearFoot:.2,farFoot:.2}:{hip:.6,chest:.85,head:.8,nearFoot:.2,farFoot:.25};
   if(kick){d.hip.y=0;d.nearFoot={x:0,y:0};d.nearHand.y=Math.max(-12,Math.min(12,d.nearHand.y))}
   const edge=clamp(Math.min(1,t/3,(w+a+r-t)/4),0,1);for(const q in g)g[q]*=edge;const o=addJ(base,d,g);
   /* the free hand guards the chin, in front of the face rather than over the head */
   if(!kick){const q=(m.hand||m.lim)==='nH'?'farHand':'nearHand',G={x:o.chest.x+F.f*(q==='nearHand'?24:17),y:o.chest.y-30};o[q]={x:lerp(o[q].x,G.x,edge),y:lerp(o[q].y,G.y,edge)};o[q==='nearHand'?'elbN':'elbF']='down'}
   return o}
 function mcLoop(F,key,t,speed=1,o={}){const I=mcInfo(key);if(!I)return null;const u=((t*speed/4)/(I.M.n))%1;return mcPose(F,key,u,o)}
-function kickPath(F,A,x,f,an){const H={lowkick:30,midkick:92,highkick:138}[an],R={lowkick:104,midkick:110,highkick:110}[an];
-  const B0={x:x-f*24,y:GY},C={x:x+f*(an==='lowkick'?14:6),y:GY-(an==='lowkick'?40:H*.55+18)},T={x:x+f*(-24+R+24),y:GY-H},M={x:x+f*(an==='lowkick'?60:34),y:GY-H-(an==='lowkick'?6:26)};
+function kickPath(F,A,x,f,an){const H={lowkick:34,midkick:104,highkick:162}[an],R={lowkick:104,midkick:112,highkick:112}[an];
+  /* rear-leg round kick seen from the side: the knee drives straight up in FRONT (never folds backwards), the shin snaps out on an arc,
+     then the knee re-chambers in front and the foot steps back down. Knee positions are given as points so the leg can't bend the wrong way. */
+  const hipY=GY-92,B0={x:x-f*24,y:GY},C={x:x+f*(an==='lowkick'?16:10),y:GY-(an==='lowkick'?44:H*.42+30)},T={x:x+f*R,y:GY-H},M={x:x+f*(an==='lowkick'?62:44),y:GY-H-(an==='lowkick'?6:20)};
   const sm=p=>p*p*(3-2*p),eo=p=>1-Math.pow(1-p,3),bz=(a,b,c,p)=>({x:(1-p)*(1-p)*a.x+2*(1-p)*p*b.x+p*p*c.x,y:(1-p)*(1-p)*a.y+2*(1-p)*p*b.y+p*p*c.y});
-  const t=F.t,w=A.w,a=Math.max(1,A.a),r=Math.max(1,A.r);let foot,knee='up',ext=0,pivot=0;
-  if(t<w){/* heel lifts behind first, then the knee drives up and forward into the chamber (no sideways frog squat) */const p=sm(t/w),H0={x:B0.x+f*6,y:GY-22};foot=p<.35?{x:lerp(B0.x,H0.x,p/.35),y:lerp(B0.y,H0.y,p/.35)}:{x:lerp(H0.x,C.x,(p-.35)/.65),y:lerp(H0.y,C.y,(p-.35)/.65)};knee='up';pivot=p*.5}
-  else if(t<w+a){const p=eo(Math.min(1,(t-w)/a*1.25));foot=bz(C,M,T,p);ext=p;pivot=.5+p*.5}
-  else{const p=Math.min(1,(t-w-a)/r);if(p<.45){const q=sm(p/.45);foot=bz(T,M,C,q);ext=1-q;pivot=1}else{const q=sm((p-.45)/.55);foot={x:lerp(C.x,B0.x,q),y:lerp(C.y,B0.y,q)};knee='up';pivot=1-q}}
+  const Kc={x:x+f*(an==='lowkick'?30:40),y:hipY-(an==='highkick'?24:an==='midkick'?8:-26)};/* chambered knee: in front, about hip height */
+  const lift={x:x+f*2,y:GY-30},K0={x:x+f*10,y:GY-50};/* path control while stepping up / down; K0 = relaxed knee, in front */
+  const t=F.t,w=A.w,a=Math.max(1,A.a),r=Math.max(1,A.r);let foot,knee,ext=0,pivot=0;
+  const kneeFor=(ft,k)=>{/* knee pref: chamber point while bent, then above the hip→foot line as the leg straightens */const mid={x:(x+ft.x)/2,y:(hipY+ft.y)/2-18};return{x:lerp(Kc.x,mid.x,k),y:lerp(Kc.y,mid.y,k)}};
+  const kneeUp=(ft,p)=>{const k=kneeFor(ft,0);return{x:lerp(K0.x,k.x,p),y:lerp(K0.y,k.y,p)}};
+  if(t<w){const p=sm(t/w);foot=bz(B0,lift,C,p);knee=kneeUp(foot,p);pivot=p*.5}
+  else if(t<w+a){const p=eo(Math.min(1,(t-w)/a*1.25));foot=bz(C,M,T,p);ext=p;knee=kneeFor(foot,p);pivot=.5+p*.5}
+  else{const p=Math.min(1,(t-w-a)/r);if(p<.45){const q=sm(p/.45);foot=bz(T,M,C,q);ext=1-q;knee=kneeFor(foot,1-q);pivot=1}else{const q=sm((p-.45)/.55);foot=bz(C,{x:x+f*8,y:GY-6},B0,q);/* foot drops under the hip first, then slides back: the leg straightens instead of folding backwards */const kc=kneeFor(foot,0),km={x:(x+foot.x)/2+f*12,y:(hipY+foot.y)/2};knee={x:lerp(kc.x,km.x,Math.min(1,q*1.6)),y:lerp(kc.y,km.y,Math.min(1,q*1.6))};pivot=1-q}}
   return{foot,knee,ext,pivot}}
 function poseStand(F,O,S){
   const x=F.x,f=F.f,E=ext(F),e=Math.max(E,0),A=F.A,an=A&&A.anim,t=S.frame,st=F.state;
@@ -518,7 +524,7 @@ function poseStand(F,O,S){
   if(st==='dejected'){tilt=.5;lean=-f*2}
   if(st==='attack'){
     switch(an){
-      case 'jab':lean+=f*9*e;drop=3*e;break;case 'cross':lean+=f*17*e;drop=5*e;break;case 'hook':lean+=f*11*e;tilt=.16*e;drop=4*e;break;
+      case 'jab':lean+=f*9*e;drop=3*e;break;case 'cross':lean+=f*17*e;drop=5*e;break;case 'hook':lean+=f*4*e;tilt=.1*e;drop=2*e;break;
       case 'upper':lean+=f*5*e;drop=8*Math.max(0,-E*4)+4*e;break;case 'bodyshot':lean+=f*7*e;drop=20*e;tilt=.2*e;break;
       case 'lowkick':lean-=f*3*e;break;case 'midkick':lean-=f*5*e;break;case 'highkick':lean-=f*7*e;break;case 'qmark':lean-=f*11*e;break;case 'tornado':lean-=f*13*e;tilt=.25*e;break;
       case 'superman':lift=24*e;lean+=f*16*e;break;case 'headbutt':lean+=f*24*e;drop=8*e;tilt=.4*e;break;case 'spinfist':lean+=f*8*e;break;case 'spinkick':lean-=f*11*e;break;
@@ -542,7 +548,7 @@ function poseStand(F,O,S){
     if(an==='tornado'){back={x:x+f*(-24+e*118),y:GY-e*142};kneeF='back'}
     if(an==='qmark')back={x:x+f*(-24+e*116),y:GY-(F.t<A.w?40:e*142)};
     if(an==='flyknee'){front={x:x+f*(6+e*24),y:GY-lift-e*58};kneeN='up'}
-    if(['lowkick','midkick','highkick','qmark'].includes(an)&&e>.2)kneeF='up';
+    if(an==='qmark'&&e>.2)kneeF='up';
   }
   if(st==='clinch'&&F.g&&F.g.act&&(F.g.act==='c_knee'||F.g.act==='c_kneeH'||F.g.act==='c_thigh')){
     const G=F.g.A,p=F.g.t<G.w?F.g.t/G.w:Math.max(0,1-(F.g.t-G.w)/G.r);
@@ -554,7 +560,9 @@ function poseStand(F,O,S){
     switch(an){
       case 'jab':near={x:x+f*(30+e*76)+lean,y:206-e*3};far={x:x+f*(16-e*4)+lean*.5,y:200};break;
       case 'cross':far={x:x+f*(14+e*98)+lean,y:205-e*3};near={x:x+f*(22-e*6)+lean*.5,y:198};break;
-      case 'hook':near={x:x+f*(28+e*60)+lean,y:206-e*8};far={x:x+f*14+lean*.5,y:198};if(e>.2)elbN='up';break;
+      case 'hook':{/* windup: glove opens out and back; strike: elbow up at shoulder height, forearm level, glove arcs across in front of the face */
+        const sw=E<0?-E:0,arc=Math.sin(e*Math.PI*.5);near={x:x+f*(24-sw*8+arc*22)+lean,y:212-sw*4-Math.sin(e*Math.PI)*6};
+        elbN=e>.05||sw>.1?{x:near.x-f*(14-arc*4),y:near.y-14-sw*4}:'down';far={x:x+f*14+lean*.5,y:198};break}
       case 'upper':far={x:x+f*(22+e*44)+lean,y:E<0?250:246-e*40};break;
       case 'bodyshot':far={x:x+f*(16+e*66)+lean,y:214+drop+e*22};break;
       case 'lowkick':case 'midkick':case 'highkick':{const K=kickPath(F,A,x,f,an),sw=K.ext;near={x:x+f*(28-sw*4)+lean*.6,y:212-sw*3};far={x:x-f*(18+sw*30),y:236+sw*(an==='lowkick'?10:26)};elbN='down';elbF=sw>.4?'back':'down';break}
