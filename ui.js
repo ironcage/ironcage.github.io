@@ -347,7 +347,7 @@ IC.headHasViews=d=>!!IC.pilot(d)||POOLV.has(headKey(d));
 /* photo heads switched off for now (drawn heads everywhere); flip to true to bring them back */
 const PHOTO_HEADS=false;/* off until every fighter's set is finished and blends naturally (user 10/23 22:25) */
 /* pilot (test only, off in the game): one fighter with a painted 5-view + expression set */
-const PILOT={lw_0:{key:'lw0',skin:'#d29576'}};IC.pilot=d=>IC.pilotOn&&d&&PILOT[d.id]||null;
+const PILOT={};/* photo realism dropped 10/23 22:47: drawn style only */IC.pilot=d=>IC.pilotOn&&d&&PILOT[d.id]||null;
 IC.facePath=(d,view)=>{{const pl=IC.pilot(d);if(pl)return `art/pilot/${pl.key}_${view||'front'}.png`}if(!PHOTO_HEADS)return null;const k=headKey(d);if(!k)return null;return POOLV.has(k)?`art/head/${k}_${view||'front'}.png`:null};
 function champsOf(){const c=DATA.career;return CLASSES.map(C=>{let id=null;
   if(c&&((IC.CLSMAP||{})[c.cls]||c.cls)===C.id&&c.order&&c.order.length)id=c.order[0];
