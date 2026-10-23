@@ -263,10 +263,11 @@ const UNL={wild:{n:'야생 리그',need:'커리어 첫 승',ok:c=>c&&c.rec[0]>=1
   compete:{n:'대회',need:'커리어 3승',ok:c=>c&&c.rec[0]>=3},tour:{n:'토너먼트',need:'커리어 3승',ok:c=>c&&c.rec[0]>=3},
   gp:{n:'그랑프리',need:'IRON CAGE 입성',ok:c=>c&&c.tier!=='regional'},gymm:{n:'체육관 모드',need:'IRON CAGE 입성',ok:c=>c&&c.tier!=='regional'},
   hof:{n:'레전드 도전',need:'첫 타이틀전',ok:hasTitle},legsel:{n:'레전드 도전',need:'첫 타이틀전',ok:hasTitle},online:{n:'온라인',need:'첫 타이틀전',ok:hasTitle}};
-function locked(k){const u=UNL[k];if(!u||DATA.unlockAll)return null;DATA.unl=DATA.unl||{};if(DATA.unl[k])return null;if(u.ok(DATA.career)){DATA.unl[k]=1;return null}return u}
+/* mode locks removed: every mode is open from the start */
+function locked(k){return null;const u=UNL[k];if(!u||DATA.unlockAll)return null;DATA.unl=DATA.unl||{};if(DATA.unl[k])return null;if(u.ok(DATA.career)){DATA.unl[k]=1;return null}return u}
 function lockPop(u){const el=document.createElement('div');el.className='lockpop';el.innerHTML=`<div><i>🔒</i><b>${u.n}</b><p>잠금 해제 조건 · <em>${u.need}</em></p><span>커리어 모드에서 경기를 이겨 나가면 새 모드가 열려요.</span><div class="row"><button class="btn-go sm" data-k="c">커리어로</button><button class="btn sm" data-k="x">닫기</button></div></div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.k;if(k||e.target===el){el.remove();if(k==='c')A.career()}})}
-function checkUnlocks(){DATA.unl=DATA.unl||{};if(DATA.unlockAll)return;const got=[];for(const k in UNL){if(!DATA.unl[k]&&UNL[k].ok(DATA.career)){DATA.unl[k]=1;if(!got.includes(UNL[k].n))got.push(UNL[k].n)}}
+function checkUnlocks(){return;DATA.unl=DATA.unl||{};if(DATA.unlockAll)return;const got=[];for(const k in UNL){if(!DATA.unl[k]&&UNL[k].ok(DATA.career)){DATA.unl[k]=1;if(!got.includes(UNL[k].n))got.push(UNL[k].n)}}
   if(got.length){save();got.forEach((n,i)=>setTimeout(()=>{toast(`🔓 ${n} 잠금 해제!`);try{Sound.sting(true)}catch(e){}},400+i*1600))}}
 A.nav=d=>{const u=locked(d.to);if(u){lockPop(u);return}go(d.to)};
 
