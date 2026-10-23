@@ -819,7 +819,13 @@ function runWeigh(){
   const C=CLASSES.find(x=>x.id===P.a.cls)||CLASSES[0],WI=IC.Draw.WI,TR=IC.Draw.WTRASH;
   const mkF=(d,side)=>({d,name:d.name,nick:d.nick,side});
   const h=IC.hash(P.a.name+'|'+P.b.name),evs=['push','stare','shout'];
-  const st={a:mkF(P.a,'a'),b:mkF(P.b,'b'),res:P.weigh,cls:C.name,limLb:C.lb,limKg:(C.lb*.4536).toFixed(1),title:P.title,t:0,ev:(P._ev=P._ev||pick(evs)),trashA:(P._ta=P._ta||talk('weigh')),trashB:(P._tb=P._tb||talk('weigh')),hot:0};
+  /* a missed weight: the crowd boos, the fighter shrugs it off and cups his ear at them; the face-off trash talk turns to the scale */
+  const MISS_SELF=['체중계가 고장 났나 보지. 케이지에선 이 무게가 더 실린다.','야유? 더 크게 해 봐. 내일 밤 조용하게 해 줄게.','몇 파운드가 뭐? 그만큼 더 세게 때려 주지.','벌금은 낼게. 대신 네 벨트는 내가 가져간다.'],
+        MISS_OPP=['체중도 못 맞추는 놈이 무슨 프로야.','프로 정신부터 배우고 와라.','살 빼는 것도 못 이기는데 나를 이기겠다고?','내일은 체중계 대신 바닥에 눕혀 주지.'];
+  const ma=!P.weigh.a.ok,mb=!P.weigh.b.ok;
+  const st={a:mkF(P.a,'a'),b:mkF(P.b,'b'),res:P.weigh,cls:C.name,limLb:C.lb,limKg:(C.lb*.4536).toFixed(1),title:P.title,t:0,ev:(P._ev=P._ev||pick(evs)),
+    trashA:(P._ta=P._ta||(ma?pick(MISS_SELF):mb?pick(MISS_OPP):talk('weigh'))),trashB:(P._tb=P._tb||(mb?pick(MISS_SELF):ma?pick(MISS_OPP):talk('weigh'))),
+    missA:ma?(P._ma=P._ma||pick(MISS_SELF)):'',missB:mb?(P._mb=P._mb||pick(MISS_SELF)):'',hot:0};
   let fired={},lastT=-1;
   Sound.init();Sound.music(false);Sound.music(true,{g:'hiphop',bpm:84,key:.94,crowd:.7,verb:.3});
   const once=(k,f)=>{if(!fired[k]){fired[k]=1;f()}};
@@ -832,6 +838,8 @@ function runWeigh(){
       if(L>=0)once(side+'in',()=>{Sound.roar(.25);Announcer.say(`${F.nick} ${F.name}!`)});
       if(L>=S0.read[0]&&L<S0.read[1]&&Math.floor(L)%6===0)once(side+'tk'+Math.floor(L),()=>Sound.play('tick'));
       if(L>=S0.stamp)once(side+'st',()=>{if(r.ok){Sound.sting(true);Sound.applause(3.4)}else{Sound.sting(false);Sound.boo()}Announcer.say(`${r.lb.toFixed(1)}파운드! ${r.ok?'통과!':'체중 초과!'}`)});
+      if(!r.ok&&L>=S0.flex[0]+38)once(side+'ear',()=>{Sound.boo();Sound.roar(.4);Announcer.say(`쏟아지는 야유! ${F.nick}, 오히려 귀를 갖다 댑니다!`)});
+      if(!r.ok&&L>=S0.stamp&&L<S0.flex[1]+10)st.hot=1;
       if(L>=S0.stamp&&L<S0.flex[1])st.hot=r.ok?1:0}
     const L=t-WI.face[0];
     if(L>=0)once('fg',()=>{Sound.roar(.3);Announcer.say('두 선수, 페이스오프!')});
@@ -1057,9 +1065,21 @@ function runCorner(info){
     IC.Draw.cornerPOV(c2,cv.clientWidth||800,cv.clientHeight||450,t,{coach,me:a,lines,li,typed:Math.floor(lt*1.4),talking:lt<lines[li].length/1.4+12,round:info.round,plan,left:Math.max(0,60-t/total*60)});
     if(t>=total){finish();return}cornerRaf=requestAnimationFrame(fr)};
   cornerRaf=requestAnimationFrame(fr)}
+/* between rounds, before the corner: a short broadcast card — round stats, who took it, next round number. Tap to skip. */
+function runRoundCard(info,done){
+  const r=info.last||{},a=info.a,b=info.b;if(!r.ra||!r.rb){done();return}
+  const lead=r.a>r.b+0?'a':r.b>r.a?'b':'';
+  CORNER=true;stopLoop();game.classList.add('cornering');pad.hidden=true;hintEl.hidden=true;between.hidden=true;
+  const total=200,t0=performance.now();let over=false;try{Sound.roar(.35)}catch(e){}
+  const finish=()=>{if(over)return;over=true;cancelAnimationFrame(cornerRaf);cv.removeEventListener('pointerdown',skip);done()};
+  const skip=e=>{e.preventDefault();finish()};cv.addEventListener('pointerdown',skip);
+  const fr=now=>{if(over)return;const t=Math.max(0,(now-t0)/1000*60);const c2=cv.getContext('2d'),k=cv.width/800;c2.setTransform(k,0,0,k,0,0);
+    IC.Draw.roundBreak(c2,cv.clientWidth||800,cv.clientHeight||450,t,{round:info.round,a:{nick:a.nick,corner:'#3d7ff0'},b:{nick:b.nick,corner:'#e04a3a'},ra:r.ra,rb:r.rb,lead});
+    if(t>=total){finish();return}cornerRaf=requestAnimationFrame(fr)};
+  cornerRaf=requestAnimationFrame(fr)}
 function showBetween(info){
   IC.Fight.releaseAll();
-  if(!(CFG&&CFG.online)){try{runCorner(info);return}catch(e){console.error(e)}}
+  if(!(CFG&&CFG.online)){try{runRoundCard(info,()=>{try{runCorner(info)}catch(e){console.error(e)}});return}catch(e){console.error(e)}}
   const a=info.a,b=info.b,r=info.last;
   const hp=F=>`머리 ${Math.round(F.head)} · 몸통 ${Math.round(F.body)} · 다리 ${Math.round(F.legs)}`;
   between.innerHTML=`<div class="eyebrow">${info.round}라운드 종료 · 코너</div>

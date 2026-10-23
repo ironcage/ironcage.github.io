@@ -1877,10 +1877,12 @@ function wiFighter(d,side,x,f,pose,t,o={}){
   else if(pose==='hand'){near={x:chest.x+f*16,y:chest.y-50};far={x:x-f*5,y:292+y0};elbN='fwd'}
   else if(pose==='over'){near={x:chest.x+f*12,y:chest.y-50};far={x:chest.x-f*6,y:chest.y-50};elbN='up';elbF='up'}
   else if(pose==='sad'){near={x:x+f*6,y:296+y0};far={x:x-f*8,y:298+y0}}
+  else if(pose==='shrug'){near={x:x+f*40,y:262+y0};far={x:x-f*36,y:262+y0};elbN='down';elbF='down'}
+  else if(pose==='ear'){const w=Math.sin(t*.35)*6;near={x:chest.x+f*14,y:chest.y-40};far={x:chest.x-f*34,y:chest.y-48+w};elbN='up';elbF='up'}
   else if(pose==='strip'){const k=o.k||0;near={x:chest.x+f*8,y:lerp(280,150,k)};far={x:chest.x-f*6,y:lerp(282,152,k)};elbN='fwd';elbF='back'}
   else{near={x:x+f*9,y:290+y0};far={x:x-f*5,y:292+y0}}
   ctx.save();ctx.translate(x,GY);ctx.scale(1.3,1.3);ctx.translate(-x,-GY);
-  drawBody(F,{f,hip,chest,tilt:pose==='face'||pose==='push'?.14:pose==='sad'?.32:pose==='walk'?0:-.02,mood:pose==='flex'||pose==='double'||pose==='point'||pose==='over'||pose==='hand'?'yell':null,nearHand:near,farHand:far,nearFoot:nf,farFoot:ff,kneeN:'fwd',kneeF:'fwd',elbN,elbF});
+  drawBody(F,{f,hip,chest,tilt:pose==='face'||pose==='push'?.14:pose==='sad'?.32:pose==='ear'?-.12:pose==='walk'?0:-.02,mood:pose==='flex'||pose==='double'||pose==='point'||pose==='over'||pose==='hand'||pose==='ear'?'yell':null,nearHand:near,farHand:far,nearFoot:nf,farFoot:ff,kneeN:'fwd',kneeF:'fwd',elbN,elbF});
   ctx.restore();
 }
 function wiPerson(x,f,t,o){const B={kind:'ref',logo:o.logo||'',look:{skin:o.skin||'#d9a47e',hair:o.hair||'#2a1f1a',hairStyle:o.hs||'short',beard:!!o.beard},skinNow:o.skin||'#d9a47e',shirt:o.shirt||'#1d2028',pants:true,corner:'#888',head:100,body:100,legs:100,cuts:0,sweat:0,t};
@@ -1943,7 +1945,8 @@ function weighin(c,cw,ch,st){
       let x,pose='stand',o={};
       if(L<S0.walk){x=lerp(cur.from,400,L/S0.walk);pose='walk';o.shirt=true}
       else if(L<S0.strip){x=400;pose='strip';o.k=(L-S0.walk)/(S0.strip-S0.walk);o.shirt=L<S0.strip-4}
-      else if(L<S0.flex[1]){x=400;pose=L>=S0.flex[0]?(cur.res.ok?'flex':'sad'):'stand'}
+      else if(L<S0.flex[1]){x=400;const k=L-S0.flex[0];pose=k<0?'stand':cur.res.ok?'flex':k<16?'sad':k<36?'shrug':'ear';
+        if(!cur.res.ok&&k>=18){const line=cur.side==='a'?st.missA:st.missB;post.push(()=>bubble(290,GY-215,line,cur.side==='a'?'#3d7ff0':'#e04a3a',S0.flex[0]+18,L))}}
       else{x=lerp(400,cur.rest,(L-S0.flex[1])/30);pose='walk'}
       const dir=pose!=='walk'?cur.f:L<S0.walk?(cur.from<400?1:-1):(cur.rest>400?1:-1);
       wiFighter(cur.F.d,cur.side,x,dir,pose,t,o);
@@ -1985,6 +1988,9 @@ function weighin(c,cw,ch,st){
   }
   // fans in front: phones up, signs with fighter names, photographers flashing
   const hot=st.hot||0;
+  {const boo=['a','b'].some(sd=>{const L=t-(sd==='a'?WI.blueOn[0]:WI.redOn[0]);return !st.res[sd].ok&&L>=WI.SEG.stamp&&L<WI.SEG.flex[1]+12});
+   if(boo)post.push(()=>{ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';for(let i=0;i<14;i++){const ph=(t*.012+i*.137)%1,x=40+((i*97)%720),y=410-ph*150;ctx.globalAlpha=Math.sin(ph*Math.PI)*.9;
+     if(i%3===2){ctx.font='26px sans-serif';ctx.fillText('👎',x,y)}else{ctx.font='italic 22px "Black Han Sans",sans-serif';ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.6)';const w=i%2?'BOO!':'우~';ctx.strokeText(w,x,y);ctx.fillStyle='#ff6b5e';ctx.fillText(w,x,y)}}ctx.restore()})}
   for(const p of WCROWD){const j=Math.max(0,Math.sin(t*(hot?.28:.06)+p.ph))*(hot?7:1.2),x=p.x,y=p.y-j,s=p.s;
     ctx.fillStyle=p.c;ctx.beginPath();ctx.ellipse(x,y+22*s,14*s,18*s,0,0,7);ctx.fill();ctx.fillStyle='#14161b';ctx.beginPath();ctx.arc(x,y,8*s,0,7);ctx.fill();
     ctx.strokeStyle='rgba(255,240,215,.12)';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(x,y,8*s,-2.6,-.6);ctx.stroke();
@@ -2143,6 +2149,38 @@ function gateScene(c,cw,ch,t,d){
   if(T>=H+4&&T<H+30){ctx.save();ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=2;ctx.lineCap='round';for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(px,py,52+i*8,-Math.PI*.9+i*.1,-Math.PI*.55+i*.1);ctx.stroke()}ctx.restore()}
   ctx.restore()}
 /* ---------- between rounds: first-person view from the stool, the head coach right in your face ---------- */
+/* ---------- between rounds: a broadcast "round in review" card before the corner ---------- */
+function roundBreak(c,cw,ch,t,o){
+  ctx=c;const VHw=800*ch/cw,oy=(VHw-450)/2;ctx.save();ctx.clearRect(0,0,800,VHw);
+  const bg=ctx.createRadialGradient(400,VHw*.35,20,400,VHw*.4,700);bg.addColorStop(0,'#1d2230');bg.addColorStop(1,'#05060a');ctx.fillStyle=bg;ctx.fillRect(0,0,800,VHw);
+  /* moving spotlights + cage mesh */
+  ctx.save();ctx.globalCompositeOperation='lighter';for(let i=0;i<3;i++){const a=Math.sin(t*.02+i*2)*.35,x=150+i*250;const g=ctx.createLinearGradient(x,0,x+Math.sin(a)*300,VHw);g.addColorStop(0,'rgba(255,230,180,.16)');g.addColorStop(1,'rgba(255,230,180,0)');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x-10,0);ctx.lineTo(x+10,0);ctx.lineTo(x+Math.sin(a)*300+110,VHw);ctx.lineTo(x+Math.sin(a)*300-110,VHw);ctx.fill()}ctx.restore();
+  ctx.strokeStyle='rgba(120,130,150,.12)';ctx.lineWidth=1.5;ctx.beginPath();for(let x=-400;x<1200;x+=34){ctx.moveTo(x,0);ctx.lineTo(x+VHw,VHw);ctx.moveTo(x+VHw,0);ctx.lineTo(x,VHw)}ctx.stroke();
+  const fs=Math.min(1,VHw/450);if(fs<1){ctx.translate(400*(1-fs),0);ctx.scale(fs,fs)}else ctx.translate(0,oy);const oy2=fs<1?0:oy;
+  const ez=x=>{x=clamp(x,0,1);return 1-Math.pow(1-x,3)},A=o.a,B=o.b,ra=o.ra,rb=o.rb;
+  /* 1) slam: "ROUND N END" */
+  {const k=ez(t/14),out=clamp((t-150)/14,0,1);ctx.save();ctx.globalAlpha=1-out;ctx.translate(400,60);ctx.scale(1.8-.8*k,1.8-.8*k);ctx.textAlign='center';ctx.textBaseline='middle';
+   ctx.font='16px "Black Han Sans",sans-serif';ctx.fillStyle='#e8b33a';ctx.globalAlpha=k*(1-out);ctx.fillText('IRON CAGE · ROUND IN REVIEW',0,-34);
+   ctx.font='52px "Black Han Sans",sans-serif';ctx.lineWidth=8;ctx.strokeStyle='rgba(0,0,0,.6)';ctx.strokeText(`${o.round}라운드 종료`,0,6);ctx.fillStyle='#fff';ctx.fillText(`${o.round}라운드 종료`,0,6);ctx.restore()}
+  /* 2) stat bars, one after another */
+  const rows=[['유효타',ra.sigL,rb.sigL],['녹다운',ra.kd,rb.kd],['테이크다운',ra.td,rb.td],['컨트롤(초)',Math.round((ra.ctrl||0)/60),Math.round((rb.ctrl||0)/60)],['데미지',Math.round(ra.dH+ra.dB+ra.dL),Math.round(rb.dH+rb.dB+rb.dL)]];
+  const top=142,colA=A.corner||'#3d7ff0',colB=B.corner||'#e04a3a';
+  {const k=ez((t-10)/16);ctx.globalAlpha=k;ctx.fillStyle='rgba(8,10,14,.82)';ctx.beginPath();ctx.roundRect(150,top-34,500,rows.length*38+44,10);ctx.fill();
+   ctx.textBaseline='middle';ctx.font='700 15px "IBM Plex Sans KR",sans-serif';ctx.textAlign='left';ctx.fillStyle=colA;ctx.fillText(A.nick,168,top-14);ctx.textAlign='right';ctx.fillStyle=colB;ctx.fillText(B.nick,632,top-14);ctx.globalAlpha=1}
+  rows.forEach(([lab,va,vb],i)=>{const k=ez((t-22-i*12)/18);if(k<=0)return;const y=top+14+i*38,tot=Math.max(1,va+vb),wa=150*va/tot*k,wb=150*vb/tot*k;
+    ctx.globalAlpha=k;ctx.textAlign='center';ctx.font='600 12px "IBM Plex Sans KR",sans-serif';ctx.fillStyle='#aab3c2';ctx.fillText(lab,400,y-11);
+    ctx.fillStyle='rgba(255,255,255,.08)';ctx.fillRect(240,y,150,10);ctx.fillRect(410,y,150,10);
+    ctx.fillStyle=colA;ctx.fillRect(390-wa,y,wa,10);ctx.fillStyle=colB;ctx.fillRect(410,y,wb,10);
+    ctx.font='22px "Black Han Sans",sans-serif';ctx.fillStyle=va>vb?'#fff':'#8a93a2';ctx.textAlign='right';ctx.fillText(String(va),228,y+5);ctx.fillStyle=vb>va?'#fff':'#8a93a2';ctx.textAlign='left';ctx.fillText(String(vb),572,y+5);ctx.globalAlpha=1});
+  /* 3) who took the round + next-round card flip */
+  {const k=ez((t-96)/16);if(k>0){const w=o.lead,y=top+rows.length*38+40;ctx.globalAlpha=k;ctx.textAlign='center';ctx.font='700 14px "IBM Plex Sans KR",sans-serif';
+    ctx.fillStyle=w==='a'?colA:w==='b'?colB:'#e8b33a';ctx.fillText(w==='a'?`이번 라운드 우세 · ${A.nick}`:w==='b'?`이번 라운드 우세 · ${B.nick}`:'이번 라운드 · 팽팽한 접전',400,y);ctx.globalAlpha=1}}
+  {const k=ez((t-130)/18);if(k>0){ctx.save();ctx.translate(400,fs<1?225:VHw/2-oy2);ctx.scale(1,Math.max(.02,k));ctx.globalAlpha=Math.min(1,k*1.5);
+    ctx.fillStyle='#0b0d12';ctx.strokeStyle='#e8b33a';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(-120,-70,240,140,10);ctx.fill();ctx.stroke();
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#e8b33a';ctx.font='18px "Black Han Sans",sans-serif';ctx.fillText('ROUND',0,-36);ctx.fillStyle='#fff';ctx.font='84px "Black Han Sans",sans-serif';ctx.fillText(String(o.round+1),0,16);ctx.restore()}}
+  ctx.textAlign='center';ctx.font='600 11px "IBM Plex Sans KR",sans-serif';ctx.fillStyle='rgba(255,255,255,.45)';ctx.fillText('화면을 누르면 코너로',400,434);
+  ctx.restore();
+}
 function cornerPOV(c,cw,ch,t,o){
   ctx=c;const VHw=800*ch/cw,cx=400;ctx.save();ctx.clearRect(0,0,800,VHw);
   const me=o.me||{},hurt=clamp(1-Math.min(me.head??100,me.body??100)/100,0,1),bob=Math.sin(t*.09)*(4+hurt*5),sway=Math.sin(t*.045)*3;
@@ -2360,5 +2398,5 @@ function solve(J){
   const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
   return{f,hip:J.hip,chest:J.chest,head,hAng:Math.atan2(sd.y,sd.x)+Math.PI/2+(J.tilt||0)*f,shN,shF,hipN,hipF,kneeN:legN.j,kneeF:legF.j,footN:legN.end,footF:legF.end,elbN:armN.j,elbF:armF.j,handN:armN.end,handF:armF.end,footDirN:J.footN||f,footDirF:J.footF||f,mood:J.mood};
 }
-IC.Draw={_body:(c,F,J)=>{ctx=c;drawBody(F,J)},_ko:(c,F)=>{ctx=c;ctx.strokeStyle="#888";ctx.beginPath();ctx.moveTo(200,GY);ctx.lineTo(600,GY);ctx.stroke();drawBody(F,koPose(F,poseStand(F,F,{frame:0,cl:null}),0))},_cmp:(c,F,mood)=>{ctx=c;ctx.save();ctx.translate(60,60);ctx.scale(2.6,2.6);const o=fighterLook(F,{mood});drawHead(F,{x:0,y:0},0,1,o);ctx.restore();ctx.save();ctx.translate(170,62);ctx.scale(2.1,2.1);ctx.translate(0,212);drawFront(F,0,{noBuild:true,dmg:{head:F.head,cuts:F.cuts,mood},t:0,sweat:o.sweat});ctx.restore()},cornerPOV,_ground:(c,S)=>{ctx=c;drawGround(S)},render,portrait,weighin,beltScene,koScene,KOI,gateScene,GATE,tauntScene,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
+IC.Draw={_body:(c,F,J)=>{ctx=c;drawBody(F,J)},_ko:(c,F)=>{ctx=c;ctx.strokeStyle="#888";ctx.beginPath();ctx.moveTo(200,GY);ctx.lineTo(600,GY);ctx.stroke();drawBody(F,koPose(F,poseStand(F,F,{frame:0,cl:null}),0))},_cmp:(c,F,mood)=>{ctx=c;ctx.save();ctx.translate(60,60);ctx.scale(2.6,2.6);const o=fighterLook(F,{mood});drawHead(F,{x:0,y:0},0,1,o);ctx.restore();ctx.save();ctx.translate(170,62);ctx.scale(2.1,2.1);ctx.translate(0,212);drawFront(F,0,{noBuild:true,dmg:{head:F.head,cuts:F.cuts,mood},t:0,sweat:o.sweat});ctx.restore()},cornerPOV,roundBreak,_ground:(c,S)=>{ctx=c;drawGround(S)},render,portrait,weighin,beltScene,koScene,KOI,gateScene,GATE,tauntScene,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
 })(window.IC);
