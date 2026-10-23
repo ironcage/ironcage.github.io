@@ -875,7 +875,7 @@ const WK=[{k:'blueAisle',d:300},{k:'blueIn',d:55},{k:'blueAnn',d:130},{k:'redAis
 /* signature entrance performance per fighting style */
 const PERF={boxer:'shadow',kickboxer:'kicks',karate:'kicks',taekwondo:'kicks',muaythai:'waikru',wrestler:'chest',sambo:'chest',bjj:'bow',brawler:'taunt',allround:'taunt'};
 const PERFN={shadow:'섀도복싱',kicks:'허공에 하이킥',waikru:'와이크루 의식',chest:'가슴을 두드리며 포효',bow:'옥타곤에 절',taunt:'관중 도발'};
-const songOf=F=>{const S0=IC.SONGS,k=IC.songPick?IC.songPick(F.d):null;return S0[k!=null&&S0[k]?k:IC.hash((F.d.id||'')+F.name)%S0.length]};
+const songOf=F=>{const S0=IC.SONGS,k=IC.songPick?IC.songPick(F.d):null;if(k==='mine'&&IC.mySong&&IC.mySong())return IC.mySong();return S0[k!=null&&S0[k]?k:IC.hash((F.d.id||'')+F.name)%S0.length]};
 const AISLE0=-300,AISLE1=600;
 function startWalkout(){
   const a=S.a,b=S.b;

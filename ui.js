@@ -31,7 +31,19 @@ const Sound={ac:null,nb:null,on:true,
   }catch(e){}}
 };
 /* walkout music: a heavy synth loop with crowd bed, scheduled ahead with WebAudio */
-Sound.music=function(on,song){const genre=song&&song.g||'rock',K=song&&song.key||1;
+/* ---------- my own song: an audio file picked from the phone, stored only on this device ---------- */
+const MySong={buf:null,name:'',_db:null,
+  db(){return this._db||(this._db=new Promise((ok,no)=>{try{const r=indexedDB.open('ic_music',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}catch(e){no(e)}}))},
+  async put(file){const db=await this.db();await new Promise((ok,no)=>{const tx=db.transaction('f','readwrite');tx.objectStore('f').put({blob:file,name:file.name},'walk');tx.oncomplete=ok;tx.onerror=()=>no(tx.error)});this.name=file.name;this.buf=null;await this.decode(file)},
+  async load(){try{const db=await this.db();const v=await new Promise(ok=>{const q=db.transaction('f').objectStore('f').get('walk');q.onsuccess=()=>ok(q.result);q.onerror=()=>ok(null)});if(v){this.name=v.name;this._blob=v.blob}}catch(e){}},
+  async decode(blob){blob=blob||this._blob;if(!blob||!Sound.ac)return null;try{const ab=await blob.arrayBuffer();this.buf=await new Promise((ok,no)=>Sound.ac.decodeAudioData(ab,ok,no));return this.buf}catch(e){toast('이 음악 파일은 재생할 수 없어요 (mp3·m4a 추천)');return null}},
+  async del(){try{const db=await this.db();db.transaction('f','readwrite').objectStore('f').delete('walk')}catch(e){}this.buf=null;this.name='';this._blob=null},
+  song(){return this.name?{n:this.name.replace(/\.[a-z0-9]+$/i,''),g:'rock',gn:'내 음악',bpm:'',d:'내 폰에서 고른 곡',mine:true}:null}};
+IC.mySong=()=>MySong.song();
+Sound.music=function(on,song){
+  if(on&&song&&song.mine){if(!this.ac||!this.on||this._mus)return;const play=()=>{if(this._mus||!MySong.buf)return;const ac=this.ac,src=ac.createBufferSource();src.buffer=MySong.buf;src.loop=true;
+      const g=ac.createGain();g.gain.value=0;g.gain.setTargetAtTime(song.vol||.85,ac.currentTime,.4);src.connect(g);g.connect(ac.destination);src.start(0,song.vol&&song.vol<.5?0:Math.min(20,MySong.buf.duration*.15));this._mus={g,timer:0,crowd:src}};
+    if(MySong.buf)play();else MySong.decode().then(play);return}const genre=song&&song.g||'rock',K=song&&song.key||1;
   if(!on){if(this._mus){clearInterval(this._mus.timer);const m=this._mus,g=m.g;try{g.gain.setTargetAtTime(0,this.ac.currentTime,.35)}catch(e){}setTimeout(()=>{try{m.crowd.stop();g.disconnect()}catch(e){}},1600);this._mus=null}return}
   if(!this.ac||!this.on||this._mus)return;
   const ac=this.ac,g=ac.createGain();g.gain.value=0;g.gain.setTargetAtTime(song&&song.vol||.5,ac.currentTime,.5);const comp=ac.createDynamicsCompressor();comp.threshold.value=-16;comp.knee.value=10;comp.ratio.value=5;comp.attack.value=.003;comp.release.value=.2;g.connect(comp).connect(ac.destination);
@@ -255,7 +267,7 @@ const back=(to,label='← 메인 메뉴')=>`<button class="back" data-act="nav" 
 function seg(act,opts,cur,lab){return `<div class="seg">${opts.map(o=>`<button data-act="${act}" data-v="${o}" aria-pressed="${String(o)===String(cur)}">${lab?lab(o):o}</button>`).join('')}</div>`}
 /* ---------- home-screen music ---------- */
 const HOME_THEME={n:'IRON CAGE 메인 테마',g:'epic',gn:'오케스트럴 에픽',bpm:96,key:1,crowd:.45,verb:.4,big:true};
-const homeSongs=()=>[HOME_THEME,...IC.SONGS];
+const homeSongs=()=>{const m=MySong.song();return m?[m,HOME_THEME,...IC.SONGS]:[HOME_THEME,...IC.SONGS]};
 function homeMusic(force){if(DATA.settings.homeMusic===false||!DATA.settings.sound)return;if(SCREEN!=='home')return;if(!Sound.ac){return}
   if(Sound._mus&&!force)return;Sound.music(false);const L=homeSongs(),i=(DATA.settings.homeSong|0)%L.length;setTimeout(()=>{if(SCREEN==='home'&&!Sound._mus)Sound.music(true,Object.assign({},L[i],{vol:.32}))},force?650:0)}
 A.hmNext=()=>{Sound.init();const L=homeSongs();DATA.settings.homeSong=((DATA.settings.homeSong|0)+1)%L.length;DATA.settings.homeMusic=true;save();homeMusic(true);render()};
@@ -581,7 +593,7 @@ function runBelt(){const el=document.getElementById('beltcv');if(!el)return;cons
     if(t>=B.close)once('cl',()=>{Sound.play('reveal')});
     if(t>=B.wrap)once('wr',()=>{Sound.applause(5,.07)});
     if(t>=B.wrap+120)once('bk',()=>{Sound.play('slam');Sound.roar(.45)});
-    if(t>=B.lift)once('lf',()=>{Sound.noise(.9,'lowpass',220,1);Sound.noise(1.6,'highpass',3000,.25);Sound.roar(.7);Sound.applause(6,.08);const si=songIdx(Object.assign({id:'me'},d));setTimeout(()=>{if(SCREEN==='cpost')Sound.music(true,Object.assign({},IC.SONGS[si],{crowd:1.6}))},700)});
+    if(t>=B.lift)once('lf',()=>{Sound.noise(.9,'lowpass',220,1);Sound.noise(1.6,'highpass',3000,.25);Sound.roar(.7);Sound.applause(6,.08);const so=songObj(Object.assign({id:'me'},d));setTimeout(()=>{if(SCREEN==='cpost')Sound.music(true,Object.assign({},so,{crowd:1.6}))},700)});
     const se=document.getElementById('beltstg');if(se){const cur=stg.reduce((m,x,i)=>t>=x[1]?i:m,0);if(se.dataset.c!=cur){se.dataset.c=cur;se.querySelectorAll('span').forEach((x,i)=>x.className=i<cur?'done':i===cur?'on':'')}}
     c.setTransform(el.width/800,0,0,el.width/800,0,0);IC.Draw.beltScene(c,w,h,t,d,P.clsName,cer);beltRaf=requestAnimationFrame(fr)};
   cancelAnimationFrame(beltRaf);beltRaf=requestAnimationFrame(fr)}
@@ -753,19 +765,24 @@ A.lbLoad=async()=>{LBROWS=null;LBERR='';render();try{await Store.ready;if(!Store
 
 /* ---------- walkout song picker ---------- */
 IC.songPick=d=>{if(!d)return null;if(d.id==='me')return DATA.career&&DATA.career.song!=null?DATA.career.song:null;const v=(DATA.songs||{})[d.id];return v==null?null:v};
-const songIdx=d=>{const k=IC.songPick(d);return k!=null&&IC.SONGS[k]?k:IC.hash((d.id||'')+d.name)%IC.SONGS.length};
+const songObj=d=>{const i=songIdx(d);return i==='mine'?(MySong.song()||IC.SONGS[0]):IC.SONGS[i]};
+const songIdx=d=>{const k=IC.songPick(d);if(k==='mine')return 'mine';return k!=null&&IC.SONGS[k]?k:IC.hash((d.id||'')+d.name)%IC.SONGS.length};
 let prevT=0,prevI=-1;
 function stopPreview(){clearTimeout(prevT);prevI=-1;Sound.music(false)}
 V.song=p=>{const d=getF(p.id)||p.d,cur=songIdx(d),picked=IC.songPick(d)!=null,G={rock:'#c0392b',hiphop:'#8e44ad',epic:'#c9a227',edm:'#1abc9c'};
   return `<button class="back" data-act="songBack">← 뒤로</button><div class="panel"><div class="eyebrow">입장곡 선택</div><h2 class="big" style="font-size:clamp(24px,6vw,38px)">${esc(d.name)}</h2>
   <p>"${esc(d.nick)}"이 관중 사이를 걸어 나올 때 흐르는 곡입니다. ▶ 버튼으로 미리 들어 보세요.${picked?'':' 지금은 자동으로 정해진 곡입니다.'}</p>
+  ${d.id==='me'||!DATA.career?`<div class="mysong"><b>🎵 내가 원하는 노래</b><span>${MySong.name?`지금: <em>${esc(MySong.name)}</em>`:'폰에 있는 음악 파일(mp3·m4a)을 입장곡과 홈 음악으로 써요. 파일은 이 폰에만 저장돼요.'}</span>
+    <div class="row"><label class="btn-go sm">📁 음악 파일 고르기<input type="file" accept="audio/*" data-change="myPick" hidden></label>${MySong.name?`<button class="${cur==='mine'?'btn-go':'btn'} sm" data-act="songSet" data-i="mine">${cur==='mine'?'입장곡으로 선택됨':'입장곡으로 쓰기'}</button><button class="btn sm" data-act="songPrev" data-i="mine">${prevI==='mine'?'■ 멈춤':'▶ 미리듣기'}</button><button class="btn sm" data-act="myDel">지우기</button>`:''}</div></div>`:''}
   <div class="songs">${IC.SONGS.map((g,i)=>`<div class="song${i===cur?' on':''}" style="--gc:${G[g.g]}"><button class="play${prevI===i?' playing':''}" data-act="songPrev" data-i="${i}" aria-label="미리듣기">${prevI===i?'■':'▶'}</button>
     <div class="si"><b>${esc(g.n)}</b><span>${g.gn} · ${g.bpm} BPM</span><small>${esc(g.d)}</small></div>
     <button class="${i===cur?'btn-go':'btn'} sm" data-act="songSet" data-i="${i}">${i===cur?'선택됨':'선택'}</button></div>`).join('')}</div>
   ${picked?'<div class="row"><button class="btn sm" data-act="songSet" data-i="-1">자동으로 되돌리기</button></div>':''}</div>`};
-A.songPrev=d=>{Sound.init();const i=+d.i;if(prevI===i){stopPreview();render();return}stopPreview();prevI=i;Sound.music(true,IC.SONGS[i]);prevT=setTimeout(()=>{stopPreview();if(SCREEN==='song')render()},9000);render()};
-A.songSet=d=>{const i=+d.i,id=P.id;if(id==='me'){if(DATA.career)DATA.career.song=i<0?null:i}else{DATA.songs=DATA.songs||{};if(i<0)delete DATA.songs[id];else DATA.songs[id]=i}save();render()};
+A.songPrev=d=>{Sound.init();const i=d.i==='mine'?'mine':+d.i;if(prevI===i){stopPreview();render();return}stopPreview();prevI=i;Sound.music(true,i==='mine'?MySong.song():IC.SONGS[i]);prevT=setTimeout(()=>{stopPreview();if(SCREEN==='song')render()},9000);render()};
+A.songSet=d=>{const i=d.i==='mine'?'mine':+d.i,id=P.id;if(id==='me'){if(DATA.career)DATA.career.song=i<0?null:i}else{DATA.songs=DATA.songs||{};if(i<0)delete DATA.songs[id];else DATA.songs[id]=i}save();render()};
 A.songBack=()=>{stopPreview();const r=P.ret;if(r)go(r.s,r.p);else go('home')};
+A.myPick=async(d,el)=>{const f=el.files&&el.files[0];if(!f)return;Sound.init();toast('음악 불러오는 중…');try{await MySong.put(f);if(MySong.buf){if(DATA.career&&(P.id==='me'||!P.id))DATA.career.song='mine';DATA.settings.homeSong=0;save();toast('🎵 내 음악 저장 완료! 입장곡·홈 음악으로 쓸게요')}}catch(e){toast('저장에 실패했어요')}render()};
+A.myDel=async()=>{await MySong.del();if(DATA.career&&DATA.career.song==='mine')DATA.career.song=null;save();stopPreview();render()};
 A.songOpen=d=>{const id=d.id==='__a'?P.a.id:d.id;go('song',{id,d:d.id==='__a'?P.a:null,ret:{s:SCREEN,p:P}})};
 /* ---------- tale of the tape ---------- */
 V.tale=p=>{const a=p.a,b=p.b,st=x=>STYLES[x.style].name;
@@ -778,7 +795,7 @@ V.tale=p=>{const a=p.a,b=p.b,st=x=>STYLES[x.style].name;
   ${oddsHtml(a,b)}
   ${cmpBars(a,b)}
   ${p.scout?`<div class="advice"><b>상대 분석</b> · ${scoutNote(b)}</div>`:''}${p.rivalRead?`<div class="advice" style="border-color:rgba(255,107,94,.5)"><b>🔥 라이벌의 분석</b> · ${esc(p.rivalRead)}</div>`:''}
-  <div class="songrow"><span>♪ 입장곡 · <b>${esc(IC.SONGS[songIdx(a)].n)}</b> <small>${IC.SONGS[songIdx(a)].gn}</small></span><button class="btn sm" data-act="songOpen" data-id="__a">바꾸기</button></div>
+  <div class="songrow"><span>♪ 입장곡 · <b>${esc(songObj(a).n)}</b> <small>${songObj(a).gn}</small></span><button class="btn sm" data-act="songOpen" data-id="__a">바꾸기</button></div>
   <div class="row"><button class="btn-go" data-act="taleWeigh" style="flex:1">계체량 →</button>${p.mustWeigh?'':`<button class="btn" data-act="taleGo">바로 경기 시작</button>`}</div></div>`};
 /* pre-fight odds: record, recent form and the rivalry decide the line (decimal odds with a 6% book margin) */
 function oddsOf(a,b){
@@ -1218,6 +1235,7 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <div class="panel"><div class="eyebrow">설정</div>
   <div class="field"><span class="lbl">기본 난이도</span>${diffSeg()}<small class="hint2">커리어는 단체 등급 따라 자동: 지역 단체 루키 · IRON CAGE 프로 · 타이틀전 챔피언</small></div>
   <div class="field"><span class="lbl">라운드 시간</span>${secSeg()}</div>
+  <div class="field"><span class="lbl">🎵 내가 원하는 노래</span><div class="row"><label class="btn-go sm" style="cursor:pointer">📁 음악 파일 고르기<input type="file" accept="audio/*" data-change="myPick" hidden></label>${MySong.name?`<span class="mut">지금: ${esc(MySong.name)}</span><button class="btn sm" data-act="myDel">지우기</button>`:'<span class="mut">폰의 mp3·m4a를 입장곡·홈 음악으로</span>'}</div></div>
   <div class="field"><span class="lbl">선수 입장·소개</span>${seg('walk',['on','off'],s.walkout!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <div class="field"><span class="lbl">경기 중 코치 지시</span>${seg('coachS',['on','off'],s.coach!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <div class="field"><span class="lbl">타격 진동</span>${seg('hap',['on','off'],s.haptic!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>${IC.Haptic&&IC.Haptic.iosOK?'<button class="btn sm" data-hap="1" data-act="hapTest" style="align-self:flex-start">📳 진동 테스트</button><p class="mut" style="margin:-4px 0 0;font-size:12px">아이폰은 <b>설정 › 사운드 및 햅틱 › 시스템 햅틱</b>을 켜야 진동이 와요. (무음 모드여도 됩니다)</p>':''}
@@ -2203,6 +2221,7 @@ const loc=Store.local();if(loc&&loc.v===3)DATA=Object.assign(D0(),loc);
 if(!DATA.settings.wk2){DATA.settings.wk2=1;DATA.settings.walkout=true}
 DATA.settings.sound=true;DATA.settings.voiceOn=false;Sound.on=true;loadCustom();
 {const R=DATA.records||{};if(DATA.unlv==null){DATA.unlv=1;const old=!!(DATA.career||DATA.wildc||DATA.tour||DATA.gp||DATA.gymm||(DATA.archive||[]).length||Object.keys(DATA.ach||{}).length||(R.quick&&(R.quick.w+R.quick.l+R.quick.d)));if(old){DATA.unlockAll=true;DATA.tutDone=true}try{Store.save(DATA)}catch(e){}}}
+MySong.load().then(()=>{if(SCREEN==='song'||SCREEN==='home')try{render()}catch(e){}});
 topinfo();go('home');try{showTitle()}catch(e){console.error(e)}
 Store.load().then(d=>{if(d&&d.v===3&&(d.at||0)>(DATA.at||0)){DATA=Object.assign(D0(),d);DATA.settings.sound=true;DATA.settings.voiceOn=false;if(!DATA.settings.wk2){DATA.settings.wk2=1;DATA.settings.walkout=true}loadCustom();topinfo();if(SCREEN==='home'&&game.hidden)render()}});
 })(window.IC);
