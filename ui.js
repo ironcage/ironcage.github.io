@@ -32,18 +32,26 @@ const Sound={ac:null,nb:null,on:true,
 };
 /* walkout music: a heavy synth loop with crowd bed, scheduled ahead with WebAudio */
 /* ---------- my own song: an audio file picked from the phone, stored only on this device ---------- */
-const MySong={buf:null,name:'',_db:null,
+/* my own songs: several music files kept on this phone (IndexedDB), each usable as walkout or home music */
+const MySong={list:[],_db:null,
   db(){return this._db||(this._db=new Promise((ok,no)=>{try{const r=indexedDB.open('ic_music',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)}catch(e){no(e)}}))},
-  async put(file){const db=await this.db();await new Promise((ok,no)=>{const tx=db.transaction('f','readwrite');tx.objectStore('f').put({blob:file,name:file.name},'walk');tx.oncomplete=ok;tx.onerror=()=>no(tx.error)});this.name=file.name;this.buf=null;await this.decode(file)},
-  async load(){try{const db=await this.db();const v=await new Promise(ok=>{const q=db.transaction('f').objectStore('f').get('walk');q.onsuccess=()=>ok(q.result);q.onerror=()=>ok(null)});if(v){this.name=v.name;this._blob=v.blob}}catch(e){}},
-  async decode(blob){blob=blob||this._blob;if(!blob||!Sound.ac)return null;try{const ab=await blob.arrayBuffer();this.buf=await new Promise((ok,no)=>Sound.ac.decodeAudioData(ab,ok,no));return this.buf}catch(e){toast('이 음악 파일은 재생할 수 없어요 (mp3·m4a 추천)');return null}},
-  async del(){try{const db=await this.db();db.transaction('f','readwrite').objectStore('f').delete('walk')}catch(e){}this.buf=null;this.name='';this._blob=null},
-  song(){return this.name?{n:this.name.replace(/\.[a-z0-9]+$/i,''),g:'rock',gn:'내 음악',bpm:'',d:'내 폰에서 고른 곡',mine:true}:null}};
-IC.mySong=()=>MySong.song();
+  get name(){return this.list.length?this.list[0].name:''},
+  find(id){return this.list.find(x=>x.id===id)||this.list[0]||null},
+  async put(file){const db=await this.db(),id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    await new Promise((ok,no)=>{const tx=db.transaction('f','readwrite');tx.objectStore('f').put({blob:file,name:file.name,id},id);tx.oncomplete=ok;tx.onerror=()=>no(tx.error)});
+    const it={id,name:file.name,blob:file,buf:null};this.list.push(it);const b=await this.decode(it);if(!b){await this.del(id);return null}return it},
+  async load(){try{const db=await this.db();const all=await new Promise(ok=>{const st=db.transaction('f').objectStore('f'),out=[];const q=st.openCursor();q.onsuccess=()=>{const c=q.result;if(c){out.push({k:c.key,v:c.value});c.continue()}else ok(out)};q.onerror=()=>ok(out)});
+    this.list=all.filter(r=>r.v&&r.v.blob).map(r=>({id:r.k==='walk'?'walk':(r.v.id||r.k),name:r.v.name,blob:r.v.blob,buf:null})).sort((a,b)=>a.id==='walk'?-1:b.id==='walk'?1:a.id<b.id?-1:1)}catch(e){}},
+  async decode(it){it=it||this.list[0];if(!it)return null;if(it.buf)return it.buf;if(!Sound.ac)return null;try{const ab=await it.blob.arrayBuffer();it.buf=await new Promise((ok,no)=>Sound.ac.decodeAudioData(ab,ok,no));return it.buf}catch(e){toast('이 음악 파일은 재생할 수 없어요 (mp3·m4a 추천)');return null}},
+  async del(id){try{const db=await this.db();db.transaction('f','readwrite').objectStore('f').delete(id)}catch(e){}this.list=this.list.filter(x=>x.id!==id)},
+  obj(it){return it?{n:it.name.replace(/\.[a-z0-9]+$/i,''),g:'rock',gn:'내 음악',bpm:'',d:'내 폰에서 고른 곡',mine:true,mid:it.id}:null},
+  song(id){return this.obj(id?this.find(id):this.list[0])},
+  songs(){return this.list.map(x=>this.obj(x))}};
+IC.mySong=k=>MySong.song(typeof k==='string'&&k.startsWith('mine:')?k.slice(5):null);
 Sound.music=function(on,song){
-  if(on&&song&&song.mine){if(!this.ac||!this.on||this._mus)return;const play=()=>{if(this._mus||!MySong.buf)return;const ac=this.ac,src=ac.createBufferSource();src.buffer=MySong.buf;src.loop=true;
-      const g=ac.createGain();g.gain.value=0;g.gain.setTargetAtTime(song.vol||.85,ac.currentTime,.4);src.connect(g);g.connect(ac.destination);src.start(0,song.vol&&song.vol<.5?0:Math.min(20,MySong.buf.duration*.15));this._mus={g,timer:0,crowd:src}};
-    if(MySong.buf)play();else MySong.decode().then(play);return}const genre=song&&song.g||'rock',K=song&&song.key||1;
+  if(on&&song&&song.mine){if(!this.ac||!this.on||this._mus)return;const it=MySong.find(song.mid);if(!it)return;const play=()=>{if(this._mus||!it.buf)return;const ac=this.ac,src=ac.createBufferSource();src.buffer=it.buf;src.loop=true;
+      const g=ac.createGain();g.gain.value=0;g.gain.setTargetAtTime(song.vol||.85,ac.currentTime,.4);src.connect(g);g.connect(ac.destination);src.start(0,song.vol&&song.vol<.5?0:Math.min(20,it.buf.duration*.15));this._mus={g,timer:0,crowd:src}};
+    if(it.buf)play();else MySong.decode(it).then(play);return}const genre=song&&song.g||'rock',K=song&&song.key||1;
   if(!on){if(this._mus){clearInterval(this._mus.timer);const m=this._mus,g=m.g;try{g.gain.setTargetAtTime(0,this.ac.currentTime,.35)}catch(e){}setTimeout(()=>{try{m.crowd.stop();g.disconnect()}catch(e){}},1600);this._mus=null}return}
   if(!this.ac||!this.on||this._mus)return;
   const ac=this.ac,g=ac.createGain();g.gain.value=0;g.gain.setTargetAtTime(song&&song.vol||.5,ac.currentTime,.5);const comp=ac.createDynamicsCompressor();comp.threshold.value=-16;comp.knee.value=10;comp.ratio.value=5;comp.attack.value=.003;comp.release.value=.2;g.connect(comp).connect(ac.destination);
@@ -267,14 +275,14 @@ const back=(to,label='← 메인 메뉴')=>`<button class="back" data-act="nav" 
 function seg(act,opts,cur,lab){return `<div class="seg">${opts.map(o=>`<button data-act="${act}" data-v="${o}" aria-pressed="${String(o)===String(cur)}">${lab?lab(o):o}</button>`).join('')}</div>`}
 /* ---------- home-screen music ---------- */
 const HOME_THEME={n:'IRON CAGE 메인 테마',g:'epic',gn:'오케스트럴 에픽',bpm:96,key:1,crowd:.45,verb:.4,big:true};
-const homeSongs=()=>{const m=MySong.song();return m?[m,HOME_THEME,...IC.SONGS]:[HOME_THEME,...IC.SONGS]};
+const homeSongs=()=>[...MySong.songs(),HOME_THEME,...IC.SONGS];
 function homeMusic(force){if(DATA.settings.homeMusic===false||!DATA.settings.sound)return;if(SCREEN!=='home')return;if(!Sound.ac){return}
   if(Sound._mus&&!force)return;Sound.music(false);const L=homeSongs(),i=(DATA.settings.homeSong|0)%L.length;setTimeout(()=>{if(SCREEN==='home'&&!Sound._mus)Sound.music(true,Object.assign({},L[i],{vol:.32}))},force?650:0)}
 A.hmNext=()=>{Sound.init();const L=homeSongs();DATA.settings.homeSong=((DATA.settings.homeSong|0)+1)%L.length;DATA.settings.homeMusic=true;save();homeMusic(true);render()};
 A.hmToggle=()=>{Sound.init();DATA.settings.homeMusic=DATA.settings.homeMusic===false;save();if(DATA.settings.homeMusic)homeMusic(true);else Sound.music(false);render()};
 A.hm=d=>{DATA.settings.homeMusic=d.v==='on';save();render()};
 const hmChip=()=>{const on=DATA.settings.homeMusic!==false&&DATA.settings.sound,L=homeSongs(),g=L[(DATA.settings.homeSong|0)%L.length];
-  return `<div class="hmchip"><span class="eq${on?' on':''}"><i></i><i></i><i></i></span><span class="hmn">${on?'♪ '+esc(g.n):'음악 꺼짐'}</span>${MySong.name?'':`<label class="hmmy">＋ 내 노래${DATA.settings.songSeen?'':'<em>NEW</em>'}<input type="file" accept="audio/*" data-change="myPick" hidden></label>`}<button data-act="hmNext" aria-label="다음 곡">⏭</button><button data-act="hmToggle" aria-label="음악 켜기/끄기">${on?'🔊':'🔇'}</button></div>`};
+  return `<div class="hmchip"><span class="eq${on?' on':''}"><i></i><i></i><i></i></span><span class="hmn">${on?'♪ '+esc(g.n):'음악 꺼짐'}</span><label class="hmmy">＋ 내 노래${DATA.settings.songSeen?'':'<em>NEW</em>'}<input type="file" accept="audio/*" multiple data-change="myPick" hidden></label><button data-act="hmNext" aria-label="다음 곡">⏭</button><button data-act="hmToggle" aria-label="음악 켜기/끄기">${on?'🔊':'🔇'}</button></div>`};
 addEventListener('keydown',()=>{if(SCREEN==='home'&&!Sound._mus&&DATA.settings.homeMusic!==false&&DATA.settings.sound){Sound.init();setTimeout(()=>homeMusic(),30)}},true);
 addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('[data-act],.tile'))return;if(SCREEN==='home'&&!Sound._mus&&DATA.settings.homeMusic!==false&&DATA.settings.sound){Sound.on=true;Sound.init();setTimeout(()=>homeMusic(),30)}},true);
 const diffSeg=()=>seg('setDiff',Object.keys(DIFFS).filter(k=>k!=='hof'),DATA.settings.diff,k=>DIFFS[k].label);
@@ -767,24 +775,30 @@ A.lbLoad=async()=>{LBROWS=null;LBERR='';render();try{await Store.ready;if(!Store
 
 /* ---------- walkout song picker ---------- */
 IC.songPick=d=>{if(!d)return null;if(d.id==='me')return DATA.career&&DATA.career.song!=null?DATA.career.song:null;const v=(DATA.songs||{})[d.id];return v==null?null:v};
-const songObj=d=>{const i=songIdx(d);return i==='mine'?(MySong.song()||IC.SONGS[0]):IC.SONGS[i]};
-const songIdx=d=>{const k=IC.songPick(d);if(k==='mine')return 'mine';return k!=null&&IC.SONGS[k]?k:IC.hash((d.id||'')+d.name)%IC.SONGS.length};
+const isMine=k=>typeof k==='string'&&k.startsWith('mine');
+const songObj=d=>{const i=songIdx(d);return isMine(i)?(MySong.song(i.slice(5)||null)||IC.SONGS[0]):IC.SONGS[i]};
+const songIdx=d=>{const k=IC.songPick(d);if(isMine(k)&&MySong.list.length){const it=MySong.find(k.slice(5)||null);return 'mine:'+it.id}return k!=null&&IC.SONGS[k]?k:IC.hash((d.id||'')+d.name)%IC.SONGS.length};
 let prevT=0,prevI=-1;
 function stopPreview(){clearTimeout(prevT);prevI=-1;Sound.music(false)}
 V.song=p=>{const d=getF(p.id)||p.d,cur=songIdx(d),picked=IC.songPick(d)!=null,G={rock:'#c0392b',hiphop:'#8e44ad',epic:'#c9a227',edm:'#1abc9c'};
   return `<button class="back" data-act="songBack">← 뒤로</button><div class="panel"><div class="eyebrow">입장곡 선택</div><h2 class="big" style="font-size:clamp(24px,6vw,38px)">${esc(d.name)}</h2>
   <p>"${esc(d.nick)}"이 관중 사이를 걸어 나올 때 흐르는 곡입니다. ▶ 버튼으로 미리 들어 보세요.${picked?'':' 지금은 자동으로 정해진 곡입니다.'}</p>
-  ${d.id==='me'||!DATA.career?`<div class="mysong"><b>🎵 내가 원하는 노래${MySong.name?'':' <em class="newb">NEW</em>'}</b><span>${MySong.name?`지금: <em>${esc(MySong.name)}</em>`:'폰에 있는 음악 파일(mp3·m4a)을 입장곡과 홈 음악으로 써요. 파일은 이 폰에만 저장돼요.'}</span>
-    <div class="row"><label class="btn-go sm">📁 음악 파일 고르기<input type="file" accept="audio/*" data-change="myPick" hidden></label>${MySong.name?`<button class="${cur==='mine'?'btn-go':'btn'} sm" data-act="songSet" data-i="mine">${cur==='mine'?'입장곡으로 선택됨':'입장곡으로 쓰기'}</button><button class="btn sm" data-act="songPrev" data-i="mine">${prevI==='mine'?'■ 멈춤':'▶ 미리듣기'}</button><button class="btn sm" data-act="myDel">지우기</button>`:''}</div></div>`:''}
+  ${d.id==='me'||!DATA.career?`<div class="mysong"><b>🎵 내가 원하는 노래${MySong.list.length?'':' <em class="newb">NEW</em>'}</b><span>폰에 있는 음악 파일(mp3·m4a)을 여러 곡 넣어 두고 입장곡·홈 음악으로 써요. 파일은 이 폰에만 저장돼요.</span>
+    ${MySong.list.map(it=>{const k='mine:'+it.id,o=MySong.obj(it);return `<div class="song${cur===k?' on':''}" style="--gc:#e0262d"><button class="play${prevI===k?' playing':''}" data-act="songPrev" data-i="${k}" aria-label="미리듣기">${prevI===k?'■':'▶'}</button>
+      <div class="si"><b>${esc(o.n)}</b><span>내 음악</span></div><button class="${cur===k?'btn-go':'btn'} sm" data-act="songSet" data-i="${k}">${cur===k?'선택됨':'선택'}</button><button class="btn sm" data-act="myDel" data-id="${it.id}" aria-label="지우기">✕</button></div>`}).join('')}
+    <div class="row"><label class="btn-go sm">＋ 노래 추가 (여러 곡 가능)<input type="file" accept="audio/*" multiple data-change="myPick" hidden></label></div></div>`:''}
   <div class="songs">${IC.SONGS.map((g,i)=>`<div class="song${i===cur?' on':''}" style="--gc:${G[g.g]}"><button class="play${prevI===i?' playing':''}" data-act="songPrev" data-i="${i}" aria-label="미리듣기">${prevI===i?'■':'▶'}</button>
     <div class="si"><b>${esc(g.n)}</b><span>${g.gn} · ${g.bpm} BPM</span><small>${esc(g.d)}</small></div>
     <button class="${i===cur?'btn-go':'btn'} sm" data-act="songSet" data-i="${i}">${i===cur?'선택됨':'선택'}</button></div>`).join('')}</div>
   ${picked?'<div class="row"><button class="btn sm" data-act="songSet" data-i="-1">자동으로 되돌리기</button></div>':''}</div>`};
-A.songPrev=d=>{Sound.init();const i=d.i==='mine'?'mine':+d.i;if(prevI===i){stopPreview();render();return}stopPreview();prevI=i;Sound.music(true,i==='mine'?MySong.song():IC.SONGS[i]);prevT=setTimeout(()=>{stopPreview();if(SCREEN==='song')render()},9000);render()};
-A.songSet=d=>{const i=d.i==='mine'?'mine':+d.i,id=P.id;if(id==='me'){if(DATA.career)DATA.career.song=i<0?null:i}else{DATA.songs=DATA.songs||{};if(i<0)delete DATA.songs[id];else DATA.songs[id]=i}save();render()};
+A.songPrev=d=>{Sound.init();const i=isMine(d.i)?d.i:+d.i;if(prevI===i){stopPreview();render();return}stopPreview();prevI=i;Sound.music(true,isMine(i)?MySong.song(i.slice(5)):IC.SONGS[i]);prevT=setTimeout(()=>{stopPreview();if(SCREEN==='song')render()},9000);render()};
+A.songSet=d=>{const i=isMine(d.i)?d.i:+d.i,id=P.id;if(id==='me'){if(DATA.career)DATA.career.song=i<0?null:i}else{DATA.songs=DATA.songs||{};if(i<0)delete DATA.songs[id];else DATA.songs[id]=i}save();render()};
 A.songBack=()=>{stopPreview();const r=P.ret;if(r)go(r.s,r.p);else go('home')};
-A.myPick=async(d,el)=>{const f=el.files&&el.files[0];if(!f)return;DATA.settings.songSeen=1;Sound.init();toast('음악 불러오는 중…');try{await MySong.put(f);if(MySong.buf){if(DATA.career&&(P.id==='me'||!P.id))DATA.career.song='mine';DATA.settings.homeSong=0;save();toast('🎵 내 음악 저장 완료! 입장곡·홈 음악으로 쓸게요')}}catch(e){toast('저장에 실패했어요')}render()};
-A.myDel=async()=>{await MySong.del();if(DATA.career&&DATA.career.song==='mine')DATA.career.song=null;save();stopPreview();render()};
+A.myPick=async(d,el)=>{const fs=[...(el.files||[])];if(!fs.length)return;DATA.settings.songSeen=1;Sound.init();toast(`음악 불러오는 중… (${fs.length}곡)`);let ok=0,first=null;
+  for(const f of fs){try{const it=await MySong.put(f);if(it){ok++;first=first||it}}catch(e){}}
+  if(ok){if(DATA.career&&(P.id==='me'||!P.id)&&DATA.career.song==null)DATA.career.song='mine:'+first.id;DATA.settings.homeSong=MySong.list.indexOf(first);save();toast(`🎵 ${ok}곡 저장 완료! 입장곡·홈 음악으로 고를 수 있어요`);if(SCREEN==='home')homeMusic(true)}else toast('저장에 실패했어요');
+  try{el.value=''}catch(e){}render()};
+A.myDel=async d=>{const id=d.id||(MySong.list[0]&&MySong.list[0].id);if(!id)return;await MySong.del(id);const k='mine:'+id;if(DATA.career&&(DATA.career.song===k||(DATA.career.song==='mine'&&id==='walk')))DATA.career.song=null;if(DATA.songs)for(const x in DATA.songs)if(DATA.songs[x]===k)delete DATA.songs[x];save();stopPreview();render()};
 A.songOpen=d=>{const id=d.id==='__a'?P.a.id:d.id;go('song',{id,d:d.id==='__a'?P.a:null,ret:{s:SCREEN,p:P}})};
 /* ---------- tale of the tape ---------- */
 V.tale=p=>{const a=p.a,b=p.b,st=x=>STYLES[x.style].name;
@@ -1205,7 +1219,7 @@ function tutOffer(){if(SCREEN!=='home'||document.querySelector('.tutpop'))return
   document.body.appendChild(el);el.addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.k;if(!k)return;el.remove();if(k==='skip'){DATA.tutDone=true;save();toast('연습 탭에서 언제든 다시 배울 수 있어요')}else startTutorial()})}
 /* one-time card so players find out they can walk out (and chill on the home screen) to their own song */
 function songTip(){if(SCREEN!=='home'||document.querySelector('.lockpop'))return;DATA.settings.songTip=1;save();const el=document.createElement('div');el.className='lockpop songtip';
-  el.innerHTML=`<div><i>🎵</i><b>내 노래로 등장!</b><p>좋아하는 노래를 <em>등장곡</em>과 <em>홈 음악</em>으로 쓸 수 있어요</p><span>폰에 있는 음악 파일(mp3·m4a) 하나만 고르면 끝. 노래는 이 폰에만 저장돼요.</span><div class="row"><label class="btn-go sm">노래 고르기<input type="file" accept="audio/*" hidden></label><button class="btn sm" data-k="x">나중에</button></div><small>나중에는 홈 화면 아래 음악 칸의 <em>＋ 내 노래</em>로 넣을 수 있어요</small></div>`;
+  el.innerHTML=`<div><i>🎵</i><b>내 노래로 등장!</b><p>좋아하는 노래를 <em>등장곡</em>과 <em>홈 음악</em>으로 쓸 수 있어요</p><span>폰에 있는 음악 파일(mp3·m4a)을 고르면 끝 — 여러 곡도 돼요. 노래는 이 폰에만 저장돼요.</span><div class="row"><label class="btn-go sm">노래 고르기<input type="file" accept="audio/*" multiple hidden></label><button class="btn sm" data-k="x">나중에</button></div><small>나중에는 홈 화면 아래 음악 칸의 <em>＋ 내 노래</em>로 넣을 수 있어요</small></div>`;
   document.body.appendChild(el);el.querySelector('input').addEventListener('change',e=>{const inp=e.target;el.remove();A.myPick({},inp)});
   el.addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.k;if(k||e.target===el)el.remove()})}
 function startTutorial(){const L=IC.byClass('lw').slice().sort((a,b)=>b.ovr-a.ovr),a=L[1]||L[0],b=L[L.length-1];
@@ -1242,7 +1256,7 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <div class="panel"><div class="eyebrow">설정</div>
   <div class="field"><span class="lbl">기본 난이도</span>${diffSeg()}<small class="hint2">커리어는 단체 등급 따라 자동: 지역 단체 루키 · IRON CAGE 프로 · 타이틀전 챔피언</small></div>
   <div class="field"><span class="lbl">라운드 시간</span>${secSeg()}</div>
-  <div class="field"><span class="lbl">🎵 내가 원하는 노래</span><div class="row"><label class="btn-go sm" style="cursor:pointer">📁 음악 파일 고르기<input type="file" accept="audio/*" data-change="myPick" hidden></label>${MySong.name?`<span class="mut">지금: ${esc(MySong.name)}</span><button class="btn sm" data-act="myDel">지우기</button>`:'<span class="mut">폰의 mp3·m4a를 입장곡·홈 음악으로</span>'}</div></div>
+  <div class="field"><span class="lbl">🎵 내가 원하는 노래</span><div class="row"><label class="btn-go sm" style="cursor:pointer">📁 음악 파일 고르기<input type="file" accept="audio/*" multiple data-change="myPick" hidden></label><span class="mut">${MySong.list.length?`내 노래 ${MySong.list.length}곡 · 입장곡 화면에서 고르고 지울 수 있어요`:'폰의 mp3·m4a를 입장곡·홈 음악으로 (여러 곡 가능)'}</span></div></div>
   <div class="field"><span class="lbl">선수 입장·소개</span>${seg('walk',['on','off'],s.walkout!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <div class="field"><span class="lbl">경기 중 코치 지시</span>${seg('coachS',['on','off'],s.coach!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <div class="field"><span class="lbl">타격 진동</span>${seg('hap',['on','off'],s.haptic!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>${IC.Haptic&&IC.Haptic.iosOK?'<button class="btn sm" data-hap="1" data-act="hapTest" style="align-self:flex-start">📳 진동 테스트</button><p class="mut" style="margin:-4px 0 0;font-size:12px">아이폰은 <b>설정 › 사운드 및 햅틱 › 시스템 햅틱</b>을 켜야 진동이 와요. (무음 모드여도 됩니다)</p>':''}
