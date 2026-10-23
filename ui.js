@@ -285,6 +285,15 @@ function cardsTable(rounds){
 /* ---------- home ---------- */
 /* ---------- home: game-style main menu ---------- */
 const ICO={
+  vs:'<path d="M5 4l7 8-7 8M19 4l-7 8 7 8"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  cond:'<path d="M3 12h4l2-5 4 10 2-5h6"/>',
+  rank:'<path d="M5 20V12M12 20V5M19 20v-8"/>',
+  belt:'<rect x="2.5" y="9" width="19" height="6" rx="1.5"/><circle cx="12" cy="12" r="3.6"/>',
+  stat:'<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>',
+  phone:'<rect x="7" y="2.5" width="10" height="19" rx="2.2"/><path d="M11 18.5h2"/>',
+  book:'<path d="M4 4.5h6a2 2 0 0 1 2 2V20a2 2 0 0 0-2-2H4zM20 4.5h-6a2 2 0 0 0-2 2V20a2 2 0 0 1 2-2h6z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
   wild:'<path d="M12 3c1 3 4 4.5 4 8.5A4 4 0 0 1 8 12c0-1.5.7-2.6 1.6-3.4C9.8 10 10.6 11 12 11c-1.2-2.6-.6-5.6 0-8z"/><path d="M7 15.5A5 5 0 0 0 17 15.5"/>',
   tour:'<path d="M3 5h5v4H3zM3 15h5v4H3zM8 7h3v10H8M11 12h4M15 10h6v4h-6z"/>',
   practice:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>',
@@ -346,7 +355,7 @@ function tabStep(dir){const cur=TABOF[SCREEN];if(!cur)return;const i=TABS.findIn
  addEventListener('keydown',e=>{if(!TABOF[SCREEN]||scr.hidden||/INPUT|SELECT|TEXTAREA/.test((document.activeElement||{}).tagName||''))return;if(e.key==='q'||e.key==='Q')tabStep(-1);if(e.key==='e'||e.key==='E')tabStep(1)})}
 
 function tabBar(){const cur=TABOF[SCREEN],c=DATA.career,ur=c?unread(c):0;
-  return `<header class="bh"><button class="blogo" data-act="tab" data-k="home">IRON CAGE</button><div class="bhr"><button class="bhi" data-act="${c?'nav':'career'}" data-to="cphone" aria-label="휴대폰">📱${ur?`<em class="badge">${ur}</em>`:''}</button><button class="bhi" data-act="nav" data-to="records" aria-label="기록 · 설정">⚙</button></div></header>
+  return `<header class="bh"><button class="blogo" data-act="tab" data-k="home"><i>IC</i><span>IRON CAGE</span></button><div class="bhr"><button class="bhi" data-act="${c?'nav':'career'}" data-to="cphone" aria-label="휴대폰">📱${ur?`<em class="badge">${ur}</em>`:''}</button><button class="bhi" data-act="nav" data-to="records" aria-label="기록 · 설정">⚙</button></div></header>
   <nav class="btabs" aria-label="모드"><div class="tbs" id="tbs">${TABS.map(t=>`<button class="tb${t.k===cur?' on':''}" data-act="tab" data-k="${t.k}"${t.k===cur?' aria-current="page"':''}><span>${t.n}</span></button>`).join('')}</div></nav>`}
 
 /* ladder rows around me: champion + the ranks closest to me */
@@ -355,17 +364,19 @@ function ladder(c){const L=c.order||[],me=L.indexOf('me'),want=new Set([0,1,2,3]
   return [...want].filter(i=>i>=0&&i<L.length&&i<=15).sort((a,b)=>a-b).slice(0,6).map(i=>{const id=L[i],d=id==='me'?{name:c.name}:getF(id,c);return{i,me:id==='me',name:d?d.name:'?'}})}
 
 /* home hero: FC-style "player profile" panel — the fighter on the left, the home hub (next fight, rank, belt, modes) on the right */
-const ppCell=(k,v,act,to,cls='',extra='')=>`<button class="ppc ${cls}" data-act="${act}"${to?` data-to="${to}"`:''}${extra}><span>${k}</span><b>${v}</b></button>`;
+const ppCell=(k,v,act,to,cls='',extra='',ic='',bar=null)=>`<button class="ppc ${cls}" data-act="${act}"${to?` data-to="${to}"`:''}${extra}>${ic?`<i class="ppi">${ico(ic)}</i>`:''}<span>${k}</span><b>${v}</b>${bar!=null?`<u class="ppbar"><s style="width:${Math.round(clamp(bar,0,1)*100)}%"></s></u>`:''}</button>`;
+const FLAG={'대한민국':'🇰🇷','일본':'🇯🇵','미국':'🇺🇸','브라질':'🇧🇷','러시아':'🇷🇺','멕시코':'🇲🇽','아일랜드':'🇮🇪','나이지리아':'🇳🇬','폴란드':'🇵🇱','스웨덴':'🇸🇪','카메룬':'🇨🇲','스페인':'🇪🇸','카자흐스탄':'🇰🇿','뉴질랜드':'🇳🇿','모로코':'🇲🇦','사모아':'🇼🇸','캐나다':'🇨🇦','태국':'🇹🇭','중국':'🇨🇳','영국':'🇬🇧','호주':'🇦🇺','조지아':'🇬🇪','네덜란드':'🇳🇱','프랑스':'🇫🇷','독일':'🇩🇪'};
 function homeProfile(c,P){
   const news=P.news.map(n=>`<span>${n}</span>`).join('<i>◆</i>');
   const tick=`<div class="pptk"><b>NEWS</b><div class="pptkm"><div class="tkr">${news}<i>◆</i>${news}<i>◆</i></div></div></div>`;
   return `<section class="pp${c?'':' new'}">
+   <i class="ppwm">IC</i><i class="ppbk tl"></i><i class="ppbk br"></i>
    <div class="ppl"><canvas class="ppfig${c?'':' sil'}" data-pid="${c?'me':'lw_0'}" data-mode="front"></canvas>${c?'':'<span class="ppq">?</span>'}
      <div class="ppmeta">${P.num?`<div class="ppnum">${P.num}</div>`:''}<div class="ppbio">${P.bio.map(([k,v])=>`<p><span>${k}</span><b>${v}</b></p>`).join('')}</div></div>
      <button class="ppgo" data-act="${P.act}"${P.to?` data-to="${P.to}"`:''}>${P.cta}</button></div>
    <div class="ppr">
-     <div class="pphd"><div class="ppovr"><i></i><b>${P.ovr}</b></div>
-       <div class="ppid"><small>${P.sub}</small><h2>${P.name}</h2><p>${P.line}</p></div></div>
+     <div class="pphd"><div class="ppovr"><i></i><b>${P.ovr}</b><small>OVR</small></div>
+       <div class="ppid"><small>${P.sub}</small><h2>${P.flag?`<span class="ppfl">${P.flag}</span>`:''}${P.name}</h2><p>${P.line}</p></div></div>
      <p class="pptag">${P.tag}</p>
      <div class="ppg">${P.cells.join('')}</div>
      ${tick}</div></section>`}
@@ -385,14 +396,15 @@ V.home=()=>{
       ${f?`<span class="bfn b"><b>"${esc(f.nick)}"</b><small>${oi===0?'C':oi>0&&oi<=15?'#'+oi:o.local||o.contender?'지역':'–'} · ${(f.rec||[0,0,0]).join('-')}</small></span>`:''}</section>`;
     bar=`<div class="blt"><span>${ev||`${esc(c.name)} · ${esc(clsName(c.cls))} ${cRank(c)}`}</span><button data-act="${act}"${to?` data-to="${to}"`:''}>${f?cta:'커리어 허브'}</button></div>`;
     const en=Math.round(c.energy||0);
-    {const me=meData(c),reg=c.tier==='regional',myI=c.order.indexOf('me'),num=reg?'':myI===0?'C':myI>0&&myI<=15?'#'+myI:'';
+    {const ur0=unread(c),me=meData(c),reg=c.tier==='regional',myI=c.order.indexOf('me'),num=reg?'':myI===0?'C':myI>0&&myI<=15?'#'+myI:'';
      const tag=c.isChamp?`${esc(clsName(c.cls))} 챔피언 · 방어 ${c.titleDef||0}회<br>왕좌를 지키는 중.`:reg?`지역 단체의 떠오르는 신인.<br>IRON CAGE 입성까지 ${Math.max(0,3-c.reg.w)}승.`:myI>0&&myI<=15?`랭킹 ${myI}위 컨텐더.<br>타이틀까지 ${myI}계단.`:'IRON CAGE 무대에 선 신인.<br>랭킹 진입을 노린다.';
      const opp=f?`"${esc(f.nick)}"`:'대기 중',when=!lab?'—':/OFFER/.test(lab)?`제안 ${c.offers.length}건`:lab.replace('MAIN EVENT · ','').replace('TONIGHT','오늘 밤');
      pp=homeProfile(c,{news,num,ovr:me.ovr,act,to,cta:f?cta:'커리어 허브',
       bio:[['나이',me.age+'세'],['키 · 리치',`${me.height}cm · ${me.reach}cm`],['출신',esc(c.from||'—')]],
       sub:`${esc(clsName(c.cls))} · ${STYLES[c.style].name}`,name:esc(c.name),line:`<em>${c.rec.join('-')}</em> 전적 · 인지도 ${Math.round(c.hype)} · ${c.streak}연승`,tag,
-      cells:[ppCell(f&&o&&o.title?'타이틀전':'다음 경기',opp,act,to,'hot'),ppCell('일정',esc(when),act,to),ppCell('컨디션',en+'%','nav','camp',en>=70?'ok':''),ppCell('랭킹',cRank(c),'nav','crank'),
-       ppCell(c.isChamp?'내 벨트':'노리는 벨트',c.isChamp?'챔피언':reg?'IRON CAGE 입성':'타이틀 도전','nav','crank','gold'),ppCell('능력치',c.pts>0?`+${c.pts} 포인트`:'훈련하기','nav','cstats',c.pts>0?'ok':''),ppCell('소식','휴대폰','nav','cphone'),ppCell('기록실','전적·통계','nav','records')]})}
+      flag:FLAG[c.from]||'',
+      cells:[ppCell(f&&o&&o.title?'타이틀전':'다음 경기',opp,act,to,'hot','','vs'),ppCell('일정',esc(when),act,to,'','','cal'),ppCell('컨디션',en+'%','nav','camp',en>=70?'ok':'','','cond',en/100),ppCell('랭킹',cRank(c),'nav','crank','','','rank',reg?Math.min(1,c.reg.w/3):myI===0?1:myI>0?1-(myI-1)/15:.05),
+       ppCell(c.isChamp?'내 벨트':'노리는 벨트',c.isChamp?'챔피언':reg?'프로 입성':'타이틀 도전','nav','crank','gold','','belt'),ppCell('능력치',c.pts>0?`+${c.pts} 포인트`:'훈련하기','nav','cstats',c.pts>0?'ok':'','','stat'),ppCell('소식',ur0?`새 메시지 ${ur0}`:'휴대폰','nav','cphone',ur0?'ok':'','','phone'),ppCell('기록실','전적·통계','nav','records','','','book')]})}
     left=`<button class="bpn" data-act="nav" data-to="cstats"><h4>TALE OF THE TAPE</h4>${[['종합',me.ovr],['인지도',Math.round(c.hype)],['연승',c.streak],['컨디션',en+'%'],['스타일',STYLES[c.style].name]].map(([k,v])=>`<p><span>${k}</span><b>${v}</b></p>`).join('')}${c.pts>0?`<em class="bpts">능력치 포인트 ${c.pts}</em>`:''}</button>`;
     right=c.tier==='regional'?`<button class="bpn" data-act="career"><h4>REGIONAL CIRCUIT</h4><p><span>지역 전적</span><b>${c.reg.w}-${c.reg.l}</b></p><p><span>입성까지</span><b>${Math.max(0,3-c.reg.w)}승</b></p><p class="me"><span>${esc(c.name)}</span><b>${c.rec.join('-')}</b></p></button>`
       :`<button class="bpn brk" data-act="nav" data-to="crank"><h4>${esc(clsName(c.cls))} RANKINGS</h4>${ladder(c).map(r=>`<p class="${r.me?'me':''}"><i class="${r.i===0?'c':''}">${r.i===0?'C':r.i}</i><span>${esc(r.name)}</span></p>`).join('')}</button>`;
@@ -409,8 +421,8 @@ V.home=()=>{
     belt=`<button class="bbelt" data-act="career"><span><small>노리는 벨트</small><b>IRON CAGE<br>챔피언십</b><em>6개 체급의 왕좌</em></span><img src="art/belt.webp" alt="챔피언 벨트"></button>`;
     pp=homeProfile(null,{news,num:'',ovr:'?',act:'career',to:'',cta:'선수 만들기',bio:[['나이','?'],['체급','?'],['출신','?']],
       sub:'커리어 모드 · 지역 단체 데뷔',name:'당신의 선수',line:'<em>0-0-0</em> 무명 신인',tag:'모든 챔피언은 무명에서 시작했다.<br>나만의 선수를 만들어 벨트에 도전하세요.',
-      cells:[ppCell('커리어','선수 만들기','career','','hot'),ppCell('목표','IRON CAGE 벨트','career','','gold'),ppCell('챔피언','6개 체급','nav','roster'),ppCell('레전드','명예의 전당','nav','hof'),
-       ppCell('토너먼트','8인 녹아웃','tour',''),ppCell('그랑프리','하룻밤 16인','gp',''),ppCell('체육관','유망주 영입','nav','gymm'),ppCell('기록·설정','전적·난이도','nav','records')]})}
+      cells:[ppCell('커리어','선수 만들기','career','','hot','','plus'),ppCell('목표','챔피언 벨트','career','','gold','','belt'),ppCell('챔피언','6개 체급','nav','roster','','','roster'),ppCell('레전드','명예의 전당','nav','hof','','','hof'),
+       ppCell('토너먼트','8인 녹아웃','tour','','','','tour'),ppCell('그랑프리','하룻밤 16인','gp','','','','gp'),ppCell('체육관','유망주 영입','nav','gymm','','','gym'),ppCell('기록·설정','전적·난이도','nav','records','','','book')]})}
   return `${pp}
   <div class="sech bsech"><h3>CHAMPIONS</h3><span>6개 체급의 왕좌</span></div>
   <div class="chrow">${ch.map(x=>`<button class="chc${x.id==='me'?' me':''}" data-act="nav" data-to="roster">${CHART[x.id]?`<img class="chimg" src="art/ch_${CHART[x.id]}.jpg" alt="" loading="lazy">`:`<canvas data-pid="${esc(x.id)}" data-mode="bust"></canvas>`}<span class="chk">${x.C.name}</span><span class="chn">"${esc(x.d.nick)}"</span><span class="chr">${(x.d.rec||[0,0,0]).join('-')}</span></button>`).join('')}</div>
