@@ -1905,15 +1905,26 @@ async function shareHof(x){if(!x||x.shared)return;let f='';try{f=JSON.stringify(
   await FB.add('hof',{name:String(x.name||'').slice(0,24),nick:String(x.nick||'').slice(0,24),from:String(x.from||'').slice(0,24),cls:String(x.cls||''),style:String(x.style||''),rec:(x.rec||[0,0,0]).slice(0,3).map(n=>n|0),belts:x.belts|0,def:x.titleDef|0,score:Math.round(x.score||0),first:!!x.first,high:String(x.high||'').slice(0,200),f,at:Date.now(),dev:devId()});
   x.shared=true;save();WHOF.t=0}
 A.hofShare=async()=>{const L=(DATA.hof||[]).filter(x=>!x.shared);if(!L.length)return;toast('세계 명예의 전당에 올리는 중…');let ok=0;for(const x of L){try{await shareHof(x);ok++}catch(e){}}
-  toast(ok?`🌍 ${ok}명 세계 명예의 전당에 올라갔어요!`:'지금은 올릴 수 없어요. 인터넷을 확인해 주세요');loadWorldHof(true);render()};
+  toast(ok?`🌍 ${ok}명 온라인 명예의 전당에 올라갔어요!`:'지금은 올릴 수 없어요. 인터넷을 확인해 주세요');loadWorldHof(true);render()};
 A.hofReload=()=>{loadWorldHof(true);render()};
-function worldHofPanel(){loadWorldHof();const L=WHOF.list,un=(DATA.hof||[]).filter(x=>!x.shared).length;
-  const body=WHOF.err&&!L?'<p>지금은 세계 명예의 전당에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.</p><div class="row"><button class="btn sm" data-act="hofReload">다시 시도</button></div>'
-    :!L?'<p>불러오는 중…</p>'
-    :!L.length?'<p>아직 아무도 없어요. 커리어에서 챔피언이 되고 은퇴해 첫 헌액자가 되어 보세요!</p>'
-    :`<div class="plaques">${L.map((x,i)=>{let f=null;try{f=x.f?JSON.parse(x.f):null}catch(e){}if(f)NETF['wh'+i]=f;
-      return plaque({pid:f?'net:wh'+i:'leg:0',gold:i<3||x.first,tag:`세계 ${i+1}위 · ${x.score}점${x.dev&&x.dev===DATA.dev?' · 나':''}`,name:x.name,nick:x.nick,from:x.from,cls:x.cls,style:x.style,rec:x.rec,belts:x.belts,def:x.def,score:x.score,line:x.high})}).join('')}</div>`;
-  return `<div class="panel"><div class="eyebrow">🌍 세계 명예의 전당</div><h3>모든 플레이어의 헌액자</h3>${body}${un?`<div class="row"><button class="btn-go sm" data-act="hofShare">내 헌액자 ${un}명 세계에 올리기</button></div>`:''}</div>`}
+/* ONLINE hall of fame: everyone's inductees, shared live — podium for the top 3, a ranked board for the rest */
+function worldHofPanel(){loadWorldHof();const L=WHOF.list,un=(DATA.hof||[]).filter(x=>!x.shared).length,me=DATA.dev;
+  const ago=WHOF.t?Math.max(0,Math.round((Date.now()-WHOF.t)/60000)):null,players=L?new Set(L.map(x=>x.dev)).size:0;
+  const head=`<div class="wh-top"><span class="wh-live"><i></i>ONLINE</span><span class="wh-sub">전 세계 플레이어의 기록이 실시간으로 모이는 곳</span></div>
+    <h3 class="wh-title">온라인 명예의 전당</h3>
+    <p class="wh-desc">내가 헌액되면 <b>다른 모든 플레이어 화면에도</b> 내 명판이 걸려요. 반대로 다른 사람의 전설도 여기서 볼 수 있어요.</p>
+    <div class="wh-stats"><div><b>${L?L.length:'–'}</b><span>헌액자</span></div><div><b>${L?players:'–'}</b><span>참여 플레이어</span></div><div><b>${ago==null?'–':ago===0?'방금':ago+'분 전'}</b><span>업데이트</span></div></div>`;
+  const rowF=x=>{let f=null;try{f=x.f?JSON.parse(x.f):null}catch(e){}return f};
+  const pod=(x,i)=>{const f=x&&rowF(x);if(f)NETF['wh'+i]=f;const cls=['gold','silver','bronze'][i];
+    if(!x)return `<div class="wh-pod ${cls} empty"><div class="wh-rank">${i+1}</div><div class="wh-q">?</div><b>빈 자리</b><span>당신의 이름을 새기세요</span></div>`;
+    return `<div class="wh-pod ${cls}${x.dev===me?' me':''}"><div class="wh-rank">${i+1}</div><canvas data-pid="${f?'net:wh'+i:'leg:0'}" data-mode="bust"></canvas><b>${esc(x.name)}</b><span>"${esc(x.nick||'')}" · ${clsName(x.cls)}</span><em>${x.score}점</em><small>${(x.rec||[]).join('-')} · 벨트 ${x.belts} · 방어 ${x.def}</small>${x.dev===me?'<i class="wh-me">나</i>':''}</div>`};
+  let body;
+  if(WHOF.err&&!L)body='<div class="wh-empty"><p>지금은 온라인 명예의 전당에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.</p><button class="btn sm" data-act="hofReload">다시 시도</button></div>';
+  else if(!L)body='<div class="wh-empty"><p class="wh-load">전 세계 기록 불러오는 중…</p></div>';
+  else{const order=[1,0,2];body=`<div class="wh-podium">${order.map(i=>pod(L[i],i)).join('')}</div>`+
+    (L.length>3?`<div class="wh-board">${L.slice(3).map((x,k)=>`<div class="wh-row${x.dev===me?' me':''}"><span class="r">${k+4}</span><span class="n"><b>${esc(x.name)}</b><small>"${esc(x.nick||'')}" · ${clsName(x.cls)} · ${(x.rec||[]).join('-')}</small></span><span class="s">${x.score}</span></div>`).join('')}</div>`:'')+
+    (!L.length?'<p class="wh-first">아직 아무도 없어요. <b>전 세계 1호 헌액자</b>가 될 기회예요. 커리어에서 헌액 기준을 넘기고 은퇴하면 바로 여기 올라가요.</p>':'');}
+  return `<section class="whof">${head}${body}${un?`<div class="row" style="justify-content:center;margin-top:12px"><button class="btn-go sm" data-act="hofShare">내 헌액자 ${un}명 온라인에 올리기</button></div>`:''}</section>`}
 function hofPlaque(x,i){return plaque({pid:'hof:'+i,gold:x.first,tag:`제${x.no}기 헌액${x.first?' · 퍼스트 밸럿':''}`,name:x.name,nick:x.nick,from:x.from,cls:x.cls,style:x.style,rec:x.rec,belts:x.belts,def:x.titleDef,score:x.score,line:x.high,quote:x.quote})}
 function hofBar(c){const h=hofScore(c),pct=Math.min(100,h.total/HOF_FIRST*100);
   return `<div class="hofbar"><div class="hb"><i style="width:${pct}%"></i><em style="left:${HOF_NEED/HOF_FIRST*100}%"></em></div><div class="between-row"><span>${h.total}점</span><span>헌액 ${HOF_NEED} · 퍼스트 밸럿 ${HOF_FIRST}</span></div></div>
@@ -1935,7 +1946,7 @@ A.cRetire=()=>{if(!retireArm){retireArm=true;render();return}retireArm=false;con
   DATA.hof=DATA.hof||[];let idx=-1;
   if(h.total>=HOF_NEED){const tw=(c.history||[]).filter(x=>x.res==='승'&&x.title),last=tw[tw.length-1];
     const high=tw.length?`${tw.length}번의 타이틀전 승리 · 첫 벨트는 ${last.opp}를 ${last.method==='판정'?'판정으로':last.round+'라운드 '+last.method+'로'} 꺾고 획득`:`${(c.history||[]).filter(x=>x.res==='승'&&x.method!=='판정').length}번의 피니시 승리`;
-    DATA.hof.unshift({no:DATA.hof.length+1,first:h.total>=HOF_FIRST,score:h.total,f:meData(c),name:c.name,nick:c.nick,from:c.from,cls:c.cls,style:c.style,rec:c.rec.slice(),belts:(c.belts||[]).length,titleDef:c.titleDef,high,quote:''});idx=0;unlock(['hof']);shareHof(DATA.hof[0]).then(()=>toast('🌍 세계 명예의 전당에도 이름이 올라갔어요!')).catch(()=>{})}
+    DATA.hof.unshift({no:DATA.hof.length+1,first:h.total>=HOF_FIRST,score:h.total,f:meData(c),name:c.name,nick:c.nick,from:c.from,cls:c.cls,style:c.style,rec:c.rec.slice(),belts:(c.belts||[]).length,titleDef:c.titleDef,high,quote:''});idx=0;unlock(['hof']);shareHof(DATA.hof[0]).then(()=>toast('🌍 온라인 명예의 전당에도 이름이 올라갔어요! 모든 플레이어가 볼 수 있어요')).catch(()=>{})}
   const name=c.name;DATA.career=null;save();go('hofc',{idx,name,score:h.total});if(idx>=0)Sound.play('reveal')};
 const SPEECH=['체육관 동료들, 그리고 나를 믿어 준 모든 팬에게 이 명판을 바칩니다.','나는 재능이 없었다. 그냥 아무도 나보다 오래 버티지 못했을 뿐이다.','케이지는 나에게 모든 것을 줬다. 이제 다음 세대 차례다.','내 이름 옆에 붙은 패배들까지, 전부 자랑스럽다.'];
 V.hofc=p=>{if(p.idx<0)return `<div class="panel"><div class="eyebrow">은퇴</div><h2 class="big">${esc(p.name)}, 글러브를 내려놓다</h2>
