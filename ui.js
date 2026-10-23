@@ -129,7 +129,7 @@ Sound.music=function(on,song){const genre=song&&song.g||'rock',K=song&&song.key|
   const sched=()=>{while(next<ac.currentTime+.4){const i=step%16,sw=T.swing&&i%2?beat/4*T.swing:0;try{T.f(i,step,next+sw,beat)}catch(e){if(!Sound._merr){Sound._merr=String(e);console.warn('music',e)}}next+=beat/4;step++}if(Math.random()<.22)cheer()};
   sched();this._mus={g,crowd,timer:setInterval(sched,100)};
 };
-Sound.roar=function(v=.4){if(!this.ac||!this.on)return;if(this.sample('cheer',Math.min(1.2,v*1.1)))return;try{const ac=this.ac,t=ac.currentTime;
+Sound.roar=function(v=.4){if(!this.ac||!this.on)return;v*=1.45;/* crowd reactions a lot louder */if(this.sample('cheer',Math.min(1.2,v*1.1)))return;try{const ac=this.ac,t=ac.currentTime;
   for(const [f,q,k] of [[450,.8,1],[1100,1.2,.6],[2400,1.5,.25]]){const s=ac.createBufferSource();s.buffer=this.nb2||this.nb;const fl=ac.createBiquadFilter();fl.type='bandpass';fl.frequency.value=f;fl.Q.value=q;const g=ac.createGain();
     g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v*k,t+.35);g.gain.exponentialRampToValueAtTime(.001,t+2.8);s.connect(fl).connect(g).connect(ac.destination);s.start(t,Math.random()*2);s.stop(t+2.9)}
   for(let i=0;i<6;i++)this.whoo(t+Math.random()*.9,v*.35)}catch(e){}};
@@ -171,7 +171,7 @@ const Crowd={g:null,src:null,lv:-1,
   start(){if(!Sound.ac||!Sound.on||this.g)return;try{const ac=Sound.ac,src=ac.createBufferSource();src.buffer=Sound.nb2||Sound.nb;src.loop=true;const g=ac.createGain();g.gain.value=0;
     for(const [f,q,v] of [[380,.7,.5],[1100,1,.22],[2500,1.3,.07]]){const fl=ac.createBiquadFilter();fl.type='bandpass';fl.frequency.value=f;fl.Q.value=q;const cg=ac.createGain();cg.gain.value=v;src.connect(fl);fl.connect(cg);cg.connect(g)}
     g.connect(ac.destination);src.start();this.g=g;this.src=src;this.lv=-1}catch(e){}},
-  set(I,muted,roar=1){if(!this.g)return;const v=muted?0:Math.min(1.6,(.05+.55*Math.pow(Math.max(0,I),1.2))*roar);if(Math.abs(v-this.lv)<.01)return;this.lv=v;try{this.g.gain.setTargetAtTime(v,Sound.ac.currentTime,I>this.lv?.12:.6)}catch(e){}},
+  set(I,muted,roar=1){if(!this.g)return;const v=muted?0:Math.min(2.4,(.14+.95*Math.pow(Math.max(0,I),1.15))*roar);/* louder arena bed during the fight */if(Math.abs(v-this.lv)<.01)return;this.lv=v;try{this.g.gain.setTargetAtTime(v,Sound.ac.currentTime,I>this.lv?.12:.6)}catch(e){}},
   stop(){if(!this.g)return;const g=this.g,s=this.src;this.g=null;this.src=null;try{g.gain.setTargetAtTime(0,Sound.ac.currentTime,.3);setTimeout(()=>{try{s.stop();g.disconnect()}catch(e){}},1200)}catch(e){}}};
 /* ring announcer: browser speech synthesis, Korean voice, slow and dramatic */
 const Announcer={voice:null,
@@ -227,7 +227,7 @@ function genFillers(cls,seed){
 /* ---------- router ---------- */
 let SCREEN='home',P={};
 const V={},A={};
-function go(s,p){if(!(CINE&&CINE.o.keep))releaseGl();if(typeof Crowd!=='undefined')Crowd.stop();if(s==='quick'||s==='legend'||s==='legsel')s='home';if(typeof Net!=='undefined'&&Net.mr&&!['oroom','oresult','online','opick'].includes(s))Net.leaveMatch();if(s!=='oresult'&&typeof removeOverlay==='function')removeOverlay();stopLoop();Announcer.stop();if(!(s==='home'&&SCREEN==='home'))Sound.music(false);if(immersive)setImmersive(false);document.querySelector('.app').classList.remove('wide');if(s!=='home')stopDemo();SCREEN=s;P=p||{};game.hidden=true;scr.hidden=false;render();window.scrollTo(0,0);if(s==='home'){startDemo();homeMusic()}}
+function go(s,p){if(!(CINE&&CINE.o.keep))releaseGl();if(typeof Crowd!=='undefined')Crowd.stop();if(s==='quick'||s==='legend'||s==='legsel')s='home';if(typeof Net!=='undefined'&&Net.mr&&!['oroom','oresult','online','opick'].includes(s))Net.leaveMatch();if(s!=='oresult'&&typeof removeOverlay==='function')removeOverlay();stopLoop();Announcer.stop();if(!(s==='home'&&SCREEN==='home'))Sound.music(false);if(immersive)setImmersive(false);document.querySelector('.app').classList.remove('wide');if(s!=='home')stopDemo();SCREEN=s;P=p||{};game.hidden=true;scr.hidden=false;render();window.scrollTo(0,0);if(s==='home'){startDemo();homeMusic();setTimeout(()=>{try{checkUnlocks();if(!DATA.tutDone&&!document.getElementById('titleScr')&&!document.querySelector('.lockpop'))tutOffer()}catch(e){}},500)}}
 function render(){if(!(CINE&&CINE.o.keep))releaseGl();const tb=!!TABOF[SCREEN];document.body.classList.toggle('tabbed',tb);scr.innerHTML=(tb?tabBar():'')+V[SCREEN](P);after();if(tb){const on=scr.querySelector('.tb.on');if(on)on.scrollIntoView({block:'nearest',inline:'center'})}}
 function after(){if(SCREEN==='weigh')requestAnimationFrame(runWeigh);if(SCREEN==='chub')requestAnimationFrame(runPress);if(SCREEN==='cpost'){requestAnimationFrame(runBelt);requestAnimationFrame(runTaunt)}drawPortraits()}
 function drawPortraits(){scr.querySelectorAll('canvas[data-pid]').forEach(el=>{const id=el.dataset.pid,d=id==='__wopp'?(DATA.wildc&&DATA.wildc.next):id==='__tmp'?P._tmp:id.startsWith('hof:')?((DATA.hof||[])[+id.slice(4)]||{}).f:id.startsWith('leg:')?LEG[+id.slice(4)]:id.startsWith('net:')?NETF[id.slice(4)]:getF(id);if(d)IC.Draw.portrait(el,d,el.dataset.side||'a',el.dataset.mode||'full')})}
@@ -237,7 +237,18 @@ scr.addEventListener('input',e=>{const el=e.target.closest('[data-bind]');if(el&
 scr.addEventListener('change',e=>{const el=e.target.closest('[data-change]');if(el&&A[el.dataset.change])A[el.dataset.change](el.dataset,el)});
 $('#home').addEventListener('click',()=>{const S=IC.Fight.S;if(S&&S.rp&&S.rp.hl){S.hlDone=null;S.hlQ=[];S.rp=null;S.mode='over';stopLoop();go('home');return}if(!game.hidden&&S&&S.mode!=='over'){openPause();return}go('home')});
 cv.addEventListener('click',()=>{const S=IC.Fight.S;if(S&&S.rp&&S.rp.hl&&S.rp.frames)S.rp.i=S.rp.frames.length});
-A.nav=d=>go(d.to);
+/* ---------- mode unlocks: new players open the game step by step through the career ---------- */
+const hasTitle=c=>!!(c&&(c.tfDone||c.isChamp||(c.belts||[]).length));
+const UNL={wild:{n:'야생 리그',need:'커리어 첫 승',ok:c=>c&&c.rec[0]>=1},
+  compete:{n:'대회',need:'커리어 3승',ok:c=>c&&c.rec[0]>=3},tour:{n:'토너먼트',need:'커리어 3승',ok:c=>c&&c.rec[0]>=3},
+  gp:{n:'그랑프리',need:'IRON CAGE 입성',ok:c=>c&&c.tier!=='regional'},gymm:{n:'체육관 모드',need:'IRON CAGE 입성',ok:c=>c&&c.tier!=='regional'},
+  hof:{n:'레전드 도전',need:'첫 타이틀전',ok:hasTitle},legsel:{n:'레전드 도전',need:'첫 타이틀전',ok:hasTitle},online:{n:'온라인',need:'첫 타이틀전',ok:hasTitle}};
+function locked(k){const u=UNL[k];if(!u||DATA.unlockAll)return null;DATA.unl=DATA.unl||{};if(DATA.unl[k])return null;if(u.ok(DATA.career)){DATA.unl[k]=1;return null}return u}
+function lockPop(u){const el=document.createElement('div');el.className='lockpop';el.innerHTML=`<div><i>🔒</i><b>${u.n}</b><p>잠금 해제 조건 · <em>${u.need}</em></p><span>커리어 모드에서 경기를 이겨 나가면 새 모드가 열려요.</span><div class="row"><button class="btn-go sm" data-k="c">커리어로</button><button class="btn sm" data-k="x">닫기</button></div></div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.k;if(k||e.target===el){el.remove();if(k==='c')A.career()}})}
+function checkUnlocks(){DATA.unl=DATA.unl||{};if(DATA.unlockAll)return;const got=[];for(const k in UNL){if(!DATA.unl[k]&&UNL[k].ok(DATA.career)){DATA.unl[k]=1;if(!got.includes(UNL[k].n))got.push(UNL[k].n)}}
+  if(got.length){save();got.forEach((n,i)=>setTimeout(()=>{toast(`🔓 ${n} 잠금 해제!`);try{Sound.sting(true)}catch(e){}},400+i*1600))}}
+A.nav=d=>{const u=locked(d.to);if(u){lockPop(u);return}go(d.to)};
 
 /* ---------- components ---------- */
 const back=(to,label='← 메인 메뉴')=>`<button class="back" data-act="nav" data-to="${to}">${label}</button>`;
@@ -338,7 +349,7 @@ function tickerItems(){const c=DATA.career,R=DATA.records,ch=champsOf(),out=[];
 /* ================= FC-style hub: tab bar on top, my career fighter on home ================= */
 const TABS=[{k:'home',n:'홈'},{k:'career',n:'커리어'},{k:'wild',n:'야생 리그'},{k:'compete',n:'대회'},{k:'practice',n:'연습'},{k:'online',n:'온라인'},{k:'archive',n:'기록'}];
 const TABOF={home:'home',chub:'career',ccreate:'career',wild:'wild',compete:'compete',practice:'practice',online:'online',archive:'archive'};
-A.tab=d=>{const k=d.k;if(k===TABOF[SCREEN]&&k!=='career')return;try{IC.Haptic&&IC.Haptic.tap()}catch(e){}if(k==='career')A.career();else go(k)};
+A.tab=d=>{const k=d.k;{const u=locked(k);if(u){lockPop(u);return}}if(k===TABOF[SCREEN]&&k!=='career')return;try{IC.Haptic&&IC.Haptic.tap()}catch(e){}if(k==='career')A.career();else go(k)};
 function tabStep(dir){const cur=TABOF[SCREEN];if(!cur)return;const i=TABS.findIndex(t=>t.k===cur),n=TABS[(i+dir+TABS.length)%TABS.length];A.tab({k:n.k})}
 /* swipe left/right anywhere on a tabbed screen = next/prev tab (like LB/RB) */
 {let sx=0,sy=0,ok=false;scr.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;ok=!!TABOF[SCREEN]&&!e.target.closest('.tbs,.chrow,.ticker,input,select,textarea,canvas.sw')},{passive:true});
@@ -347,7 +358,7 @@ function tabStep(dir){const cur=TABOF[SCREEN];if(!cur)return;const i=TABS.findIn
 
 function tabBar(){const cur=TABOF[SCREEN],c=DATA.career,ur=c?unread(c):0;
   return `<header class="bh"><button class="blogo" data-act="tab" data-k="home">IRON CAGE</button><div class="bhr"><button class="bhi" data-act="${c?'nav':'career'}" data-to="cphone" aria-label="휴대폰">📱${ur?`<em class="badge">${ur}</em>`:''}</button><button class="bhi" data-act="nav" data-to="records" aria-label="기록 · 설정">⚙</button></div></header>
-  <nav class="btabs" aria-label="모드"><div class="tbs" id="tbs">${TABS.map(t=>`<button class="tb${t.k===cur?' on':''}" data-act="tab" data-k="${t.k}"${t.k===cur?' aria-current="page"':''}><span>${t.n}</span></button>`).join('')}</div></nav>`}
+  <nav class="btabs" aria-label="모드"><div class="tbs" id="tbs">${TABS.map(t=>`<button class="tb${t.k===cur?' on':''}" data-act="tab" data-k="${t.k}"${t.k===cur?' aria-current="page"':''}><span>${locked(t.k)?'🔒 ':''}${t.n}</span></button>`).join('')}</div></nav>`}
 
 /* ladder rows around me: champion + the ranks closest to me */
 function ladder(c){const L=c.order||[],me=L.indexOf('me'),want=new Set([0,1,2,3]);
@@ -699,7 +710,7 @@ V.gpset=()=>{const list=IC.byClass(GPC).slice().sort((a,b)=>b.ovr-a.ovr);
 A.gpcls=d=>{GPC=d.v;GPME=null;render()};A.gppick=d=>{GPME=GPME===d.id?null:d.id;render()};
 A.gpstart=()=>{let ids=IC.byClass(GPC).map(f=>f.id).filter(x=>x!==GPME).sort(()=>Math.random()-.5).slice(0,15);ids.splice(Math.floor(Math.random()*16),0,GPME);
   const br=[[]];for(let i=0;i<16;i+=2)br[0].push([ids[i],ids[i+1]]);DATA.gp={cls:GPC,me:GPME,stage:0,br,win:[[],[],[],[]],out:false,champ:null,hp:{h:100,b:100,l:100},log:[]};save();go('gpb')};
-A.gp=()=>{if(DATA.gp&&DATA.gp.stage!=='done')go('gpb');else go('gpset')};
+A.gp=()=>{{const u=locked('gp');if(u){lockPop(u);return}}if(DATA.gp&&DATA.gp.stage!=='done')go('gpb');else go('gpset')};
 function gpAdvance(){const G=DATA.gp,s=G.stage;
   G.br[s].forEach((m,i)=>{if(G.win[s][i])return;const r=IC.Fight.sim(getF(m[0]),getF(m[1]),GPR[s]);G.win[s][i]=r.winner==='a'?m[0]:m[1];G.log.unshift(`${GPS[s]} · ${getF(G.win[s][i]).name} ${r.method} 승`)});
   if(s<3){G.br[s+1]=[];for(let i=0;i<G.win[s].length;i+=2)G.br[s+1].push([G.win[s][i],G.win[s][i+1]]);G.stage=s+1}
@@ -920,6 +931,7 @@ function loop(now){
   if(USE3D){try{IC.R3D.render(S,w,h);IC.Draw.render(S,ctx,w,h,{project:IC.R3D.project})}catch(e){console.error(e);USE3D=false;gl.hidden=true}}
   else IC.Draw.render(S,ctx,w,h);
   game.classList.toggle('walking',!!S.walk);game.classList.toggle('replaying',S.mode==='replay');game.classList.toggle('deciding',S.mode==='decision'||S.mode==='outro');game.classList.toggle('tutorial',!!(S.practice&&S.tasks));
+  if(S.tut&&S.tasks&&!S.tutDone&&S.tasks.every(tk=>(S.events[tk.ev]||0)>0)){S.tutDone=true;DATA.tutDone=true;save();setTimeout(()=>{stopLoop();try{IC.Fight.stop()}catch(e){}go('home');toast('튜토리얼 완료! 이제 커리어에서 첫 경기를 해 보세요');try{Sound.applause(3)}catch(e){}},1400)}
   Crowd.set(IC.Fight.intensity(),!!S.walk||S.mode==='between',(S.arena&&S.arena.roar)||1);
   if(IC.KO&&!S.demo&&!S.practice&&!(CFG&&CFG.online==='spec')&&['fight','ko','intro'].includes(S.mode)&&!S.walk){IC.KO.capture(USE3D?[gl,cv]:[cv],S);
     if(S.mode==='ko'&&S.result&&!S.koSeen){S.koSeen=1;const r=S.result,W=r.winner==='a'?S.a:S.b,L=W===S.a?S.b:S.a;
@@ -944,7 +956,7 @@ function startFight(cfg){
   if(cfg.dirtyA)S.a.dirtyMul=cfg.dirtyA;
   if(cfg.startHp){S.a.head=cfg.startHp.h;S.a.body=cfg.startHp.b;S.a.legs=S.a.lgL=S.a.lgR=cfg.startHp.l;S.a.st=Math.min(S.a.st,100-(100-S.a.body)*.4)}
   if(cfg.weigh){if(!cfg.weigh.a.ok)S.a.st=S.a.st*.85;if(!cfg.weigh.b.ok)S.b.st=S.b.st*.85}
-  if(cfg.practice)S.tasks=TASKS;
+  if(cfg.practice)S.tasks=cfg.tut?TASKS.slice(0,4):TASKS;if(cfg.tut)S.tut=true;
   lastKey='';buildPad();document.querySelector('.app').classList.add('wide');autoImmersive();requestAnimationFrame(fit);startLoop();window.scrollTo(0,0);
 }
 function buildPad(){
@@ -1020,7 +1032,7 @@ function updatePad(){
 }
 cv.addEventListener('pointerdown',()=>{const S=IC.Fight.S;if(!S)return;if(S.walk)return;if(S.sub)IC.Fight.mash()});
 {const sr=document.createElement('button');sr.className='skipr';sr.textContent='리플레이 스킵 ⏭';sr.addEventListener('click',e=>{e.stopPropagation();IC.Fight.skipReplay()});$('#stage').appendChild(sr);
- const stt=document.createElement('button');stt.className='skipt';stt.textContent='튜토리얼 건너뛰기 ⏭';stt.addEventListener('click',e=>{e.stopPropagation();const S=IC.Fight.S;if(S)S.tasks=null;game.classList.remove('tutorial')});$('#stage').appendChild(stt)}
+ const stt=document.createElement('button');stt.className='skipt';stt.textContent='튜토리얼 건너뛰기 ⏭';stt.addEventListener('click',e=>{e.stopPropagation();const S=IC.Fight.S;if(S){S.tasks=null;if(S.tut){DATA.tutDone=true;save()}}game.classList.remove('tutorial')});$('#stage').appendChild(stt)}
 {const sk=document.createElement('button');sk.className='skipw';sk.textContent='건너뛰기 ⏭';sk.addEventListener('click',e=>{e.stopPropagation();IC.Fight.skipIntro()});$('#stage').appendChild(sk)}
 const MOVEK={a:'left',arrowleft:'left',d:'right',arrowright:'right',w:'up',arrowup:'up',s:'dn',arrowdown:'dn'};
 addEventListener('keydown',e=>{
@@ -1168,6 +1180,12 @@ V.result=p=>{const r=p.res,a=r.a,b=r.b,me=r.winner==='a';
 
 /* ---------- practice ---------- */
 const TASKS=[{ev:'land:jab',label:'잽 맞히기'},{ev:'land:bodyshot',label:'바디샷 맞히기'},{ev:'land:lowkick',label:'로킥 맞히기'},{ev:'slip',label:'회피로 피하기'},{ev:'clinch',label:'클린치 잡기'},{ev:'land:c_knee',label:'클린치 바디 니킥'},{ev:'td',label:'테이크다운 성공'},{ev:'pass',label:'가드 패스'},{ev:'sub',label:'서브미션 걸기'},{ev:'kd',label:'녹다운 뺏기'}];
+/* ---------- first-run tutorial: a short guided practice bout (4 basic tasks) ---------- */
+function tutOffer(){if(SCREEN!=='home'||document.querySelector('.tutpop'))return;const el=document.createElement('div');el.className='lockpop tutpop';
+  el.innerHTML=`<div><i>🥊</i><b>처음 오셨나요?</b><p>1분 튜토리얼로 <em>기본 조작</em>부터 배워요</p><span>잽 · 바디샷 · 로킥 · 회피 4가지만 해 보면 끝나요.</span><div class="row"><button class="btn-go sm" data-k="go">튜토리얼 시작</button><button class="btn sm" data-k="skip">건너뛰기</button></div></div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.k;if(!k)return;el.remove();if(k==='skip'){DATA.tutDone=true;save();toast('연습 탭에서 언제든 다시 배울 수 있어요')}else startTutorial()})}
+function startTutorial(){const L=IC.byClass('lw').slice().sort((a,b)=>b.ovr-a.ovr),a=L[1]||L[0],b=L[L.length-1];
+  startFight({a,b,rounds:1,label:'튜토리얼 · 기본 조작',tut:true,practice:{ai:'defend',inf:true},onResult:res=>go('home')})}
 const PR={cls:'lw',a:null,b:null,ai:'defend',inf:true};
 V.practice=()=>{const list=IC.byClass(PR.cls).slice().sort((a,b)=>b.ovr-a.ovr);
   return `${back('home')}<div class="panel"><div class="eyebrow">연습</div><h2 class="big">기술 익히기</h2>
@@ -1213,7 +1231,7 @@ A.reset=()=>{if(!resetArm){resetArm=true;render();return}resetArm=false;DATA=D0(
 
 /* ---------- tournament ---------- */
 const TS={cls:'lw',me:null};
-A.tour=()=>{if(DATA.tour&&DATA.tour.stage!=='done')go('bracket');else go('tsetup')};
+A.tour=()=>{{const u=locked('tour');if(u){lockPop(u);return}}if(DATA.tour&&DATA.tour.stage!=='done')go('bracket');else go('tsetup')};
 V.tsetup=()=>{const list=IC.byClass(TS.cls).slice().sort((a,b)=>b.ovr-a.ovr);
   return `${back('home')}<div class="panel"><div class="eyebrow">토너먼트</div><h2 class="big">8인 녹아웃</h2><p>한 체급 8명이 8강, 4강, 결승을 치릅니다. 내 경기는 직접, 나머지는 시뮬레이션으로 진행됩니다. 결승은 5라운드.</p>
   ${classTabs(TS.cls,'tcls')}<div class="flist">${list.map((f,i)=>frow(f,{act:'tpick',rank:i,sel:f.id===TS.me?'a':''})).join('')}</div>
@@ -1634,6 +1652,7 @@ A.cFight=()=>{const c=DATA.career,o=c.fight,a=meData(c),b=getF(o.opp,c),oi=c.ord
   /* rival: always the same fighter for this save, and he fights you with what he has learned about your habits */
   const isRival=!!(c.rival&&b.id===c.rival.id),pat=isRival&&c.pat?Object.fromEntries(Object.entries(c.pat).map(([k,v])=>[k,Math.min(6,v*1.4)])):null;
   /* career difficulty follows the promotion tier: regional = rookie, IRON CAGE = pro, title / super fight = champion */
+  if(o.title||o.kc)c.tfDone=true;
   const diff=c.league==='super'?(hofScore(c).total>=HOF_NEED?'hof':'legend'):(o.title||o.kc)?'hard':(c.tier==='regional'||o.local||o.contender)?'easy':'normal';
   const lab2=(c.league==='super'?'슈퍼리그 · ':'')+label+` · ${DIFFS[diff].label} 난이도`;
   go('tale',{a,b,rounds:o.rounds,label:lab2,rivalRead:isRival?patNote(c.pat):null,title:o.title,mustWeigh:true,risk,scout:c.camp&&c.camp.scout,backTo:'chub',run:(w={})=>{if(w.weigh&&!w.weigh.a.ok){o.penalty=.2;save()}startFight({arena:o.title||o.kc?3:(c.tier==='regional'||o.local||o.contender)?1:(c.order.indexOf('me')>15&&(oi<0||oi>15))?4:2,weigh:w.weigh,oppMul:(o.oppMul||1)*(c.league==='super'?1.1:1),diff,pat,a,b,rounds:o.rounds,title:o.title,label:lab2,condition:.8+.2*c.energy/100,myMul:campMul(c),scoutMul:c.camp&&c.camp.scout?.93:1,onResult:res=>careerResult(res)})}})};
@@ -2183,6 +2202,7 @@ Store.init();Net.init();
 const loc=Store.local();if(loc&&loc.v===3)DATA=Object.assign(D0(),loc);
 if(!DATA.settings.wk2){DATA.settings.wk2=1;DATA.settings.walkout=true}
 DATA.settings.sound=true;DATA.settings.voiceOn=false;Sound.on=true;loadCustom();
+{const R=DATA.records||{};if(DATA.unlv==null){DATA.unlv=1;const old=!!(DATA.career||DATA.wildc||DATA.tour||DATA.gp||DATA.gymm||(DATA.archive||[]).length||Object.keys(DATA.ach||{}).length||(R.quick&&(R.quick.w+R.quick.l+R.quick.d)));if(old){DATA.unlockAll=true;DATA.tutDone=true}try{Store.save(DATA)}catch(e){}}}
 topinfo();go('home');try{showTitle()}catch(e){console.error(e)}
 Store.load().then(d=>{if(d&&d.v===3&&(d.at||0)>(DATA.at||0)){DATA=Object.assign(D0(),d);DATA.settings.sound=true;DATA.settings.voiceOn=false;if(!DATA.settings.wk2){DATA.settings.wk2=1;DATA.settings.walkout=true}loadCustom();topinfo();if(SCREEN==='home'&&game.hidden)render()}});
 })(window.IC);

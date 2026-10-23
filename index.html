@@ -750,6 +750,15 @@ tbody tr:nth-child(even) td{background:rgba(255,255,255,.025)}
 .vsc{border-radius:3px!important;border:1px solid rgba(255,255,255,.08)!important;overflow:hidden;position:relative}
 .vsbox .vsc:first-child{background:radial-gradient(90% 70% at 50% 18%,rgba(61,127,240,.42),rgba(8,14,30,.95) 72%)!important;border-top:3px solid #3d7ff0!important}
 .vsbox .vsc:last-child{background:radial-gradient(90% 70% at 50% 18%,rgba(224,74,58,.42),rgba(30,8,8,.95) 72%)!important;border-top:3px solid var(--bred)!important}
+
+/* lock / tutorial popup */
+.lockpop{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(0,0,0,.66);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);padding:20px}
+.lockpop>div{width:min(360px,100%);text-align:center;padding:22px 20px 18px;background:linear-gradient(180deg,#151517,#0b0b0c);border:1px solid rgba(217,165,32,.45);border-top:3px solid var(--bred);box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.lockpop i{display:block;font-style:normal;font-size:34px;margin-bottom:6px}
+.lockpop b{display:block;font:400 30px/1 var(--bcond);letter-spacing:.06em;color:#fff}
+.lockpop p{margin:8px 0 4px;color:#ddd;font-size:14px}.lockpop em{font-style:normal;color:var(--bgold);font-weight:800}
+.lockpop span{display:block;color:#999;font-size:12px;margin-bottom:14px}
+.lockpop .row{justify-content:center;gap:8px}
 </style>
 
 <div class="app">
