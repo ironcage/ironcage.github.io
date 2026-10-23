@@ -316,8 +316,10 @@ const HAIR_NEAR={shaved:['short','mohawk','long'],short:['shaved','mohawk','long
 function poolNearest(k){if(!k)return null;if(POOL.has(k))return k;const [e,h,b]=k.split('_'),nb=b==='b'?'n':'b';
   for(const E of [e,...(POOL_NEAR[e]||[])])for(const H of [h,...HAIR_NEAR[h]])for(const B of [b,nb]){const t=`${E}_${H}_${B}`;if(POOL.has(t))return t}return null}
 /* multi-angle head sets (art/head/<key>_<view>.png, views: side tq front down up) — keys listed here once their turnaround sheet is cut */
-const POOLV=new Set([]);
-function headKey(d){if(!d)return null;const id=d.id==='__tmp'?null:d.id;if(id&&CHART[id])return 'ch_'+CHART[id];return poolNearest(photoKey(d))}
+/* turnaround head sets that exist (5 views each); only used when PHOTO_HEADS is on */
+const POOLV=new Set(["ch_fly", "ch_fw", "ch_hw", "ch_lw", "ch_mw", "ch_ww", "u_g_bw_gp3avr", "u_g_fly_lwrmvv", "u_g_fw_cexg2y", "u_g_lhw_16nnu2e", "u_g_lw_19pe5vl", "u_g_mw_182726z", "u_g_ww_hebf2g", "u_hw_25", "u_lw_2", "u_mw_16", "u_ww_8"]);
+const UNIQ=new Set(["g_bw_gp3avr", "g_fly_lwrmvv", "g_fw_cexg2y", "g_lhw_16nnu2e", "g_lw_19pe5vl", "g_mw_182726z", "g_ww_hebf2g", "hw_25", "lw_2", "mw_16", "ww_8"]);
+function headKey(d){if(!d)return null;const id=d.id==='__tmp'?null:d.id;if(id&&CHART[id])return 'ch_'+CHART[id];if(id&&UNIQ.has(id))return 'u_'+id;return poolNearest(photoKey(d))}
 IC.headHasViews=d=>POOLV.has(headKey(d));
 /* photo heads switched off for now (drawn heads everywhere); flip to true to bring them back */
 const PHOTO_HEADS=false;
