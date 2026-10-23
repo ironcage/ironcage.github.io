@@ -597,6 +597,7 @@ function poseStand(F,O,S){
   if(PK==='chest'){const hit=Math.floor(pt/9)%2;near={x:chest.x+f*(hit?6:30),y:chest.y+(hit?10:-50)};far={x:chest.x+f*(hit?30:4),y:chest.y+(hit?-50:12)};elbN='fwd';elbF='fwd'}
   if(PK==='waikru'){const k=clamp(pt/14,0,1);front={x:x+f*18,y:GY};back={x:x-f*30,y:GY};kneeN='down';kneeF='down';near={x:chest.x+f*14,y:chest.y-26*k};far={x:chest.x+f*10,y:chest.y-24*k};elbN='down';elbF='down'}
   if(PK==='taunt'){const w=Math.sin(pt*.25);near={x:chest.x+f*(24+w*10),y:chest.y-60-w*8};far={x:chest.x-f*20,y:chest.y-40+w*10};elbN='fwd';elbF='back'}
+  if(PK==='arms'){near={x:chest.x+f*42,y:chest.y+6};far={x:chest.x-f*36,y:chest.y+4};elbN='down';elbF='down'}
   if(PK==='bow'){near={x:chest.x+f*8,y:chest.y+18};far={x:chest.x+f*4,y:chest.y+22};elbN='down';elbF='down'}
   if(st==='stroll'){near={x:hip.x+f*8+Math.sin(wk)*12,y:hip.y-4};far={x:hip.x-f*6-Math.sin(wk)*12,y:hip.y-2};elbN='fwd';elbF='fwd'}
   if(st==='dejected'){near={x:hip.x+f*13,y:hip.y-10};far={x:hip.x-f*13,y:hip.y-10};elbN='fwd';elbF='back'}
@@ -1131,6 +1132,14 @@ function aisleScene(S){
     if(c.flag){ctx.strokeStyle='#c9c9c9';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(p.x+12,170);ctx.lineTo(p.x+12,96);ctx.stroke();drawFlag(p.x+13,98,84,54,F.d.from,t)}
     ctx.restore();
   }
+  /* cage-side ritual: the cutman greases the face, the commission checks gloves and body, then a hug with the coach */
+  if(W0.rit>0&&W0.rit<120){const r=W0.rit,ox=ax+56+Math.max(0,r-82)*1.6,face=r<45,check=r>=45&&r<82;
+    const o={kind:'ref',logo:'',look:{skin:'#d9a47e',hair:'#2a2a2a',hairStyle:'buzz',beard:false},skinNow:'#d9a47e',shirt:'#101114',pants:true,corner:'#888',head:100,body:100,legs:100,cuts:0,sweat:0,t};
+    const w=Math.sin(t*.5),nh=face?{x:ax+14,y:207+w*4}:check?{x:ax+12,y:262+Math.abs(w)*10}:{x:ox-4,y:286},fh=face?{x:ax+20,y:214}:check?{x:ax+18,y:244+Math.abs(Math.sin(t*.5+1))*10}:{x:ox+6,y:288};
+    ctx.save();ctx.translate(ox,GY);ctx.scale(.93,.93);ctx.translate(-ox,-GY);shadowAt(ox,40);
+    drawBody(o,{f:-1,hip:{x:ox,y:300},chest:{x:ox-(face||check?6:0),y:233},tilt:face||check?.12:0,nearHand:nh,farHand:fh,nearFoot:{x:ox-12,y:GY},farFoot:{x:ox+12,y:GY},kneeN:'fwd',kneeF:'fwd',elbN:'down',elbF:'down'});
+    ctx.fillStyle='rgba(255,255,255,.75)';ctx.font='bold 8px sans-serif';ctx.textAlign='center';ctx.fillText(face?'CUTMAN':'COMMISSION',ox-3,262);ctx.restore();
+  }
   // floor haze
   for(let i=0;i<8;i++){const hx=ax-260+i*80+Math.sin(t*.01+i)*30,hy=380+Math.sin(t*.013+i*2)*8,r=90;const g=ctx.createRadialGradient(hx,hy,0,hx,hy,r);g.addColorStop(0,'rgba(210,218,235,.09)');g.addColorStop(1,'rgba(210,218,235,0)');ctx.fillStyle=g;ctx.fillRect(hx-r,hy-r,r*2,r*2)}
   ctx.restore();
@@ -1646,6 +1655,18 @@ function walkOverlay(S){
     txt(F.name,x+16,y+68,13,'#e9e6df','left','700');
     txt(`${rec[0]}-${rec[1]}-${rec[2]} · ${IC.STYLES[d.style].name} · ${d.from} · ${d.height||''}cm · 종합 ${d.ovr}`,x+16,y+85,10.5,'rgba(233,230,223,.75)','left','600');
   }
+  if(isA&&W.rit>0&&W.rit<120){const r=W.rit,cap=r<45?'🧴 컷맨 · 바셀린 & 얼굴 체크':r<82?'🧤 커미션 · 글러브와 몸 검사':'🤝 코치와 포옹 · 케이지 입장';ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='800 14px "IBM Plex Sans KR",sans-serif';
+    const tw=ctx.measureText(cap).width+30,by=HH-58;ctx.fillStyle='rgba(8,9,12,.88)';ctx.fillRect(WH/2-tw/2,by,tw,32);ctx.fillStyle=F.corner;ctx.fillRect(WH/2-tw/2,by,4,32);ctx.fillStyle='#fff';ctx.fillText(cap,WH/2+2,by+16);ctx.restore()}
+  /* announcer intro: fighting-out-of line, record line, then the nickname slams in (Bruce-Buffer style) */
+  if(F&&isAnn&&t<128){const d=F.d,rec=d.rec||[0,0,0],cy=HH*.3,out=clamp((t-104)/22,0,1);ctx.save();ctx.globalAlpha=1-out;ctx.textAlign='center';ctx.textBaseline='middle';
+    const l1=clamp(t/12,0,1),l2=clamp((t-18)/12,0,1),l3=clamp((t-38)/10,0,1);
+    ctx.fillStyle='rgba(0,0,0,.45)';ctx.fillRect(0,cy-HH*.17,WH,HH*.34);
+    ctx.globalAlpha=(1-out)*l1;txt(`FIGHTING OUT OF  ·  ${d.from}`,WH/2,cy-HH*.12,Math.min(15,WH*.03),'#e8b33a','center','700');
+    ctx.globalAlpha=(1-out)*l2;txt(`${rec[0]}승 ${rec[1]}패${rec[2]?' '+rec[2]+'무':''}  ·  ${IC.STYLES[d.style].name}${S.title&&F.side==='b'?'  ·  디펜딩 챔피언':''}`,WH/2,cy-HH*.065,Math.min(13,WH*.026),'#f3f1ea','center','700');
+    if(l3>0){const sc=1+.8*(1-l3),sh=t<52?Math.sin(t*2.3)*(52-t)*.25:0;ctx.globalAlpha=(1-out)*l3;ctx.save();ctx.translate(WH/2+sh,cy+HH*.05);ctx.scale(sc,sc);
+      ctx.shadowColor=F.corner;ctx.shadowBlur=26;ctx.font=`${Math.min(64,WH*.11)}px "Black Han Sans",sans-serif`;ctx.lineWidth=8;ctx.strokeStyle='rgba(0,0,0,.7)';ctx.strokeText(`"${F.nick}"`,0,0);ctx.fillStyle='#fff';ctx.fillText(`"${F.nick}"`,0,0);ctx.restore();
+      if(t>=38&&t<46){ctx.globalAlpha=(46-t)/8*.6;ctx.fillStyle=F.corner;ctx.fillRect(0,0,WH,HH)}}
+    ctx.restore()}
   // announcer caption
   const last=W.lines[W.lines.length-1];
   if(last&&last.t<(isA?80:320)&&k!=='tape'){
@@ -1988,6 +2009,10 @@ function weighin(c,cw,ch,st){
   }
   // fans in front: phones up, signs with fighter names, photographers flashing
   const hot=st.hot||0;
+  {const okS=['a','b'].find(sd=>{const L=t-(sd==='a'?WI.blueOn[0]:WI.redOn[0]);return st.res[sd].ok&&L>=WI.SEG.stamp&&L<WI.SEG.flex[1]+12});
+   if(okS){const nk=st[okS].nick;post.push(()=>{ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';for(let i=0;i<9;i++){const ph=(t*.011+i*.111)%1,x=60+((i*263)%700),y=415-ph*170;ctx.globalAlpha=Math.sin(ph*Math.PI)*.95;
+     if(i%4===3){ctx.font='26px sans-serif';ctx.fillText(['👏','🔥','🙌'][i%3],x,y)}else{ctx.font='italic 21px "Black Han Sans",sans-serif';ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.6)';const w=i%3===0?nk+'!':i%3===1?'와아아!':'가자!';ctx.strokeText(w,x,y);ctx.fillStyle='#ffd75e';ctx.fillText(w,x,y)}}
+     for(let i=0;i<5;i++){const k=(t*13+i*211)%90;if(k<6){const fx=(i*173+t*7)%800,fy=380+(i*37)%50;const g=ctx.createRadialGradient(fx,fy,0,fx,fy,40);g.addColorStop(0,'rgba(255,255,255,.95)');g.addColorStop(1,'rgba(255,255,255,0)');ctx.globalAlpha=1-k/6;ctx.fillStyle=g;ctx.fillRect(fx-40,fy-40,80,80)}}ctx.restore()})}}
   {const boo=['a','b'].some(sd=>{const L=t-(sd==='a'?WI.blueOn[0]:WI.redOn[0]);return !st.res[sd].ok&&L>=WI.SEG.stamp&&L<WI.SEG.flex[1]+12});
    if(boo)post.push(()=>{ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';for(let i=0;i<14;i++){const ph=(t*.012+i*.137)%1,x=40+((i*97)%720),y=410-ph*150;ctx.globalAlpha=Math.sin(ph*Math.PI)*.9;
      if(i%3===2){ctx.font='26px sans-serif';ctx.fillText('👎',x,y)}else{ctx.font='italic 22px "Black Han Sans",sans-serif';ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.6)';const w=i%2?'BOO!':'우~';ctx.strokeText(w,x,y);ctx.fillStyle='#ff6b5e';ctx.fillText(w,x,y)}}ctx.restore()})}

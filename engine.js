@@ -871,7 +871,7 @@ function startRound(){
   say(S.practice?'연습 모드: 시간 제한 없이 기술을 익혀 보세요':S.round===1?`${a.nick} 대 ${b.nick}, 경기 시작합니다!`:`${S.round}라운드, 다시 맞붙습니다`);
 }
 /* ---------- walkout & announcer ---------- */
-const WK=[{k:'blueAisle',d:175},{k:'blueIn',d:55},{k:'blueAnn',d:130},{k:'redAisle',d:175},{k:'redIn',d:55},{k:'redAnn',d:130},{k:'tape',d:230},{k:'faceoff',d:175},{k:'touch',d:40},{k:'back',d:40},{k:'coach',d:130}];
+const WK=[{k:'blueAisle',d:300},{k:'blueIn',d:55},{k:'blueAnn',d:130},{k:'redAisle',d:300},{k:'redIn',d:55},{k:'redAnn',d:130},{k:'tape',d:230},{k:'faceoff',d:175},{k:'touch',d:40},{k:'back',d:40},{k:'coach',d:130}];
 /* signature entrance performance per fighting style */
 const PERF={boxer:'shadow',kickboxer:'kicks',karate:'kicks',taekwondo:'kicks',muaythai:'waikru',wrestler:'chest',sambo:'chest',bjj:'bow',brawler:'taunt',allround:'taunt'};
 const PERFN={shadow:'섀도복싱',kicks:'허공에 하이킥',waikru:'와이크루 의식',chest:'가슴을 두드리며 포효',bow:'옥타곤에 절',taunt:'관중 도발'};
@@ -896,12 +896,15 @@ function stepWalkout(){
   const W=S.walk,st=WK[W.i],a=S.a,b=S.b;W.t++;W.k=st.k;for(const l of W.lines)l.t++;if(W.pyro)W.pyro.t++;
   const walkTo=(F,x,z,sp=1.6)=>{const dx=x-F.x,dz=z-(F.z||0),d=Math.hypot(dx,dz);if(d>2){F.x+=dx/d*Math.min(sp,d);F.z+=dz/d*Math.min(sp,d);F.state='walk';F.walk+=.2;F.f=dx>1?1:dx<-1?-1:F.f}else F.state='idle'};
   const aisle=(F,song,corner)=>{
-    if(W.t===1){W.ax=AISLE0;F.walkShirt=F.corner;F.walk=0;if(!S.demo&&IC.Sound&&IC.Sound.music){IC.Sound.music(false);IC.Sound.music(true,song)}
+    if(W.t===1){W.rit=0;W.ax=AISLE0;F.walkShirt=F.corner;F.walk=0;if(!S.demo&&IC.Sound&&IC.Sound.music){IC.Sound.music(false);IC.Sound.music(true,song)}
       ann(corner,`${corner==='blue'?'블루':'레드'} 코너, ${F.nick} ${F.name}! 입장곡 '${song.n}'과 함께 관중 사이로 걸어 나옵니다!`);sfx('crowd')}
     const pause=W.t>70&&W.t<112;F.perfK=PERF[F.d.style]||'taunt';
-    if(!pause){W.ax+=(AISLE1-AISLE0)/(st.d-40);F.walk+=.16}
+    if(!pause){W.ax+=(AISLE1-AISLE0)/135;F.walk+=.16}
     W.ax=Math.min(W.ax,AISLE1);
     F.state=pause?'perf':W.ax>=AISLE1?'idle':'stroll';F.f=1;if(pause)F.perfT=W.t-70;
+    /* at the cage steps: vaseline, glove/body check, hug the coach, then in */
+    if(!pause&&W.ax>=AISLE1){const r=++W.rit;if(r>=45&&r<82){F.state='perf';F.perfK='arms';F.perfT=r-45}else if(r>=82){F.state='perf';F.perfK='bow';F.perfT=r-82}
+      if(r===2)say(`컷맨이 ${F.nick}의 얼굴에 바셀린을 바릅니다`);if(r===46)say('커미션이 글러브와 몸을 꼼꼼히 검사합니다');if(r===84){say(`${F.nick}, 코치와 포옹! 이제 케이지로 올라갑니다!`);sfx('crowd');W.pyro={t:0,at:'perf'}}}
     W.hype=pause?1:Math.max(0,W.hype-.01);
     if(W.t===72){sfx('crowd');say(`${F.nick}, ${PERFN[F.perfK]}! 관중이 들썩입니다!`)}
     if(W.t===2)W.pyro={t:0,at:'tunnel'};if(W.t===72)W.pyro={t:0,at:'perf'};

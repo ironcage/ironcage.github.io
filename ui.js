@@ -848,10 +848,10 @@ function runWeigh(){
     for(const [side,base] of [['a',WI.blueOn[0]],['b',WI.redOn[0]]]){const L=t-base,r=P.weigh[side],F=st[side];
       if(L>=0)once(side+'in',()=>{Sound.roar(.25);Announcer.say(`${F.nick} ${F.name}!`)});
       if(L>=S0.read[0]&&L<S0.read[1]&&Math.floor(L)%6===0)once(side+'tk'+Math.floor(L),()=>Sound.play('tick'));
-      if(L>=S0.stamp)once(side+'st',()=>{if(r.ok){Sound.sting(true);Sound.applause(3.4)}else{Sound.sting(false);Sound.boo()}Announcer.say(`${r.lb.toFixed(1)}파운드! ${r.ok?'통과!':'체중 초과!'}`)});
+      if(L>=S0.stamp)once(side+'st',()=>{if(r.ok){Sound.sting(true);Sound.applause(4.5);Sound.roar(.75);setTimeout(()=>{try{Sound.roar(.5)}catch(e){}},900)}else{Sound.sting(false);Sound.boo();setTimeout(()=>{try{Sound.boo()}catch(e){}},700)}Announcer.say(`${r.lb.toFixed(1)}파운드! ${r.ok?'통과!':'체중 초과!'}`)});
       if(!r.ok&&L>=S0.flex[0]+38)once(side+'ear',()=>{Sound.boo();Sound.roar(.4);Announcer.say(`쏟아지는 야유! ${F.nick}, 오히려 귀를 갖다 댑니다!`)});
       if(!r.ok&&L>=S0.stamp&&L<S0.flex[1]+10)st.hot=1;
-      if(L>=S0.stamp&&L<S0.flex[1])st.hot=r.ok?1:0}
+      if(L>=S0.stamp&&L<S0.flex[1]+10)st.hot=1}
     const L=t-WI.face[0];
     if(L>=0)once('fg',()=>{Sound.roar(.3);Announcer.say('두 선수, 페이스오프!')});
     if(L>FC.stare[0]&&L<FC.event&&Math.floor(L)%48===0)once('hb'+Math.floor(L),()=>Sound.heart());
