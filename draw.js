@@ -1783,6 +1783,27 @@ function bannerDraw(S){
 
 /* ---------- main render ---------- */
 /* overlay for the 3D view: effects projected from the 3D camera, then the broadcast HUD */
+let GRAIN=null;
+function broadcastGrade(S){
+  const m={x:W/2,y:VH*.68},t=S.frame;
+  ctx.save();
+  /* lit octagon, dark arena: the crowd and edges fall off into shadow, the canvas gets a warm pool of light */
+  ctx.globalCompositeOperation='multiply';
+  {const g=ctx.createRadialGradient(m.x,m.y-40,W*.12,m.x,m.y-40,W*.62);g.addColorStop(0,'rgb(255,255,255)');g.addColorStop(.6,'rgb(205,205,215)');g.addColorStop(1,'rgb(105,105,120)');ctx.fillStyle=g;ctx.fillRect(0,0,W,VH)}
+  ctx.globalCompositeOperation='lighter';
+  {ctx.save();ctx.translate(m.x,m.y);ctx.scale(1,.32);const g=ctx.createRadialGradient(0,0,0,0,0,W*.34);g.addColorStop(0,'rgba(255,238,205,.14)');g.addColorStop(1,'rgba(255,238,205,0)');ctx.fillStyle=g;ctx.fillRect(-W*.4,-W*.4,W*.8,W*.8);ctx.restore()}
+  ctx.globalCompositeOperation='source-over';
+  /* light rig at the top: dark truss with a row of lamps and soft beams */
+  {const ty=Math.max(4,VH*.035),n=9;ctx.fillStyle='rgba(6,7,9,.85)';ctx.fillRect(0,0,W,ty+6);ctx.fillStyle='rgba(40,44,52,.9)';ctx.fillRect(0,ty+3,W,2);
+   ctx.globalCompositeOperation='lighter';
+   for(let i=0;i<n;i++){const x=W*(i+.5)/n,fl=.85+.15*Math.sin(t*.05+i*1.3);
+     const lg=ctx.createRadialGradient(x,ty,0,x,ty,16);lg.addColorStop(0,`rgba(255,250,235,${.9*fl})`);lg.addColorStop(1,'rgba(255,250,235,0)');ctx.fillStyle=lg;ctx.fillRect(x-16,ty-16,32,32);
+     const bg=ctx.createLinearGradient(x,ty,x,VH*.75);bg.addColorStop(0,`rgba(255,244,220,${.07*fl})`);bg.addColorStop(1,'rgba(255,244,220,0)');ctx.fillStyle=bg;ctx.beginPath();ctx.moveTo(x-6,ty);ctx.lineTo(x+6,ty);ctx.lineTo(x+(m.x-x)*.35+60,VH*.75);ctx.lineTo(x+(m.x-x)*.35-60,VH*.75);ctx.fill()}}
+  ctx.globalCompositeOperation='source-over';
+  /* film grain: a small noise tile, shifted every frame */
+  if(!GRAIN){try{const g=document.createElement('canvas');g.width=g.height=96;const gx=g.getContext('2d'),im=gx.createImageData(96,96);for(let i=0;i<im.data.length;i+=4){const v=Math.random()*255|0;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255}gx.putImageData(im,0,0);GRAIN=ctx.createPattern(g,'repeat')}catch(e){GRAIN=0}}
+  if(GRAIN){ctx.globalAlpha=.045;ctx.globalCompositeOperation='overlay';ctx.translate((t*37)%96,(t*53)%96);ctx.fillStyle=GRAIN;ctx.fillRect(-96,-96,W+192,VH+192)}
+  ctx.restore()}
 function venueFX(S){
   /* underground venues: dirty colour grade, a swinging bare bulb, haze and a hard vignette */
   if(S.arena&&S.arena.k==='under'){const tc=S.arena.tint||'#c88a3a',fl=Math.sin(S.frame*.9)>.92?.55:1,sw=Math.sin(S.frame*.03)*.18;
@@ -1854,6 +1875,8 @@ function render(S0,c,cssW,cssH,o3d){
   for(const t of S.texts){if(t.num&&!OPT.nums)continue;ctx.globalAlpha=Math.min(1,t.l/20);ctx.font=`${t.num?20:18}px "Black Han Sans",sans-serif`;ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.65)';ctx.strokeText(t.t,t.x,t.y);ctx.fillStyle=t.col;ctx.fillText(t.t,t.x,t.y)}
   ctx.globalAlpha=1;ctx.restore();
   }
+  // broadcast look: overhead light rig, a lit canvas under the lights, punchy grade and fine film grain
+  if(!(S.arena&&S.arena.k==='under')&&!S.demo&&!(S.walk&&/Aisle$/.test(S.walk.k||'')))broadcastGrade(S);
   // screen fx
   const vg=ctx.createRadialGradient(W/2,VH/2,Math.min(W,VH)*.35,W/2,VH/2,Math.max(W,VH)*.62);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.3)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,VH);
   if(S.walk&&S.walk.tension>0){const hb=Math.max(0,Math.sin(S.frame*.137))**8,g=ctx.createRadialGradient(W/2,VH/2,VH*.25,W/2,VH/2,Math.max(W,VH)*.65);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,`rgba(110,0,0,${S.walk.tension*(.18+hb*.22)})`);ctx.fillStyle=g;ctx.fillRect(0,0,W,VH)}
