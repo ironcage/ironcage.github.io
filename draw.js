@@ -622,7 +622,7 @@ function poseStand(F,O,S){
     tilt+=Math.sin(t*.045+ph)*.05;
   }
   /* hit reactions: the strike's target decides how the body gives */
-  const RX=F.react;if(RX&&st!=='ko'){const k=Math.max(0,1-RX.t/(RX.k==='big'?26:RX.k==='body'?28:18)),e2=k*k*(3-2*k);
+  const RX=F.react;if(RX&&st!=='ko'){const k=Math.max(0,1-RX.t/(RX.k==='big'?26:RX.k==='body'?28:18)),e2=k*k*(3-2*k)*(st==='clinch'?.35:1);
     if(RX.k==='head'||RX.k==='big'){const b=RX.k==='big'?1.6:1;chest.x-=f*9*b*e2;chest.y+=(RX.up?-6:3)*e2;tilt-=(RX.up?.7:.45)*b*e2;if(RX.k==='big'){near={x:near.x-f*16*e2,y:near.y+18*e2};far={x:far.x-f*20*e2,y:far.y+24*e2}}}
     else if(RX.k==='body'){chest.x+=f*7*e2;chest.y+=16*e2;hip.y+=5*e2;tilt+=.45*e2;near={x:lerp(near.x,hip.x+f*16,e2),y:lerp(near.y,hip.y-26,e2)};far={x:lerp(far.x,hip.x+f*10,e2),y:lerp(far.y,hip.y-20,e2)};mood='hurt'}
     else if(RX.k==='leg'){front={x:front.x-f*8*e2,y:front.y-10*e2};hip.y+=12*e2;chest.y+=9*e2;chest.x-=f*3*e2;kneeN='fwd'}
@@ -650,7 +650,8 @@ function poseStand(F,O,S){
       J0=addJ(J0,d,st==='block'?{hip:.5,chest:.6,head:.6}:{hip:.6,chest:.7,head:.7,nearHand:.45,farHand:.45})}}
     else if(st==='perf'&&(PK==='chest'||PK==='taunt')){const key=PK==='chest'?'Standing_Taunt_Chest_Thump':'Taunt',I=mcInfo(key);if(I){const u=((pt/4)/I.M.n)%1;J0=addJ(J0,mcDelta(F,key,u),{hip:.8,chest:1,head:1,nearHand:1,farHand:1,nearFoot:.3,farFoot:.3});J0.mood='yell'}}
     else if(st==='dejected'){const I=mcInfo('Defeated');if(I){const u=Math.min(.55,(F.perfT||t%600)/((I.M.n-1)*4));J0=addJ(J0,mcDelta(F,'Defeated',u),{hip:.8,chest:1,head:1,nearHand:.9,farHand:.9})}}
-    if(RX&&st!=='ko'&&st!=='attack'){const key=RX.k==='big'?'Receive_Uppercut_To_The_Face':RX.k==='body'?'Hit_Reaction':RX.k==='head'?'Receive_Punch_To_The_Face':null;
+    /* no captured flinch while clinched: it threw the arms over the head and folded the legs into a kneel */
+    if(RX&&st!=='ko'&&st!=='attack'&&st!=='clinch'){const key=RX.k==='big'?'Receive_Uppercut_To_The_Face':RX.k==='body'?'Hit_Reaction':RX.k==='head'?'Receive_Punch_To_The_Face':null;
       if(key&&mcInfo(key)){const dur=RX.k==='big'?26:RX.k==='body'?28:18,p=clamp(RX.t/dur,0,1),pk=key==='Hit_Reaction'?.45:.42,w=Math.sin(Math.min(1,p*1.15)*Math.PI);
         J0=addJ(J0,mcDelta(F,key,p*pk),{hip:.8*w,chest:1.1*w,head:1.2*w,nearHand:.7*w,farHand:.7*w,nearFoot:.2*w,farFoot:.2*w})}}
   }

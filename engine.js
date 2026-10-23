@@ -1117,12 +1117,13 @@ function upRef(){
   else if(S.mode==='foul'||S.mode==='doc'){const m=(a.x+b.x)/2;tx=m;st='stop'}
   else if(S.gr){tx=S.gr.cx-S.gr.hd*120;st='crouch'}
   else if(S.cl){tx=S.cl.cx+(S.cl.cx<400?110:-110);st='watch'}
-  else{const m=(a.x+b.x)/2;tx=m+(m<=400?-200:200);st='watch'}
+  else{const m=(a.x+b.x)/2;/* side hysteresis: only cross over when the fight has clearly moved, so he doesn't dart back and forth */if(R.side==null)R.side=m<=400?-1:1;if(m<340)R.side=-1;else if(m>460)R.side=1;tx=m+R.side*200;st='watch'}
   tx=clamp(tx,70,730);
   const az=S.gr?(S.gr.cz||0):S.cl?(S.cl.cz||0):((a.z||0)+(b.z||0))/2;const tz=S.walk&&['faceoff','touch'].includes(WK[S.walk.i].k)?(S.walk.tension>0&&S.walk.ev!=='push'?az-130:az-60):az-150;/* while he walks past a fighter, the referee steps further back so he never stands on top of him */
-  const near=!S.walk&&!S.gr&&!S.cl&&((Math.abs(R.x-a.x)<80||Math.abs(R.x-b.x)<80)||(S.mode==='fight'&&S.timer>S.roundFrames-100));R.z=(R.z??-150)+(((near?tz-110:tz)-(R.z??-150))*(near?.12:.05));R.z=Math.min(R.z,S.walk?az-45:az-110);
-  const d=tx-R.x;R.x+=clamp(d*(near?.16:.06),near?-7:-3.2,near?7:3.2);inCage(R);R.walk+=Math.min(1,Math.abs(d)*.04)*.22;
-  const focus=S.gr?S.gr.cx:S.cl?S.cl.cx:(a.x+b.x)/2;R.f=focus>R.x?1:-1;R.state=st;R.moving=Math.abs(d)>4;
+  const near=!S.walk&&!S.gr&&!S.cl&&((Math.abs(R.x-a.x)<80||Math.abs(R.x-b.x)<80)||(S.mode==='fight'&&S.timer>S.roundFrames-100));R.nearK=(R.nearK||0)+((near?1:0)-(R.nearK||0))*.08;R.z=(R.z??-150)+(((tz-110*R.nearK)-(R.z??-150))*.07);R.z=Math.min(R.z,S.walk?az-45:az-110);
+  /* smooth steering: velocity eases toward the target instead of jumping between speeds every frame */
+  const d=tx-R.x,mx=near?6:3.2,want=Math.abs(d)<6?0:clamp(d*(near?.12:.05),-mx,mx);R.vx=(R.vx||0)+(want-(R.vx||0))*.14;R.x+=R.vx;inCage(R);R.walk+=Math.min(1,Math.abs(R.vx)*.3)*.22;
+  const focus=S.gr?S.gr.cx:S.cl?S.cl.cx:(a.x+b.x)/2;if(Math.abs(focus-R.x)>24)R.f=focus>R.x?1:-1;R.state=st;R.moving=R.moving?Math.abs(R.vx)>.35:Math.abs(R.vx)>.9;
 }
 function tick(n){
   if(!S)return;if(S.mirror){for(let i=0;i<n;i++)mirrorStep();return}
