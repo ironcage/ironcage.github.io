@@ -345,7 +345,7 @@ const UNIQ=new Set(["g_bw_gp3avr", "g_fly_lwrmvv", "g_fw_cexg2y", "g_lhw_16nnu2e
 function headKey(d){if(!d)return null;const id=d.id==='__tmp'?null:d.id;if(id&&CHART[id])return 'ch_'+CHART[id];if(id&&UNIQ.has(id))return 'u_'+id;return poolNearest(photoKey(d))}
 IC.headHasViews=d=>POOLV.has(headKey(d));
 /* photo heads switched off for now (drawn heads everywhere); flip to true to bring them back */
-const PHOTO_HEADS=true;/* 10/23 user: turn on (only fighters with a 5-view turnaround set get photo heads; everyone else stays drawn) */
+const PHOTO_HEADS=false;/* off until every fighter's set is finished and blends naturally (user 10/23 22:25) */
 IC.facePath=(d,view)=>{if(!PHOTO_HEADS)return null;const k=headKey(d);if(!k)return null;return POOLV.has(k)?`art/head/${k}_${view||'front'}.png`:null};
 function champsOf(){const c=DATA.career;return CLASSES.map(C=>{let id=null;
   if(c&&((IC.CLSMAP||{})[c.cls]||c.cls)===C.id&&c.order&&c.order.length)id=c.order[0];
