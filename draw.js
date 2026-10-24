@@ -533,19 +533,26 @@ function mcAttack(F,base){const A=F.A,m=A&&MC_ATK[A.anim];if(!m||!mcInfo(m.k))re
   if(!kick){const q=(m.hand||m.lim)==='nH'?'farHand':'nearHand',G={x:o.chest.x+F.f*(q==='nearHand'?24:17),y:o.chest.y-30};o[q]={x:lerp(o[q].x,G.x,edge),y:lerp(o[q].y,G.y,edge)};o[q==='nearHand'?'elbN':'elbF']='down'}
   return o}
 function mcLoop(F,key,t,speed=1,o={}){const I=mcInfo(key);if(!I)return null;const u=((t*speed/4)/(I.M.n))%1;return mcPose(F,key,u,o)}
-function kickPath(F,A,x,f,an){const H={lowkick:34,midkick:104,highkick:162}[an],R={lowkick:104,midkick:112,highkick:112}[an];
-  /* rear-leg round kick seen from the side: the knee drives straight up in FRONT (never folds backwards), the shin snaps out on an arc,
-     then the knee re-chambers in front and the foot steps back down. Knee positions are given as points so the leg can't bend the wrong way. */
-  const hipY=GY-92,B0={x:x-f*24,y:GY},C={x:x+f*(an==='lowkick'?18:30),y:GY-(an==='lowkick'?42:44+H*.14)}/* chamber: knee up in front, shin hanging under it (not folded back under the hips) */,T={x:x+f*R,y:GY-H},M={x:(x+f*(an==='lowkick'?18:30)+x+f*R)/2,y:(GY-(an==='lowkick'?42:44+H*.14)+GY-H)/2};/* straight line from chamber to target: no swinging arc */
-  const sm=p=>p*p*(3-2*p),eo=p=>1-Math.pow(1-p,3),bz=(a,b,c,p)=>({x:(1-p)*(1-p)*a.x+2*(1-p)*p*b.x+p*p*c.x,y:(1-p)*(1-p)*a.y+2*(1-p)*p*b.y+p*p*c.y});
-  const Kc={x:x+f*(an==='lowkick'?30:40),y:hipY-(an==='highkick'?24:an==='midkick'?8:-26)};/* chambered knee: in front, about hip height */
-  const lift={x:x+f*2,y:GY-30},K0={x:x+f*10,y:GY-50};/* path control while stepping up / down; K0 = relaxed knee, in front */
+function kickPath(F,A,x,f,an){const H={lowkick:34,midkick:112,highkick:196}[an],R={lowkick:100,midkick:112,highkick:104}[an];
+  /* ROUND kick (not a push kick): the knee rises pointing at the target with the shin folded BEHIND it, then the shin whips
+     around the knee on an arc (down → forward → up) so the shin/instep lands sideways; it snaps back the same way and steps down behind.
+     The knee always stays on the top/front side of the leg, so it never flips. Worked in local coords (u = forward, y = down). */
+  const hipY=GY-92,sm=p=>p*p*(3-2*p),bz=(a,b,c,p)=>({x:(1-p)*(1-p)*a.x+2*(1-p)*p*b.x+p*p*c.x,y:(1-p)*(1-p)*a.y+2*(1-p)*p*b.y+p*p*c.y});
+  const W=(u,y)=>({x:x+f*u,y});
+  const B0=W(-24,GY),T=W(R,GY-H);
+  const kr={lowkick:{u:30,y:hipY+18},midkick:{u:36,y:hipY-8},highkick:{u:34,y:hipY-44}}[an];/* knee raised toward the target */
+  const kf={u:R*.52,y:(hipY+(GY-H))/2-(an==='lowkick'?-4:10)};/* knee at impact: leg almost straight */
+  const L0=44,L1=Math.hypot(R-kf.u,(GY-H)-kf.y);
+  const a0=Math.atan2(36,-12)/* shin folded back-down behind the knee */,a1=Math.atan2((GY-H)-kf.y,R-kf.u);
+  const shin=(ku,ky,ang,L)=>W(ku+Math.cos(ang)*L,ky+Math.sin(ang)*L);
   const t=F.t,w=A.w,a=Math.max(1,A.a),r=Math.max(1,A.r);let foot,knee,ext=0,pivot=0;
-  const kneeFor=(ft,k)=>{/* knee pref: chamber point while bent, then above the hip→foot line as the leg straightens */const mid={x:(x+ft.x)/2,y:(hipY+ft.y)/2-18};return{x:lerp(Kc.x,mid.x,k),y:lerp(Kc.y,mid.y,k)}};
-  const kneeUp=(ft,p)=>{const k=kneeFor(ft,0);return{x:lerp(K0.x,k.x,p),y:lerp(K0.y,k.y,p)}};
-  if(t<w){const p=sm(t/w);foot=bz(B0,lift,C,p);knee=kneeUp(foot,p);pivot=p*.5}
-  else if(t<w+a){const p=sm(Math.min(1,(t-w)/a));foot=bz(C,M,T,p);ext=p;knee=kneeFor(foot,p);pivot=.5+p*.5}
-  else{const p=Math.min(1,(t-w-a)/r);if(p<.45){const q=sm(p/.45);foot=bz(T,M,C,q);ext=1-q;knee=kneeFor(foot,1-q);pivot=1}else{const q=sm((p-.45)/.55);foot=bz(C,{x:x+f*8,y:GY-6},B0,q);/* foot drops under the hip first, then slides back: the leg straightens instead of folding backwards */const kc=kneeFor(foot,0),km={x:(x+foot.x)/2+f*12,y:(hipY+foot.y)/2};knee={x:lerp(kc.x,km.x,Math.min(1,q*1.6)),y:lerp(kc.y,km.y,Math.min(1,q*1.6))};pivot=1-q}}
+  const K0={u:10,y:GY-50};
+  if(t<w){const p=sm(t/w);const ku=lerp(K0.u,kr.u,p),ky=lerp(K0.y,kr.y,p);knee=W(ku,ky);
+    const fold=shin(kr.u,kr.y,a0,L0),bf=W(-24,GY);foot=p<1?{x:lerp(bf.x,fold.x+(knee.x-W(kr.u,0).x),sm(p)),y:lerp(bf.y,fold.y+(ky-kr.y),sm(p))}:fold;pivot=p*.5}
+  else if(t<w+a){const p=sm(Math.min(1,(t-w)/a));const ku=lerp(kr.u,kf.u,p),ky=lerp(kr.y,kf.y,p),ang=lerp(a0,a1,p),L=lerp(L0,L1,p);knee=W(ku,ky);foot=shin(ku,ky,ang,L);ext=p;pivot=.5+p*.5}
+  else{const p=Math.min(1,(t-w-a)/r);
+    if(p<.4){const q=sm(p/.4);const ku=lerp(kf.u,kr.u,q),ky=lerp(kf.y,kr.y,q),ang=lerp(a1,a0,q),L=lerp(L1,L0,q);knee=W(ku,ky);foot=shin(ku,ky,ang,L);ext=1-q;pivot=1}
+    else{const q=sm((p-.4)/.6);const fold=shin(kr.u,kr.y,a0,L0);foot=bz(fold,W(-6,GY-10),B0,q);const km={u:-6,y:(hipY+GY)/2};knee=W(lerp(kr.u,km.u,q),lerp(kr.y,km.y,q));pivot=1-q}}
   return{foot,knee,ext,pivot}}
 function poseStand(F,O,S){
   const x=F.x,f=F.f,A=F.A,an=A&&A.anim,t=S.frame,st=F.state,isK=st==='attack'&&(an==='lowkick'||an==='midkick'||an==='highkick'),kpv=isK?kickPath(F,A,x,f,an).pivot:0,E=isK?kpv*kpv*(3-2*kpv):ext(F),e=Math.max(E,0);/* kicks: one smooth progress curve drives everything, so nothing snaps when the windup ends */
@@ -569,7 +576,7 @@ function poseStand(F,O,S){
     switch(an){
       case 'jab':lean+=f*9*e;drop=3*e;break;case 'cross':lean+=f*17*e;drop=5*e;break;case 'hook':lean+=f*4*e;tilt=.1*e;drop=2*e;break;
       case 'upper':lean+=f*5*e;drop=8*Math.max(0,-E*4)+4*e;break;case 'bodyshot':lean+=f*7*e;drop=20*e;tilt=.2*e;break;
-      case 'lowkick':case 'midkick':case 'highkick':{/* lean follows the kick's own smooth progress (no snap when the windup ends) */const pv=kickPath(F,A,x,f,an).pivot,sm=pv*pv*(3-2*pv);lean-=f*({lowkick:3,midkick:5,highkick:7}[an])*sm;break}case 'qmark':lean-=f*11*e;break;case 'tornado':lean-=f*13*e;tilt=.25*e;break;
+      case 'lowkick':case 'midkick':case 'highkick':{/* lean follows the kick's own smooth progress (no snap when the windup ends) */const pv=kickPath(F,A,x,f,an).pivot,sm=pv*pv*(3-2*pv);lean-=f*({lowkick:5,midkick:13,highkick:22}[an])*sm;break}case 'qmark':lean-=f*11*e;break;case 'tornado':lean-=f*13*e;tilt=.25*e;break;
       case 'superman':lift=24*e;lean+=f*16*e;break;case 'headbutt':lean+=f*24*e;drop=8*e;tilt=.4*e;break;case 'spinfist':lean+=f*8*e;break;case 'spinkick':lean-=f*11*e;break;
       case 'flyknee':lift=30*e;lean+=f*6*e;break;case 'overhand':lean+=f*13*e;tilt=.15*e;break;
       case 'shoot':drop=Math.max(e,F.t<A.w?F.t/A.w*.6:0)*46;lean+=f*drop*.3;tilt=.3*drop/46;break;
@@ -586,7 +593,7 @@ function poseStand(F,O,S){
     if(an==='jab'||an==='superman'){front={x:front.x+f*12*e,y:front.y-4*Math.sin(Math.min(1,e)*Math.PI)}}
     if(an==='cross'||an==='overhand'||an==='bodyshot'){back={x:back.x+f*7*e,y:back.y-6*e};kneeF=e>.3?'down':kneeF}
     if(an==='hook'){front={x:front.x-f*3*e,y:front.y-3*e}}
-    if(an==='lowkick'||an==='midkick'||an==='highkick'){const K=kickPath(F,A,x,f,an);back=K.foot;kneeF=K.knee;front={x:front.x+f*K.pivot*4,y:front.y-K.pivot*3};hip.y-=7*K.pivot;chest.y-=7*K.pivot}
+    if(an==='lowkick'||an==='midkick'||an==='highkick'){const K=kickPath(F,A,x,f,an);back=K.foot;kneeF=K.knee;front={x:front.x+f*K.pivot*4,y:front.y-K.pivot*3};const up=an==='highkick'?15:7;hip.y-=up*K.pivot;chest.y-=up*K.pivot;chest.x-=f*(an==='highkick'?16:an==='midkick'?7:0)*K.pivot;hip.x-=f*(an==='highkick'?4:0)*K.pivot}
     if(an==='spinkick'){back={x:x+f*(-24+e*120),y:GY-e*96};kneeF='back'}
     if(an==='tornado'){back={x:x+f*(-24+e*118),y:GY-e*142};kneeF='back'}
     if(an==='qmark')back={x:x+f*(-24+e*116),y:GY-(F.t<A.w?40:e*142)};
@@ -608,7 +615,7 @@ function poseStand(F,O,S){
         elbN=e>.05||sw>.1?{x:near.x-f*(14-arc*4),y:near.y-14-sw*4}:'down';far={x:x+f*14+lean*.5,y:198};break}
       case 'upper':far={x:x+f*(22+e*44)+lean,y:E<0?250:246-e*40};break;
       case 'bodyshot':far={x:x+f*(16+e*66)+lean,y:214+drop+e*22};break;
-      case 'lowkick':case 'midkick':case 'highkick':{const K=kickPath(F,A,x,f,an),sw=K.ext;near={x:x+f*(26-sw*2)+lean*.6,y:208-sw*2};far={x:x-f*(6+sw*14),y:226+sw*(an==='lowkick'?6:14)};elbN='down';elbF='down';break}
+      case 'lowkick':case 'midkick':case 'highkick':{const K=kickPath(F,A,x,f,an),sw=K.ext;near={x:x+f*(26-sw*2)+lean*.6,y:208-sw*2};far={x:x-f*(6+sw*(an==='lowkick'?14:24)),y:226+sw*(an==='lowkick'?6:24)};elbN='down';elbF='down';break}
       case 'spinkick':case 'qmark':case 'tornado':near={x:x+f*24,y:214};far={x:x-f*24,y:252};break;
       case 'superman':far={x:x+f*(14+e*94)+lean,y:204-lift};near={x:x-f*2,y:226-lift};break;
       case 'spinfist':far={x:x+f*(E<0?-30:10+e*72)+lean,y:206};elbF='up';break;
@@ -965,15 +972,22 @@ function arenaFront(S){
 function impacts(S){for(const im of S.impacts||[]){const k=im.t/im.max,r=(1-k)*(im.big?70:44)+8;ctx.save();ctx.globalCompositeOperation='lighter';
   ctx.globalAlpha=k;ctx.fillStyle=im.col;ctx.beginPath();for(let i=0;i<10;i++){const a=i/10*Math.PI*2,rr=i%2?r*.38:r;ctx.lineTo(im.x+Math.cos(a)*rr,im.y+Math.sin(a)*rr*.8)}ctx.closePath();ctx.globalAlpha=k*.55;ctx.fill();
   ctx.globalAlpha=k*.9;ctx.strokeStyle='#fff';ctx.lineWidth=2.4;for(let i=0;i<7;i++){const a=(i-3)*.18,l=r*(1.2+((i*37)%5)*.15);ctx.beginPath();ctx.moveTo(im.x-im.f*r*.4*Math.cos(a),im.y-r*.4*Math.sin(a));ctx.lineTo(im.x-im.f*l*Math.cos(a)*1.6,im.y-l*Math.sin(a))}ctx.stroke();ctx.restore()}}
+/* soft volumetric beam: several stacked cones (wide & faint → narrow & bright) fake a blurred edge, plus haze motes drifting inside */
+function softBeam(x0,y0,x1,y1,w0,w1,rgb,a,t,seed){
+  for(const [k,al] of [[1,.22],[.72,.26],[.46,.3],[.22,.42]]){const g=ctx.createLinearGradient(x0,y0,x1,y1);g.addColorStop(0,`rgba(${rgb},${a*al*1.6})`);g.addColorStop(.55,`rgba(${rgb},${a*al*.7})`);g.addColorStop(1,`rgba(${rgb},0)`);
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x0-w0*k,y0);ctx.lineTo(x0+w0*k,y0);ctx.lineTo(x1+w1*k,y1);ctx.lineTo(x1-w1*k,y1);ctx.closePath();ctx.fill()}
+  for(let i=0;i<7;i++){const h=((seed*97+i*53)%100)/100,u=((h*1.7+t*.0009*(1+i%3))%1),px=lerp(x0,x1,u)+Math.sin(t*.01+i*2+seed)*w1*.5*u,py=lerp(y0,y1,u);ctx.fillStyle=`rgba(${rgb},${a*.9*(1-u)})`;ctx.fillRect(px,py,1.6,1.6)}}
 function beams(S){
   const AR=S.arena||{beams:3,beamA:.1,k:'main'},n=AR.beams,xs=n===1?[400]:Array.from({length:n},(_,i)=>lerp(120,680,i/(n-1)));
   ctx.save();ctx.globalCompositeOperation='lighter';
-  for(const lx of xs){const g=ctx.createLinearGradient(lx,0,lx,GY);g.addColorStop(0,`rgba(255,244,220,${AR.beamA})`);g.addColorStop(1,'rgba(255,244,220,0)');
-    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(lx-10,0);ctx.lineTo(lx+10,0);ctx.lineTo(lx+170,GY);ctx.lineTo(lx-170,GY);ctx.closePath();ctx.fill();
-    ell(lx,4,9,5,'rgba(255,250,235,.85)')}
+  xs.forEach((lx,i)=>{const tx=lerp(lx,400,.35);softBeam(lx,0,tx,GY,7,150,'255,240,214',AR.beamA,S.frame,i+1);
+    /* where the beam lands: a soft warm pool on the mat */
+    {ctx.save();ctx.translate(tx,GY);ctx.scale(1,.2);const pg=ctx.createRadialGradient(0,0,0,0,0,150);pg.addColorStop(0,`rgba(255,236,200,${AR.beamA*.9})`);pg.addColorStop(1,'rgba(255,236,200,0)');ctx.fillStyle=pg;ctx.fillRect(-150,-150,300,300);ctx.restore()}
+    /* the lamp itself: hot core + glow, no flat disc */
+    const lg=ctx.createRadialGradient(lx,4,0,lx,4,22);lg.addColorStop(0,'rgba(255,252,240,.95)');lg.addColorStop(.25,'rgba(255,240,200,.45)');lg.addColorStop(1,'rgba(255,240,200,0)');ctx.fillStyle=lg;ctx.fillRect(lx-22,-18,44,44)});
   /* title fights: corner-coloured sweeping beams over the crowd */
   if(AR.k==='title'){for(const [c,ph] of [['rgba(61,127,240,',0],['rgba(224,74,58,',2.1],['rgba(232,179,58,',4.2]]){const a=Math.sin(S.frame*.012+ph)*.55,x0=400+Math.sin(S.frame*.009+ph)*260;
-      ctx.save();ctx.translate(x0,-40);ctx.rotate(a);const g=ctx.createLinearGradient(0,0,0,420);g.addColorStop(0,c+'.22)');g.addColorStop(1,c+'0)');ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(6,0);ctx.lineTo(70,420);ctx.lineTo(-70,420);ctx.closePath();ctx.fill();ctx.restore()}}
+      ctx.save();ctx.translate(x0,-40);ctx.rotate(a);softBeam(0,0,0,420,5,80,c.slice(5,-1),.2,S.frame,ph*3+1);ctx.restore()}}
   if(AR.k==='practice'){ctx.globalCompositeOperation='source-over';ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(cam.x-1000,-300,2000,1400)}
   ctx.restore();
 }
@@ -1834,16 +1848,23 @@ function broadcastGrade(S){
   ctx.save();
   /* lit octagon, dark arena: the crowd and edges fall off into shadow, the canvas gets a warm pool of light */
   ctx.globalCompositeOperation='multiply';
-  {const g=ctx.createRadialGradient(m.x,m.y-40,W*.12,m.x,m.y-40,W*.62);g.addColorStop(0,'rgb(255,255,255)');g.addColorStop(.6,'rgb(205,205,215)');g.addColorStop(1,'rgb(105,105,120)');ctx.fillStyle=g;ctx.fillRect(0,0,W,VH)}
-  ctx.globalCompositeOperation='lighter';
-  {ctx.save();ctx.translate(m.x,m.y);ctx.scale(1,.32);const g=ctx.createRadialGradient(0,0,0,0,0,W*.34);g.addColorStop(0,'rgba(255,238,205,.14)');g.addColorStop(1,'rgba(255,238,205,0)');ctx.fillStyle=g;ctx.fillRect(-W*.4,-W*.4,W*.8,W*.8);ctx.restore()}
+  {const g=ctx.createRadialGradient(m.x,m.y-40,W*.12,m.x,m.y-40,W*.62);g.addColorStop(0,'rgb(255,255,255)');g.addColorStop(.5,'rgb(200,200,212)');g.addColorStop(1,'rgb(62,62,76)');ctx.fillStyle=g;ctx.fillRect(0,0,W,VH)}
+  /* the crowd above the cage line sits in the dark, like a real arena */
+  {const g=ctx.createLinearGradient(0,0,0,VH*.62);g.addColorStop(0,'rgb(120,120,135)');g.addColorStop(1,'rgb(255,255,255)');ctx.fillStyle=g;ctx.fillRect(0,0,W,VH*.62)}
+  /* contrast: soft-light pass, bright centre / dark rim */
+  ctx.globalCompositeOperation='soft-light';
+  {const g=ctx.createRadialGradient(m.x,m.y-60,0,m.x,m.y-60,W*.6);g.addColorStop(0,'rgba(128,128,128,0)');g.addColorStop(.45,'rgba(128,128,128,0)');g.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=g;ctx.fillRect(0,0,W,VH)}
+  /* the octagon canvas glows white under the overhead rig */
+  ctx.globalCompositeOperation='screen';
+  {ctx.save();ctx.translate(m.x,m.y+VH*.12);ctx.scale(1,.26);const g=ctx.createRadialGradient(0,0,0,0,0,W*.42);g.addColorStop(0,'rgba(255,248,232,.2)');g.addColorStop(.6,'rgba(255,244,222,.07)');g.addColorStop(1,'rgba(255,244,222,0)');ctx.fillStyle=g;ctx.fillRect(-W*.5,-W*.5,W,W);ctx.restore()}
+
   ctx.globalCompositeOperation='source-over';
   /* light rig at the top: dark truss with a row of lamps and soft beams */
   {const ty=Math.max(4,VH*.035),n=9;ctx.fillStyle='rgba(6,7,9,.85)';ctx.fillRect(0,0,W,ty+6);ctx.fillStyle='rgba(40,44,52,.9)';ctx.fillRect(0,ty+3,W,2);
    ctx.globalCompositeOperation='lighter';
    for(let i=0;i<n;i++){const x=W*(i+.5)/n,fl=.85+.15*Math.sin(t*.05+i*1.3);
      const lg=ctx.createRadialGradient(x,ty,0,x,ty,16);lg.addColorStop(0,`rgba(255,250,235,${.9*fl})`);lg.addColorStop(1,'rgba(255,250,235,0)');ctx.fillStyle=lg;ctx.fillRect(x-16,ty-16,32,32);
-     const bg=ctx.createLinearGradient(x,ty,x,VH*.75);bg.addColorStop(0,`rgba(255,244,220,${.07*fl})`);bg.addColorStop(1,'rgba(255,244,220,0)');ctx.fillStyle=bg;ctx.beginPath();ctx.moveTo(x-6,ty);ctx.lineTo(x+6,ty);ctx.lineTo(x+(m.x-x)*.35+60,VH*.75);ctx.lineTo(x+(m.x-x)*.35-60,VH*.75);ctx.fill()}}
+     if(i%2===0)softBeam(x,ty,x+(m.x-x)*.35,VH*.75,5,70,'255,244,220',.06*fl,t,i+11)}}
   ctx.globalCompositeOperation='source-over';
   /* film grain: a small noise tile, shifted every frame */
   if(!GRAIN){try{const g=document.createElement('canvas');g.width=g.height=96;const gx=g.getContext('2d'),im=gx.createImageData(96,96);for(let i=0;i<im.data.length;i+=4){const v=Math.random()*255|0;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255}gx.putImageData(im,0,0);GRAIN=ctx.createPattern(g,'repeat')}catch(e){GRAIN=0}}

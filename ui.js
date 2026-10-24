@@ -277,7 +277,6 @@ function seg(act,opts,cur,lab){return `<div class="seg">${opts.map(o=>`<button d
 /* ---------- home-screen music ---------- */
 const HOME_THEME={n:'IRON CAGE 메인 테마',g:'epic',gn:'오케스트럴 에픽',bpm:96,key:1,crowd:.45,verb:.4,big:true};
 const homeSongs=()=>[...MySong.songs(),HOME_THEME,...IC.SONGS];
-/* menu music: the picked song keeps playing on every menu screen of every mode; screens with their own sound (song preview, weigh-in, belt ceremony) and fights pause it */
 const NOMUS=['song','weigh','cpost'],menuOk=s=>!NOMUS.includes(s);
 function homeMusic(force){if(DATA.settings.homeMusic===false||!DATA.settings.sound)return;if(!menuOk(SCREEN)||(typeof game!=='undefined'&&game&&!game.hidden))return;if(!Sound.ac){return}
   if(Sound._mus&&!force)return;Sound.music(false);const L=homeSongs(),i=(DATA.settings.homeSong|0)%L.length;setTimeout(()=>{if(menuOk(SCREEN)&&!(typeof game!=='undefined'&&game&&!game.hidden)&&!Sound._mus){Sound.music(true,Object.assign({},L[i],{vol:.32}));const mark=()=>{if(Sound._mus)Sound._mus.menu=true};mark();setTimeout(mark,400);setTimeout(mark,1500)}},force?650:0)}
@@ -631,7 +630,7 @@ V.cpost=p=>{const c=DATA.career;
     <div class="stage" style="aspect-ratio:16/9;max-height:none"><canvas id="beltcv" aria-label="벨트 수여식"></canvas></div>
     <div class="beltstg" id="beltstg"><span class="on">발표</span><span>벨트 공개</span><span>착용</span><span>포효</span></div>
     ${(()=>{const r=p.cer||{};return `${r.kc?'':'<img class="ccbelt" src="art/belt.webp" alt="챔피언 벨트">'}<div class="champcard"><div class="cc-no">제${r.no||1}대</div><div><b>${r.kc?'킹 오브 케이지':esc(p.clsName)+' 챔피언'} · ${esc(c.name)}</b><span>${r.def?`${r.def}차 방어 성공`:r.kc?'체급을 넘어선 최강자':'새 챔피언 등극'} · 상대 ${esc(p.oppName)} · ${esc(r.how||'')}</span><span>${esc(r.ev||'')} · 전적 ${esc(r.rec||c.rec.join('-'))} · 커리어 벨트 ${(c.beltLog||[]).length}개</span></div></div>`})()}
-    <div class="row"><button class="btn" data-act="beltAgain">↺ 다시 보기</button><button class="btn-go" data-act="postNext">승리 세리머니로</button></div></div>`;
+    <div class="row"><button class="btn" data-act="beltAgain">↺ 다시 보기</button><button class="btn-go" data-act="postDone">결과 보기</button></div></div>`;
   /* victory ceremony: pick a taunt, the winner performs it in the octagon */
   const opts=tauntOpts(c,p),ch=p.tk?opts.find(x=>x.k===p.tk)||{t:''}:null;
   return `<div class="panel"><div class="eyebrow">승리 세리머니</div><h2 class="big">${p.belt?'챔피언의 세리머니':'케이지는 당신 무대'}</h2>
@@ -665,7 +664,7 @@ A.postTaunt=d=>{const c=DATA.career,k=d.k,x=tauntOpts(c,P).find(o=>o.k===k);if(!
   if(k==='ear'){c.hype=clamp(c.hype+3,0,100);P.out='"더 크게!" — 함성이 두 배로 커집니다.';Sound.roar(.6);setTimeout(()=>Sound.roar(1),600)}
   if(k==='respect'){c.hype=clamp(c.hype+1,0,100);P.out='상대 진영까지 기립 박수를 보냅니다.';post(c,'fan','스포츠맨십 최고');Sound.applause(6,.08)}
   post(c,'me',x.t);save();render()};
-A.postDone=()=>{const r=P.after;go('result',r)};
+A.postDone=()=>{cancelAnimationFrame(beltRaf);Sound.music(false);const r=P.after;go('result',r)};
 
 /* ---------- legend challenges ---------- */
 const LEGC=[
@@ -1833,7 +1832,8 @@ function careerResult(res){
   let cer=null;if(won&&(o.title||o.kc)){const def=o.kc?c.kc-1:lines.includes('타이틀 방어 성공!')?c.titleDef:0,no=o.kc?1+(IC.hash('kc'+c.name)%3):6+(IC.hash(c.cls+c.name)%7)+Math.max(0,c.titles-1);
     cer={kc:!!o.kc,def,no,rec:`${c.rec.join('-')}`,ev:evDone?evDone.name:'IRON CAGE',how:`${res.method}${res.round?' · '+res.round+'R':''}${res.time?' '+res.time:''}`,opp};
     (c.beltLog=c.beltLog||[]).unshift({cls:o.kc?'kc':c.cls,no,def,ev:cer.ev,opp:opp.name,how:cer.how});save()}
-  if(won&&!forced)go('cpost',{res,after:afterP,belt:!!(o.title||o.kc),cer,me:meData(c),clsName:clsName(c.cls),oppName:opp.name,opp});else go('result',afterP);
+  /* no ceremony picker / taunt screen any more: a title win still gets the belt ceremony, everything else goes straight to the result */
+  if(won&&!forced&&(o.title||o.kc))go('cpost',{res,after:afterP,belt:true,cer,me:meData(c),clsName:clsName(c.cls),oppName:opp.name,opp});else go('result',afterP);
 }
 /* ---------- 월장 / 감량 (weight class change) ---------- */
 V.cclass=()=>{const c=DATA.career,ci=CLASSES.findIndex(x=>x.id===c.cls);
