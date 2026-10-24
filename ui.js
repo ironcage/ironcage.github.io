@@ -943,7 +943,8 @@ A.weighGo=()=>{cancelAnimationFrame(wRaf);Sound.music(false);const r=P.weigh;P.r
 const ctx=cv.getContext('2d');
 /* render at the screen's real pixel size (logical width stays 800) so text and lines stay sharp when stretched to fullscreen */
 function fit(){const dpr=Math.min(2.5,window.devicePixelRatio||1),w=cv.clientWidth||800,h=cv.clientHeight||450;
-  const pw=Math.round(Math.min(w*dpr,2600)),ph=Math.round(pw*h/w);
+  /* backing resolution capped: past ~1700px wide the phone only pays for pixels nobody can see */
+  const pw=Math.round(Math.min(w*Math.min(dpr,2),1700)),ph=Math.round(pw*h/w);
   IC.opts.topGap=0;IC.opts.hudBottom=false;
   if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph}const k=pw/800;ctx.setTransform(k,0,0,k,0,0);ctx.imageSmoothingQuality='high';
   /* HUD unit in CSS px (the canvas HUD is drawn in 800-wide units scaled by HS); lets the DOM exit/pause buttons sit beside the clock,

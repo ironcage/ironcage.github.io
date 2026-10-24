@@ -973,10 +973,10 @@ function impacts(S){for(const im of S.impacts||[]){const k=im.t/im.max,r=(1-k)*(
   ctx.globalAlpha=k;ctx.fillStyle=im.col;ctx.beginPath();for(let i=0;i<10;i++){const a=i/10*Math.PI*2,rr=i%2?r*.38:r;ctx.lineTo(im.x+Math.cos(a)*rr,im.y+Math.sin(a)*rr*.8)}ctx.closePath();ctx.globalAlpha=k*.55;ctx.fill();
   ctx.globalAlpha=k*.9;ctx.strokeStyle='#fff';ctx.lineWidth=2.4;for(let i=0;i<7;i++){const a=(i-3)*.18,l=r*(1.2+((i*37)%5)*.15);ctx.beginPath();ctx.moveTo(im.x-im.f*r*.4*Math.cos(a),im.y-r*.4*Math.sin(a));ctx.lineTo(im.x-im.f*l*Math.cos(a)*1.6,im.y-l*Math.sin(a))}ctx.stroke();ctx.restore()}}
 /* soft volumetric beam: several stacked cones (wide & faint → narrow & bright) fake a blurred edge, plus haze motes drifting inside */
-function softBeam(x0,y0,x1,y1,w0,w1,rgb,a,t,seed){
-  for(const [k,al] of [[1,.22],[.72,.26],[.46,.3],[.22,.42]]){const g=ctx.createLinearGradient(x0,y0,x1,y1);g.addColorStop(0,`rgba(${rgb},${a*al*1.6})`);g.addColorStop(.55,`rgba(${rgb},${a*al*.7})`);g.addColorStop(1,`rgba(${rgb},0)`);
+function softBeam(x0,y0,x1,y1,w0,w1,rgb,a,t,seed,still){
+  for(const [k,al] of (still?[[1,.22],[.72,.26],[.46,.3],[.22,.42]]:[[1,.3],[.5,.55]])){const g=ctx.createLinearGradient(x0,y0,x1,y1);g.addColorStop(0,`rgba(${rgb},${a*al*1.6})`);g.addColorStop(.55,`rgba(${rgb},${a*al*.7})`);g.addColorStop(1,`rgba(${rgb},0)`);
     ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(x0-w0*k,y0);ctx.lineTo(x0+w0*k,y0);ctx.lineTo(x1+w1*k,y1);ctx.lineTo(x1-w1*k,y1);ctx.closePath();ctx.fill()}
-  for(let i=0;i<7;i++){const h=((seed*97+i*53)%100)/100,u=((h*1.7+t*.0009*(1+i%3))%1),px=lerp(x0,x1,u)+Math.sin(t*.01+i*2+seed)*w1*.5*u,py=lerp(y0,y1,u);ctx.fillStyle=`rgba(${rgb},${a*.9*(1-u)})`;ctx.fillRect(px,py,1.6,1.6)}}
+  if(!still)for(let i=0;i<4;i++){const h=((seed*97+i*53)%100)/100,u=((h*1.7+t*.0009*(1+i%3))%1),px=lerp(x0,x1,u)+Math.sin(t*.01+i*2+seed)*w1*.5*u,py=lerp(y0,y1,u);ctx.fillStyle=`rgba(${rgb},${a*.9*(1-u)})`;ctx.fillRect(px,py,1.6,1.6)}}
 function beams(S){
   const AR=S.arena||{beams:3,beamA:.1,k:'main'},n=AR.beams,xs=n===1?[400]:Array.from({length:n},(_,i)=>lerp(120,680,i/(n-1)));
   ctx.save();ctx.globalCompositeOperation='lighter';
@@ -1843,33 +1843,28 @@ function bannerDraw(S){
 /* ---------- main render ---------- */
 /* overlay for the 3D view: effects projected from the 3D camera, then the broadcast HUD */
 let GRAIN=null;
-function broadcastGrade(S){
-  const m={x:W/2,y:VH*.68},t=S.frame;
-  ctx.save();
-  /* lit octagon, dark arena: the crowd and edges fall off into shadow, the canvas gets a warm pool of light */
-  ctx.globalCompositeOperation='multiply';
-  {const g=ctx.createRadialGradient(m.x,m.y-40,W*.12,m.x,m.y-40,W*.62);g.addColorStop(0,'rgb(255,255,255)');g.addColorStop(.5,'rgb(200,200,212)');g.addColorStop(1,'rgb(62,62,76)');ctx.fillStyle=g;ctx.fillRect(0,0,W,VH)}
-  /* the crowd above the cage line sits in the dark, like a real arena */
-  {const g=ctx.createLinearGradient(0,0,0,VH*.62);g.addColorStop(0,'rgb(120,120,135)');g.addColorStop(1,'rgb(255,255,255)');ctx.fillStyle=g;ctx.fillRect(0,0,W,VH*.62)}
-  /* contrast: soft-light pass, bright centre / dark rim */
-  ctx.globalCompositeOperation='soft-light';
-  {const g=ctx.createRadialGradient(m.x,m.y-60,0,m.x,m.y-60,W*.6);g.addColorStop(0,'rgba(128,128,128,0)');g.addColorStop(.45,'rgba(128,128,128,0)');g.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=g;ctx.fillRect(0,0,W,VH)}
-  /* the octagon canvas glows white under the overhead rig */
-  ctx.globalCompositeOperation='screen';
-  {ctx.save();ctx.translate(m.x,m.y+VH*.12);ctx.scale(1,.26);const g=ctx.createRadialGradient(0,0,0,0,0,W*.42);g.addColorStop(0,'rgba(255,248,232,.2)');g.addColorStop(.6,'rgba(255,244,222,.07)');g.addColorStop(1,'rgba(255,244,222,0)');ctx.fillStyle=g;ctx.fillRect(-W*.5,-W*.5,W,W);ctx.restore()}
-
-  ctx.globalCompositeOperation='source-over';
-  /* light rig at the top: dark truss with a row of lamps and soft beams */
-  {const ty=Math.max(4,VH*.035),n=9;ctx.fillStyle='rgba(6,7,9,.85)';ctx.fillRect(0,0,W,ty+6);ctx.fillStyle='rgba(40,44,52,.9)';ctx.fillRect(0,ty+3,W,2);
-   ctx.globalCompositeOperation='lighter';
-   for(let i=0;i<n;i++){const x=W*(i+.5)/n,fl=.85+.15*Math.sin(t*.05+i*1.3);
-     const lg=ctx.createRadialGradient(x,ty,0,x,ty,16);lg.addColorStop(0,`rgba(255,250,235,${.9*fl})`);lg.addColorStop(1,'rgba(255,250,235,0)');ctx.fillStyle=lg;ctx.fillRect(x-16,ty-16,32,32);
-     if(i%2===0)softBeam(x,ty,x+(m.x-x)*.35,VH*.75,5,70,'255,244,220',.06*fl,t,i+11)}}
-  ctx.globalCompositeOperation='source-over';
-  /* film grain: a small noise tile, shifted every frame */
-  if(!GRAIN){try{const g=document.createElement('canvas');g.width=g.height=96;const gx=g.getContext('2d'),im=gx.createImageData(96,96);for(let i=0;i<im.data.length;i+=4){const v=Math.random()*255|0;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255}gx.putImageData(im,0,0);GRAIN=ctx.createPattern(g,'repeat')}catch(e){GRAIN=0}}
-  if(GRAIN){ctx.globalAlpha=.045;ctx.globalCompositeOperation='overlay';ctx.translate((t*37)%96,(t*53)%96);ctx.fillStyle=GRAIN;ctx.fillRect(-96,-96,W+192,VH+192)}
-  ctx.restore()}
+/* broadcast look, baked once per screen size into small offscreen layers (gradients are smooth, so quarter resolution is invisible) and
+   stamped each frame with 4 drawImage calls instead of many full-screen gradient passes */
+let GRADE=null;
+function gradeBake(Wd,Hd){const sc=.25,cw=Math.max(8,Math.round(Wd*sc*2.4)),ch=Math.max(8,Math.round(Hd*sc*2.4)),k=cw/Wd;
+  const mk=()=>{const c=document.createElement('canvas');c.width=cw;c.height=ch;const x=c.getContext('2d');x.setTransform(k,0,0,k,0,0);return[c,x]};const m={x:Wd/2,y:Hd*.68};
+  /* darkening as a plain black vignette (same look as multiply/soft-light, but the cheapest blend there is) */
+  const [cm,xm]=mk();
+  {const g=xm.createRadialGradient(m.x,m.y-40,Wd*.12,m.x,m.y-40,Wd*.62);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.5,'rgba(0,0,6,.2)');g.addColorStop(1,'rgba(0,0,8,.78)');xm.fillStyle=g;xm.fillRect(0,0,Wd,Hd)}
+  {const g=xm.createLinearGradient(0,0,0,Hd*.62);g.addColorStop(0,'rgba(0,0,6,.5)');g.addColorStop(1,'rgba(0,0,0,0)');xm.fillStyle=g;xm.fillRect(0,0,Wd,Hd*.62)}
+  const cs=null;
+  const [cg,xg]=mk();{xg.save();xg.translate(m.x,m.y+Hd*.12);xg.scale(1,.26);const g=xg.createRadialGradient(0,0,0,0,0,Wd*.42);g.addColorStop(0,'rgba(255,248,232,.16)');g.addColorStop(.6,'rgba(255,244,222,.05)');g.addColorStop(1,'rgba(255,244,222,0)');xg.fillStyle=g;xg.fillRect(-Wd*.5,-Wd*.5,Wd,Wd);xg.restore()}
+  /* light rig: truss, lamps and the soft beams */
+  const [cr,xr]=mk();const ty=Math.max(4,Hd*.035),n=9;xr.globalCompositeOperation='lighter';
+  const sv=ctx;ctx=xr;try{for(let i=0;i<n;i++){const x=Wd*(i+.5)/n;const lg=xr.createRadialGradient(x,ty,0,x,ty,16);lg.addColorStop(0,'rgba(255,250,235,.9)');lg.addColorStop(1,'rgba(255,250,235,0)');xr.fillStyle=lg;xr.fillRect(x-16,ty-16,32,32);
+    if(i%2===0)softBeam(x,ty,x+(m.x-x)*.35,Hd*.75,5,70,'255,244,220',.06,0,i+11,true)}}finally{ctx=sv}
+  return{key:Wd+'x'+Hd,cm,cs,cg,cr,ty}}
+function broadcastGrade(S){const tf=ctx.getTransform(),cv=ctx.canvas,key=W+'x'+VH+'@'+cv.width+'x'+cv.height+'@'+tf.a.toFixed(4);
+  if(!GRADE||GRADE.key!==key){const L=gradeBake(W,VH);const c=document.createElement('canvas');c.width=cv.width;c.height=cv.height;const x=c.getContext('2d');x.setTransform(tf.a,0,0,tf.d,0,0);
+    x.drawImage(L.cm,0,0,W,VH);x.drawImage(L.cg,0,0,W,VH);x.fillStyle='rgba(6,7,9,.85)';x.fillRect(0,0,W,L.ty+6);x.fillStyle='rgba(40,44,52,.9)';x.fillRect(0,L.ty+3,W,2);x.globalCompositeOperation='lighter';x.drawImage(L.cr,0,0,W,VH);
+    GRADE={key,c}}
+  /* one pixel-exact copy per frame: the cheapest way to lay the whole broadcast look over the scene */
+  ctx.save();ctx.setTransform(1,0,0,1,Math.round(tf.e),Math.round(tf.f));ctx.drawImage(GRADE.c,0,0);ctx.restore()}
 function venueFX(S){
   /* underground venues: dirty colour grade, a swinging bare bulb, haze and a hard vignette */
   if(S.arena&&S.arena.k==='under'){const tc=S.arena.tint||'#c88a3a',fl=Math.sin(S.frame*.9)>.92?.55:1,sw=Math.sin(S.frame*.03)*.18;
@@ -1915,7 +1910,8 @@ function renderOverlay(S0,c,cssW,cssH,o3d){
   }
   ctx.restore();
 }
-function render(S0,c,cssW,cssH,o3d){
+function render(S0,c,cssW,cssH,o3d){const __t0=performance.now();try{return render_(S0,c,cssW,cssH,o3d)}finally{const d=performance.now()-__t0;IC.__rt=(IC.__rt||0)*.95+d*.05}}
+function render_(S0,c,cssW,cssH,o3d){
   ctx=c;if(o3d)return renderOverlay(S0,c,cssW,cssH,o3d);VH=cssW&&cssH?clamp(W*cssH/cssW,300,1100):H;
   const S=S0.mode==='replay'&&S0.rp?IC.Fight.replayView():S0;ADS=S0.arena&&S0.arena.k==='under'?ADSU:ADS0;
   const inAisle=S.walk&&/Aisle$/.test(S.walk.k||'');
@@ -1936,7 +1932,7 @@ function render(S0,c,cssW,cssH,o3d){
   for(const r of S.rings){ctx.strokeStyle=`rgba(255,255,255,${r.l/14*.7})`;ctx.lineWidth=r.big?3:2;ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,7);ctx.stroke()}
   for(const p of S.sparks){ctx.globalAlpha=Math.min(1,p.l/12);ctx.fillStyle=p.col;if(p.sw||p.drop){ctx.beginPath();if(p.drop){ctx.ellipse(p.x,p.y,p.r||1.8,(p.r||1.8)*(1+Math.min(1.5,Math.abs(p.vy)*.15)),Math.atan2(p.vy,p.vx)+Math.PI/2,0,7)}else ctx.arc(p.x,p.y,1.5,0,7);ctx.fill()}else ctx.fillRect(p.x-1.5,p.y-1.5,3,3)}
   ctx.globalAlpha=1;
-  beams(S);
+  if(!IC.__nobeam)beams(S);
   ctx.textAlign='center';ctx.textBaseline='middle';
   for(const t of S.texts){if(t.num&&!OPT.nums)continue;ctx.globalAlpha=Math.min(1,t.l/20);ctx.font=`${t.num?20:18}px "Black Han Sans",sans-serif`;ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.65)';ctx.strokeText(t.t,t.x,t.y);ctx.fillStyle=t.col;ctx.fillText(t.t,t.x,t.y)}
   ctx.globalAlpha=1;ctx.restore();
@@ -1945,7 +1941,7 @@ function render(S0,c,cssW,cssH,o3d){
   if(S._xf>=0&&S.walk){const W0=S.walk,k0=W0.k,ax0=W0.ax;W0.k=k0.replace(/In$/,'Aisle');W0.ax=Math.max(ax0,600);const a0=ctx.globalAlpha;
     try{ctx.save();ctx.globalAlpha=Math.pow(1-S._xf/26,1.4);aisleScene(S);ctx.restore()}catch(e){}finally{W0.k=k0;W0.ax=ax0;ctx.globalAlpha=a0}}
   // broadcast look: overhead light rig, a lit canvas under the lights, punchy grade and fine film grain
-  if(!(S.arena&&S.arena.k==='under')&&!S.demo&&!(S.walk&&/Aisle$/.test(S.walk.k||'')))broadcastGrade(S);
+  if(!(S.arena&&S.arena.k==='under')&&!S.demo&&!(S.walk&&/Aisle$/.test(S.walk.k||''))&&!IC.__nograde)broadcastGrade(S);
   // screen fx
   const vg=ctx.createRadialGradient(W/2,VH/2,Math.min(W,VH)*.35,W/2,VH/2,Math.max(W,VH)*.62);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.3)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,VH);
   if(S.walk&&S.walk.tension>0){const hb=Math.max(0,Math.sin(S.frame*.137))**8,g=ctx.createRadialGradient(W/2,VH/2,VH*.25,W/2,VH/2,Math.max(W,VH)*.65);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,`rgba(110,0,0,${S.walk.tension*(.18+hb*.22)})`);ctx.fillStyle=g;ctx.fillRect(0,0,W,VH)}
