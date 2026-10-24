@@ -1790,7 +1790,7 @@ function cardHtml(ev,compact){
 }
 V.ccard=()=>{const c=DATA.career,ev=c.fight&&c.fight.card;return `${back('chub','← 커리어')}<div class="panel">${ev?cardHtml(ev):'<p>예정된 이벤트가 없습니다.</p>'}</div>`};
 V.cevents=()=>{const c=DATA.career,E=c.events||[];return `${back('chub','← 커리어')}<div class="panel"><div class="eyebrow">지난 이벤트</div>${E.length?E.map(ev=>`<details class="evd"><summary><b>${esc(ev.name)}</b> <span>${esc(ev.city)}</span></summary>${cardHtml(ev,true)}</details>`).join(''):'<p>아직 치른 이벤트가 없습니다.</p>'}</div>`};
-function careerResult(res){
+function careerResult(res){setTimeout(()=>{try{rankPush()}catch(e){}},1500);
   const c=DATA.career,o=c.fight,opp=getF(o.opp,c),won=res.winner==='a',draw=!res.winner;
   const before=c.order.indexOf('me');const lines=[];
   const wasMain=c.tier!=='regional';
@@ -1923,6 +1923,38 @@ const FB={pid:'iron-cage-daee5',key:'AIzaSyBzgZeHnHkjGQApZ18FAv2hHYumkYbGM9M',
   async top(col,field,n){const r=await fetch(`${this.base()}:runQuery?key=${this.key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({structuredQuery:{from:[{collectionId:col}],orderBy:[{field:{fieldPath:field},direction:'DESCENDING'}],limit:n}})});if(!r.ok)throw new Error('fb '+r.status);const j=await r.json();
     return (Array.isArray(j)?j:[]).filter(x=>x.document).map(x=>{const o={id:x.document.name.split('/').pop()};for(const k in x.document.fields)o[k]=this.dec(x.document.fields[k]);return o})}};
 const WHOF={list:null,err:false,busy:false,t:0};
+/* ---------- player account (Firebase Auth over REST): anonymous by default, Google can be linked later ---------- */
+const AUTH={tok:null,exp:0,uid:null,
+  async token(){const now=Date.now();if(this.tok&&now<this.exp-60000)return this.tok;const A0=DATA.auth||{};
+    try{let j;
+      if(A0.rt){const r=await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB.key}`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(A0.rt)});
+        if(r.ok){const k=await r.json();j={idToken:k.id_token,refreshToken:k.refresh_token,localId:k.user_id,expiresIn:k.expires_in}}}
+      if(!j){const r=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FB.key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({returnSecureToken:true})});
+        if(!r.ok)throw new Error('auth '+r.status);j=await r.json()}
+      this.tok=j.idToken;this.exp=now+(+j.expiresIn||3600)*1000;this.uid=j.localId;DATA.auth=Object.assign({},A0,{rt:j.refreshToken,uid:j.localId});save();return this.tok}
+    catch(e){return null}}};
+FB.patch=async function(path,obj){const t=await AUTH.token();if(!t)throw new Error('noauth');const fields={};for(const k in obj)fields[k]=this.enc(obj[k]);
+  const mask=Object.keys(obj).map(k=>'updateMask.fieldPaths='+encodeURIComponent(k)).join('&');
+  const r=await fetch(`${this.base()}/${path}?${mask}`,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},body:JSON.stringify({fields})});if(!r.ok)throw new Error('fb '+r.status);return r.json()};
+/* ---------- online career ranking ---------- */
+const RANK={by:'score',lists:{},err:false,busy:false,t:{},me:null};
+function rankStats(c){const h=c.history||[],w=h.filter(x=>x.res==='승');const ko=w.filter(x=>/KO/.test(x.method||'')).length,sub=w.filter(x=>x.method==='서브미션').length;
+  return{name:String(c.name||'').slice(0,24),nick:String(c.nick||'').slice(0,24),cls:String(c.cls||''),style:String(c.style||''),w:c.rec[0]|0,l:c.rec[1]|0,d:c.rec[2]|0,ko,sub,titles:c.titles|0,def:c.titleDef|0,score:Math.round(hofScore(c).total)|0,champ:!!c.isChamp,at:Date.now()}}
+async function rankPush(){const c=DATA.career;if(!c||!c.rec||!(c.rec[0]+c.rec[1]+c.rec[2]))return;try{const st=rankStats(c);const t=await AUTH.token();if(!t)return;await FB.patch('rank/'+AUTH.uid,st);RANK.me=st;RANK.t={}}catch(e){}}
+function loadRank(by,force){if(RANK.busy||(!force&&RANK.lists[by]&&Date.now()-(RANK.t[by]||0)<60000))return;RANK.busy=true;
+  FB.top('rank',by,50).then(L=>{RANK.lists[by]=L;RANK.err=false}).catch(()=>{RANK.err=true}).finally(()=>{RANK.busy=false;RANK.t[by]=Date.now();if(SCREEN==='hof')render()})}
+A.rankBy=d=>{RANK.by=d.v;loadRank(d.v);render()};
+function rankPanel(){const by=RANK.by;loadRank(by);const L=RANK.lists[by],myId=(DATA.auth||{}).uid;
+  const lab={score:'종합 점수',w:'승리',ko:'KO·TKO'},val=x=>by==='score'?x.score+'점':by==='w'?x.w+'승':x.ko+'회';
+  const tabs=`<div class="rk-tabs">${Object.keys(lab).map(k=>`<button class="${k===by?'on':''}" data-act="rankBy" data-v="${k}">${lab[k]}</button>`).join('')}</div>`;
+  let body;
+  if(RANK.err&&!L)body='<p class="rk-note">온라인 랭킹을 준비하고 있어요. 곧 열려요!</p>';
+  else if(!L)body='<p class="rk-note wh-load">랭킹 불러오는 중…</p>';
+  else if(!L.length)body=`<p class="rk-note">아직 기록이 없어요. 커리어 경기를 하면 <b>자동으로 랭킹에 올라가요</b>.</p>`;
+  else body=`<div class="rk-list">${L.map((x,i)=>`<div class="rk-row${x.id===myId?' me':''}${i<3?' top'+(i+1):''}"><span class="r">${i<3?['🥇','🥈','🥉'][i]:i+1}</span><span class="n"><b>${esc(x.name||'')}${x.champ?' <i class="rk-c">C</i>':''}${x.id===myId?' <i class="rk-c rk-me">나</i>':''}</b><small>"${esc(x.nick||'')}" · ${clsName(x.cls)} · ${x.w}-${x.l}-${x.d}</small></span><span class="s">${val(x)}</span></div>`).join('')}</div>`;
+  return `<section class="whof rk"><div class="wh-top"><span class="wh-live"><i></i>ONLINE</span><span class="wh-sub">모든 플레이어의 커리어 순위</span></div><h3 class="wh-title">온라인 랭킹</h3>
+    <p class="wh-desc">커리어 경기가 끝날 때마다 내 전적이 <b>자동으로 올라가요</b>. 전 세계 플레이어와 순위를 겨뤄 보세요.</p>${tabs}${body}</section>`}
+
 function devId(){if(!DATA.dev){DATA.dev='d'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);save()}return DATA.dev}
 function loadWorldHof(force){if(WHOF.busy||(!force&&WHOF.list&&Date.now()-WHOF.t<60000))return;WHOF.busy=true;
   FB.top('hof','score',50).then(L=>{WHOF.list=L;WHOF.err=false}).catch(()=>{WHOF.err=true}).finally(()=>{WHOF.busy=false;WHOF.t=Date.now();if(SCREEN==='hof')render()})}
@@ -1957,6 +1989,7 @@ function hofBar(c){const h=hofScore(c),pct=Math.min(100,h.total/HOF_FIRST*100);
 V.hof=()=>{const c=DATA.career,H=DATA.hof||[];
   return `<div class="hofhead"><div class="eyebrow">IRON CAGE</div><h2>명예의 전당</h2><p>케이지 위에서 시대를 지배한 이들의 이름이 새겨지는 곳</p></div>
   ${worldHofPanel()}
+  ${rankPanel()}
   ${c?`<div class="panel"><div class="eyebrow">현역 · ${esc(c.name)}</div><h3>헌액 진척도</h3>${hofBar(c)}<p>${hofScore(c).total>=HOF_NEED?'지금 은퇴해도 명예의 전당에 들어갑니다.':`은퇴할 때 ${HOF_NEED}점을 넘기면 헌액됩니다. 타이틀(+12)과 방어(+6)가 가장 큰 점수입니다.`}</p></div>`:''}
   <div class="panel"><div class="eyebrow">커리어 윙</div><h3>나의 헌액자 ${H.length}명</h3>${H.length?`<div class="plaques">${H.map(hofPlaque).join('')}</div>`:'<p>아직 헌액된 커리어 선수가 없습니다. 커리어에서 챔피언이 된 뒤 은퇴하면 이곳에 명판이 걸립니다.</p>'}</div>
 `};
@@ -2213,7 +2246,7 @@ V.wtour=()=>{if(STANDALONE)return offNote('주간 토너먼트','는');if(!WT)re
   ${WT.b1?`<div class="panel"><div class="eyebrow">지난주 결과</div>${wtBracketHtml(WT.b1,WT.p1)}</div>`:''}
   ${WT.b2?`<div class="panel"><div class="eyebrow">2주 전 결과</div>${wtBracketHtml(WT.b2,WT.p2)}</div>`:''}`};
 
-IC._career={careerResult:r=>careerResult(r),makeOffers:c=>makeOffers(c),get:()=>DATA.career};
+IC._rank={push:()=>rankPush(),auth:AUTH};IC._career={careerResult:r=>careerResult(r),makeOffers:c=>makeOffers(c),get:()=>DATA.career};
 /* ---------- KO 명장면 앨범 (픽셀 GIF 5슬롯) ---------- */
 function toast(t){const el=document.createElement('div');el.className='toast';el.textContent=t;document.body.appendChild(el);setTimeout(()=>el.classList.add('on'),20);setTimeout(()=>{el.classList.remove('on');setTimeout(()=>el.remove(),400)},2600)}
 if(IC.KO)IC.KO.Album.onSaved=r=>{if(r&&r.saved)toast('📼 KO 명장면이 앨범에 저장됐어요')};
