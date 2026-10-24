@@ -398,8 +398,9 @@ function ladder(c){const L=c.order||[],me=L.indexOf('me'),want=new Set([0,1,2,3]
 let INSTALL_EVT=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EVT=e;if(SCREEN==='home')try{render()}catch(_){}});
 addEventListener('appinstalled',()=>{INSTALL_EVT=null;DATA.settings.instHide=1;save();toast('📲 설치 완료! 홈 화면에서 아이언 케이지를 실행하세요');if(SCREEN==='home')render()});
 const isApp=()=>{try{return navigator.standalone===true||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches}catch(e){return false}};
-function instBanner(){if(isApp()||DATA.settings.instHide)return '';
-  return `<div class="instb"><span class="ic">📲</span><div><b>앱으로 설치하기</b><small>홈 화면에 깔면 전체 화면으로, 더 빠르게 실행돼요</small></div><button class="btn-go sm" data-act="install">설치</button><button class="x" data-act="instHide" aria-label="닫기">✕</button></div>`}
+/* shown to everyone who has not installed the app (no dismiss) */
+function instBanner(){if(isApp())return '';
+  return `<div class="instb"><span class="ic">📲</span><div><b>앱으로 설치하기</b><small>홈 화면에 깔면 전체 화면으로, 더 빠르게 실행돼요</small></div><button class="btn-go sm" data-act="install">설치</button></div>`}
 A.instHide=()=>{DATA.settings.instHide=1;save();render()};
 A.install=async()=>{if(INSTALL_EVT){const e=INSTALL_EVT;INSTALL_EVT=null;try{await e.prompt();const r=await e.userChoice;if(r&&r.outcome==='accepted'){DATA.settings.instHide=1;save()}}catch(_){}render();return}
   const ua=navigator.userAgent||'',ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1),inapp=/KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(ua),sam=/SamsungBrowser/i.test(ua);
@@ -1060,6 +1061,11 @@ addEventListener('touchend',e=>{if(e.touches.length===0){if(JOY)JOY.reset();relH
 addEventListener('touchcancel',e=>{if(e.touches.length===0){if(JOY)JOY.reset();relHolds()}},true);
 addEventListener('blur',()=>{if(JOY)JOY.reset();relHolds()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&JOY)JOY.reset()});
+/* leaving the app (home button, app switcher, lock): silence everything; coming back: resume */
+function bgAudio(hidden){try{if(hidden){if(Sound.ac&&Sound.ac.state==='running')Sound.ac.suspend();if(Sound._sa)Sound._sa.pause()}else{if(Sound.ac&&Sound.ac.state!=='running')Sound.ac.resume();if(Sound._sa)Sound._sa.play().catch(()=>{})}}catch(e){}}
+document.addEventListener('visibilitychange',()=>bgAudio(document.hidden));
+addEventListener('pagehide',()=>bgAudio(true));addEventListener('pointerdown',()=>{try{if(!document.hidden&&Sound.ac&&Sound.ac.state==='suspended')Sound.ac.resume()}catch(e){}},true);addEventListener('pageshow',()=>{if(!document.hidden)bgAudio(false)});
+addEventListener('blur',()=>{setTimeout(()=>{if(document.hidden)bgAudio(true)},300)});
 const KR=['J','U','H','K','I','O']; // J 펀치 · K 킥 · I 클린치/테이크다운 · U/H/O 보조 타격·필살기
 function itemAt(side,i){return CUR?(side==='l'?CUR.left[i]:CUR.grid[i]):null}
 function mkBtn(side,i){
