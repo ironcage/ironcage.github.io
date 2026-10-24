@@ -390,6 +390,21 @@ function ladder(c){const L=c.order||[],me=L.indexOf('me'),want=new Set([0,1,2,3]
   if(me>3)[me-1,me,me+1].forEach(i=>want.add(i));else[4,5].forEach(i=>want.add(i));
   return [...want].filter(i=>i>=0&&i<L.length&&i<=15).sort((a,b)=>a-b).slice(0,6).map(i=>{const id=L[i],d=id==='me'?{name:c.name}:getF(id,c);return{i,me:id==='me',name:d?d.name:'?'}})}
 
+/* install as an app: Android/Chrome gets the real install prompt; iPhone and other browsers get a short how-to */
+let INSTALL_EVT=null;addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EVT=e;if(SCREEN==='home')try{render()}catch(_){}});
+addEventListener('appinstalled',()=>{INSTALL_EVT=null;DATA.settings.instHide=1;save();toast('📲 설치 완료! 홈 화면에서 아이언 케이지를 실행하세요');if(SCREEN==='home')render()});
+const isApp=()=>{try{return navigator.standalone===true||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches}catch(e){return false}};
+function instBanner(){if(isApp()||DATA.settings.instHide)return '';
+  return `<div class="instb"><span class="ic">📲</span><div><b>앱으로 설치하기</b><small>홈 화면에 깔면 전체 화면으로, 더 빠르게 실행돼요</small></div><button class="btn-go sm" data-act="install">설치</button><button class="x" data-act="instHide" aria-label="닫기">✕</button></div>`}
+A.instHide=()=>{DATA.settings.instHide=1;save();render()};
+A.install=async()=>{if(INSTALL_EVT){const e=INSTALL_EVT;INSTALL_EVT=null;try{await e.prompt();const r=await e.userChoice;if(r&&r.outcome==='accepted'){DATA.settings.instHide=1;save()}}catch(_){}render();return}
+  const ua=navigator.userAgent||'',ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1),inapp=/KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(ua),sam=/SamsungBrowser/i.test(ua);
+  const steps=inapp?(ios?['오른쪽 아래(또는 위) <b>⋯ / 공유</b> 버튼','<b>Safari로 열기</b>','Safari에서 다시 <b>설치</b> 버튼']:['오른쪽 위 <b>⋮</b> 메뉴','<b>다른 브라우저로 열기</b> (Chrome)','Chrome에서 다시 <b>설치</b> 버튼'])
+    :ios?['화면 아래 <b>공유 버튼</b> (네모에 위 화살표 ⬆︎)','메뉴를 내려서 <b>홈 화면에 추가</b>','오른쪽 위 <b>추가</b>']
+    :sam?['아래 <b>≡ 메뉴</b>','<b>현재 페이지 추가</b>','<b>홈 화면</b>']:['오른쪽 위 <b>⋮</b> 메뉴','<b>앱 설치</b> 또는 <b>홈 화면에 추가</b>','<b>설치</b>'];
+  const el=document.createElement('div');el.className='lockpop instpop';
+  el.innerHTML=`<div><i>📲</i><b>앱으로 설치</b><p>${inapp?'카톡·네이버 등 앱 안 브라우저에서는 설치가 안 돼요':ios?'아이폰은 Safari에서 이렇게 설치해요':'이 순서대로 눌러 주세요'}</p><ol>${steps.map(x=>`<li>${x}</li>`).join('')}</ol><div class="row"><button class="btn-go sm" data-k="x">알겠어요</button></div></div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target.dataset&&e.target.dataset.k||e.target===el)el.remove()})};
 V.home=()=>{
   const c=DATA.career?ensureC(DATA.career):null,ch=champsOf();
   const news=c&&c.news&&c.news.length?c.news.slice(0,3):tickerItems().slice(0,3);
@@ -420,7 +435,7 @@ V.home=()=>{
     const L=ROSTER.filter(f=>((IC.CLSMAP||{})[f.cls]||f.cls)==='lw').sort((a,b)=>b.ovr-a.ovr).slice(0,6);
     right=`<button class="bpn brk" data-act="nav" data-to="roster"><h4>라이트급 RANKINGS</h4>${L.map((f,i)=>`<p><i class="${i===0?'c':''}">${i===0?'C':i}</i><span>${esc(f.name)}</span></p>`).join('')}</button>`;
     belt=`<button class="bbelt" data-act="career"><span><small>노리는 벨트</small><b>IRON CAGE<br>챔피언십</b><em>6개 체급의 왕좌</em></span><img src="art/belt.webp" alt="챔피언 벨트"></button>`}
-  return `${brk}${fo}${bar}<div class="bgrid">${left}${right}</div>${belt}
+  return `${instBanner()}${brk}${fo}${bar}<div class="bgrid">${left}${right}</div>${belt}
   <div class="sech bsech"><h3>CHAMPIONS</h3><span>6개 체급의 왕좌</span></div>
   <div class="chrow">${ch.map(x=>`<button class="chc${x.id==='me'?' me':''}" data-act="nav" data-to="roster">${CHART[x.id]?`<img class="chimg" src="art/ch_${CHART[x.id]}.jpg" alt="" loading="lazy">`:`<canvas data-pid="${esc(x.id)}" data-mode="bust"></canvas>`}<span class="chk">${x.C.name}</span><span class="chn">"${esc(x.d.nick)}"</span><span class="chr">${(x.d.rec||[0,0,0]).join('-')}</span></button>`).join('')}</div>
   <div class="hfoot">${hmChip()}<p>라운드 ${DATA.settings.roundSec/60}분 · v${(IC.VER||'')}</p><div class="row"><button class="btn sm" data-act="nav" data-to="records">기록 · 설정</button><button class="btn sm" data-act="nav" data-to="wipe">게임 초기화</button></div></div>`;
