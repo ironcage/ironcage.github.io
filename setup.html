@@ -1,0 +1,48 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Firebase 설정 복사</title>
+<style>body{margin:0;background:#0b0b0c;color:#ece7da;font:16px/1.6 system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif}main{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:26px;margin:0 0 6px}p{color:#b9b2a0}section{margin:22px 0;padding:16px;border:1px solid rgba(232,179,58,.35);border-radius:10px;background:#141416}
+h2{font-size:19px;margin:0 0 8px;color:#e8b33a}pre{white-space:pre-wrap;word-break:break-all;background:#000;padding:12px;border-radius:8px;font-size:12.5px;max-height:260px;overflow:auto;color:#d8f5d0}
+button{font-size:17px;font-weight:700;padding:12px 22px;border:0;border-radius:8px;background:#d20a11;color:#fff;cursor:pointer}button.ok{background:#2a9d55}a{color:#7fb5ff}</style></head><body><main>
+<h1>Firebase 설정 복사</h1><p>버튼을 누르면 복사돼요. Firebase 화면 글상자를 클릭 → <b>Ctrl+A</b> → <b>Ctrl+V</b> → <b>게시</b>.</p>
+<section><h2>② Firestore 규칙</h2><p><a href="https://console.firebase.google.com/project/iron-cage-daee5/firestore/databases/-default-/rules" target="_blank">Firestore 규칙 화면 열기 ↗</a></p><button data-c="fs">규칙 복사</button><pre id="fs">rules_version = &#x27;2&#x27;;
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /hof/{id} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly([&#x27;name&#x27;,&#x27;nick&#x27;,&#x27;from&#x27;,&#x27;cls&#x27;,&#x27;style&#x27;,&#x27;rec&#x27;,&#x27;belts&#x27;,&#x27;def&#x27;,&#x27;score&#x27;,&#x27;first&#x27;,&#x27;high&#x27;,&#x27;f&#x27;,&#x27;at&#x27;,&#x27;dev&#x27;])
+        &amp;&amp; request.resource.data.name is string &amp;&amp; request.resource.data.name.size() &gt; 0 &amp;&amp; request.resource.data.name.size() &lt;= 24
+        &amp;&amp; request.resource.data.nick is string &amp;&amp; request.resource.data.nick.size() &lt;= 24
+        &amp;&amp; request.resource.data.score is int &amp;&amp; request.resource.data.score &gt;= 0 &amp;&amp; request.resource.data.score &lt;= 5000
+        &amp;&amp; request.resource.data.rec is list &amp;&amp; request.resource.data.rec.size() == 3
+        &amp;&amp; request.resource.data.high is string &amp;&amp; request.resource.data.high.size() &lt;= 200
+        &amp;&amp; request.resource.data.f is string &amp;&amp; request.resource.data.f.size() &lt;= 8000
+        &amp;&amp; request.resource.data.dev is string &amp;&amp; request.resource.data.dev.size() &lt;= 40;
+      allow update, delete: if false;
+    }
+    match /rank/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null &amp;&amp; request.auth.uid == uid
+        &amp;&amp; request.resource.data.keys().hasOnly([&#x27;name&#x27;,&#x27;nick&#x27;,&#x27;cls&#x27;,&#x27;style&#x27;,&#x27;w&#x27;,&#x27;l&#x27;,&#x27;d&#x27;,&#x27;ko&#x27;,&#x27;sub&#x27;,&#x27;titles&#x27;,&#x27;def&#x27;,&#x27;score&#x27;,&#x27;champ&#x27;,&#x27;at&#x27;])
+        &amp;&amp; request.resource.data.name is string &amp;&amp; request.resource.data.name.size() &lt;= 24
+        &amp;&amp; request.resource.data.score is int &amp;&amp; request.resource.data.score &gt;= 0 &amp;&amp; request.resource.data.score &lt;= 5000
+        &amp;&amp; request.resource.data.w is int &amp;&amp; request.resource.data.w &gt;= 0 &amp;&amp; request.resource.data.w &lt;= 2000;
+      allow delete: if request.auth != null &amp;&amp; request.auth.uid == uid;
+    }
+    match /saves/{uid} {
+      allow read, write: if request.auth != null &amp;&amp; request.auth.uid == uid;
+    }
+  }
+}</pre></section>
+<section><h2>③ 실시간 데이터베이스 규칙</h2><p><a href="https://console.firebase.google.com/project/iron-cage-daee5/database" target="_blank">실시간 데이터베이스 화면 열기 ↗</a> (먼저 '데이터베이스 만들기' → 싱가포르 → 잠금 모드)</p><button data-c="rt">규칙 복사</button><pre id="rt">{
+  &quot;rules&quot;: {
+    &quot;ping&quot;: { &quot;.read&quot;: &quot;auth != null&quot; },
+    &quot;rooms&quot;: {
+      &quot;$room&quot;: {
+        &quot;.read&quot;: &quot;auth != null&quot;,
+        &quot;p&quot;: { &quot;$uid&quot;: { &quot;.write&quot;: &quot;auth != null &amp;&amp; auth.uid === $uid&quot; } },
+        &quot;e&quot;: { &quot;.write&quot;: &quot;auth != null&quot; }
+      }
+    }
+  }
+}</pre></section>
+</main><script>document.querySelectorAll('button[data-c]').forEach(b=>b.onclick=async()=>{const t=document.getElementById(b.dataset.c).textContent;try{await navigator.clipboard.writeText(t)}catch(e){const r=document.createRange();r.selectNodeContents(document.getElementById(b.dataset.c));const s=getSelection();s.removeAllRanges();s.addRange(r);document.execCommand('copy')}b.textContent='✓ 복사됐어요';b.classList.add('ok')})</script></body></html>
