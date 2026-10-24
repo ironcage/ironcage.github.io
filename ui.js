@@ -2459,11 +2459,16 @@ function openOut(){const u=location.href.split('#')[0],ua=navigator.userAgent||'
   if(/KAKAOTALK/i.test(ua)){location.href='kakaotalk://web/openExternal?url='+encodeURIComponent(u);return}
   if(ios){location.href='x-safari-'+u;return}
   location.href='intent://'+u.replace(/^https?:\/\//,'')+'#Intent;scheme=https;package=com.android.chrome;end'}
+/* the app refused to hand the link to Safari: point at the app's own ⋯ menu */
+function outHelp(){if(document.getElementById('outHelp'))return;const ios=/iPhone|iPad|iPod/.test(navigator.userAgent),ig=/Instagram/i.test(navigator.userAgent),kk=/KAKAOTALK/i.test(navigator.userAgent);
+  const menu=kk?'오른쪽 아래 ⋯':'오른쪽 위 ⋯',item=ig?(ios?'외부 브라우저에서 열기':'브라우저에서 열기'):kk?'다른 브라우저로 열기':(ios?'Safari로 열기':'Chrome으로 열기');
+  const el=document.createElement('div');el.id='outHelp';el.innerHTML=`<i class="oh-arrow${kk?' bot':''}">${kk?'↘':'↗'}</i><div><b>${menu}</b> 버튼을 누르고<br><em>'${item}'</em>를 눌러 주세요</div><button>확인</button>`;
+  document.body.appendChild(el);el.querySelector('button').onclick=()=>el.remove()}
 function inappGate(){if(!INAPP||!gate||gate.dataset.inapp)return;gate.dataset.inapp=1;const ios=/iPhone|iPad|iPod/.test(navigator.userAgent),br=ios?'Safari':'Chrome';
   const x=gate.querySelector('.gtx');if(!x)return;x.innerHTML=`<b>앱 안에서는 화면이 <em>안 돌아가요</em></b><span>${br}에서 열면 가로 화면으로 바로 플레이할 수 있어요</span>
    <div class="gout"><button id="goOut">${br}로 열기</button><button id="goCopy">링크 복사</button></div><i class="gtap">안 열리면: 오른쪽 위 ⋯ → '${ios?'외부 브라우저에서 열기':'다른 브라우저로 열기'}'</i>`;
   const st=e=>e.stopPropagation();x.querySelectorAll('button').forEach(b=>b.addEventListener('pointerdown',st));
-  $('#goOut').onclick=e=>{e.stopPropagation();openOut()};
+  $('#goOut').onclick=e=>{e.stopPropagation();openOut();setTimeout(()=>{if(!document.hidden)outHelp()},1300)};
   $('#goCopy').onclick=async e=>{e.stopPropagation();try{await navigator.clipboard.writeText(location.href.split('#')[0]);e.target.textContent='✓ 복사됨 — '+br+'에 붙여넣기'}catch(_){e.target.textContent=location.href.split('#')[0]}}}
 function checkOrient(){const portrait=window.innerHeight>window.innerWidth;if(!gate)return;if(portrait)inappGate();const was=!gate.hidden;gate.hidden=!portrait;if(portrait)gateStart();
   if(portrait&&!was){if(JOY)JOY.reset();heldKeys={};
