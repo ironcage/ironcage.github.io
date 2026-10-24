@@ -1,6 +1,6 @@
 /* 아이언 케이지 — 서비스 워커 (오프라인 실행)
    게임 파일을 바꿔 올릴 때는 아래 VERSION 숫자를 하나 올려 주세요. 그래야 폰에 있는 옛 버전이 새 버전으로 바뀝니다. */
-const VERSION = 'iron-cage-pwa-v98';
+const VERSION = 'iron-cage-pwa-v99';
 const FONT_CACHE = 'iron-cage-fonts';
 const APP_FILES = [
   './',
@@ -116,7 +116,8 @@ self.addEventListener('fetch', event => {
   // 페이지 이동(앱 시작): 브라우저 기본 요청을 그대로 보내고, 실패(오프라인)할 때만 저장본 사용 — 흰 화면 방지
   if (req.mode === 'navigate') {
     event.respondWith(fetch(req).then(res => {
-      if (res && res.ok && !res.redirected) { const copy = res.clone(); caches.open(VERSION).then(c => c.put('./index.html', copy)).catch(() => {}); }
+      // 게임 페이지만 저장 (소개 페이지 about.html 같은 다른 페이지가 게임 저장본을 덮어쓰지 않게)
+      if (res && res.ok && !res.redirected && /\/(index\.html)?$/.test(url.pathname)) { const copy = res.clone(); caches.open(VERSION).then(c => c.put('./index.html', copy)).catch(() => {}); }
       return res;
     }).catch(() => caches.match('./index.html').then(hit => hit || Response.error())));
     return;
