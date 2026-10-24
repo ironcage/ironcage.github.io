@@ -249,5 +249,5 @@ const SKIN_OPTIONS = ['#f0cdb0','#e2b48c','#d2a07a','#b47a52','#8a5a3c','#5a3824
 
 const SONGS=[
  {n:'No Mercy',g:'hiphop',gn:'시네마틱 힙합',bpm:90,key:1.12,big:true,verb:.42,crowd:1.5,d:'웅장한 현악·브라스 위에 묵직한 비트, 관중 박수'}];
-IC.VER='110';Object.assign(IC,{ROSTER_ALL,CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
+IC.VER='111';Object.assign(IC,{ROSTER_ALL,CLASSES8,SONGS,CUSTOM,STATS,STATN,STAT_GROUP,CLASSES,CLSMAP,STYLES,MV,SPM,TD,SUBS,ROSTER,byClass,fighter,makeStats,ovrOf,makeLook,hash,seeded,HAIR,TRUNKS,COUNTRIES,SKIN_OPTIONS});
 })(window.IC);

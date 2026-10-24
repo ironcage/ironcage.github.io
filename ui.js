@@ -2453,7 +2453,19 @@ function gateLoop(now){if(gate.hidden){gateRaf=0;return}const cv=$('#gateCv');if
   gateRaf=requestAnimationFrame(gateLoop)}
 gate&&gate.addEventListener('pointerdown',()=>{const T=gateT%IC.Draw.GATE.loop;gateT=gateT-T+62;try{Sound.init();if(IC.Haptic)IC.Haptic.tap()}catch(e){}});
 function gateStart(){if(!gateRaf&&gate&&!gate.hidden){gateLast=0;gateT=20;gateF=null;gateRaf=requestAnimationFrame(gateLoop)}}
-function checkOrient(){const portrait=window.innerHeight>window.innerWidth;if(!gate)return;const was=!gate.hidden;gate.hidden=!portrait;if(portrait)gateStart();
+/* in-app browsers (Instagram, KakaoTalk, Facebook, Naver, Line…) lock the screen in portrait: offer to open in Safari/Chrome instead */
+const INAPP=/Instagram|FBAN|FBAV|KAKAOTALK|NAVER\(inapp|Line\/|DaumApps|everytimeApp|Snapchat|Twitter/i.test(navigator.userAgent||'');
+function openOut(){const u=location.href.split('#')[0],ua=navigator.userAgent||'',ios=/iPhone|iPad|iPod/.test(ua);
+  if(/KAKAOTALK/i.test(ua)){location.href='kakaotalk://web/openExternal?url='+encodeURIComponent(u);return}
+  if(ios){location.href='x-safari-'+u;return}
+  location.href='intent://'+u.replace(/^https?:\/\//,'')+'#Intent;scheme=https;package=com.android.chrome;end'}
+function inappGate(){if(!INAPP||!gate||gate.dataset.inapp)return;gate.dataset.inapp=1;const ios=/iPhone|iPad|iPod/.test(navigator.userAgent),br=ios?'Safari':'Chrome';
+  const x=gate.querySelector('.gtx');if(!x)return;x.innerHTML=`<b>앱 안에서는 화면이 <em>안 돌아가요</em></b><span>${br}에서 열면 가로 화면으로 바로 플레이할 수 있어요</span>
+   <div class="gout"><button id="goOut">${br}로 열기</button><button id="goCopy">링크 복사</button></div><i class="gtap">안 열리면: 오른쪽 위 ⋯ → '${ios?'외부 브라우저에서 열기':'다른 브라우저로 열기'}'</i>`;
+  const st=e=>e.stopPropagation();x.querySelectorAll('button').forEach(b=>b.addEventListener('pointerdown',st));
+  $('#goOut').onclick=e=>{e.stopPropagation();openOut()};
+  $('#goCopy').onclick=async e=>{e.stopPropagation();try{await navigator.clipboard.writeText(location.href.split('#')[0]);e.target.textContent='✓ 복사됨 — '+br+'에 붙여넣기'}catch(_){e.target.textContent=location.href.split('#')[0]}}}
+function checkOrient(){const portrait=window.innerHeight>window.innerWidth;if(!gate)return;if(portrait)inappGate();const was=!gate.hidden;gate.hidden=!portrait;if(portrait)gateStart();
   if(portrait&&!was){if(JOY)JOY.reset();heldKeys={};
     const S=IC.Fight.S;if(!game.hidden&&S&&between.hidden&&!(CFG&&CFG.online)&&['fight','intro'].includes(S.mode))openPause()}}
 addEventListener('resize',checkOrient);addEventListener('orientationchange',()=>setTimeout(checkOrient,120));checkOrient();
