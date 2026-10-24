@@ -1276,6 +1276,7 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <h3>업적 ${Object.keys(DATA.ach||{}).length} / ${ACH.length}</h3><div class="achgrid">${ACH.map(a=>`<div class="${(DATA.ach||{})[a.id]?'on':''}"><b>${esc(a.n)}</b><span>${esc(a.d)}</span></div>`).join('')}</div>
   <h3>은퇴한 선수</h3>${DATA.archive.length?`<div class="tw"><table><thead><tr><th>선수</th><th>체급</th><th>전적</th><th>타이틀</th><th>최고 순위</th></tr></thead><tbody>${DATA.archive.map(x=>`<tr><td>${esc(x.name)}</td><td>${clsName(x.cls)}</td><td>${x.rec.join('-')}</td><td>${x.titles}</td><td>${rankLabel(x.peak)}</td></tr>`).join('')}</tbody></table></div>`:'<p>아직 은퇴한 커리어 선수가 없습니다.</p>'}</div>
   <div class="panel"><div class="eyebrow">설정</div>
+  <div class="field"><span class="lbl">🌐 언어 · Language</span>${seg('langS',['ko','en'],s.lang==='en'?'en':'ko',v=>v==='ko'?'한국어':'English')}</div>
   <div class="field"><span class="lbl">👤 계정 · 클라우드 저장</span>${CLOUD.linked()?`<div class="row"><span class="mut">구글 연결됨 · ${esc(DATA.auth.google)}${DATA.auth.pushed?' · 마지막 저장 '+new Date(DATA.auth.pushed).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):''}</span><button class="btn sm" data-act="cloudNow">지금 저장</button><button class="btn sm" data-act="gLogout">로그아웃</button></div>`:`<div class="row"><button class="btn-go sm" data-act="gLogin">G 구글로 로그인</button><span class="mut">로그인하면 폰을 바꿔도 기록이 그대로 이어져요</span></div>`}</div>
   <div class="field"><span class="lbl">라운드 시간</span>${secSeg()}</div>
   <div class="field"><span class="lbl">🎵 음악 (메뉴 음악·입장곡)</span>${seg('musS',['on','off'],s.homeMusic!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
@@ -1291,6 +1292,7 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <button class="btn" data-act="reset">${resetArm?'정말 모든 기록을 지울까요? 한 번 더 누르면 삭제':'모든 기록 초기화'}</button></div>`};
 A.walk=d=>{DATA.settings.walkout=d.v==='on';save();render()};A.coachS=d=>{DATA.settings.coach=d.v==='on';save();render()};A.voice=d=>{DATA.settings.voiceOn=d.v==='on';save();render()};A.gfx=d=>{DATA.settings.gfx=d.v;save();render()};A.nums=d=>{DATA.settings.nums=d.v==='on';save();render()};A.hapTest=()=>{try{if(navigator.vibrate&&!(IC.Haptic&&IC.Haptic.iosOK))navigator.vibrate([30,40,60])}catch(e){}};A.hap=d=>{DATA.settings.haptic=d.v==='on';IC.opts.haptic=DATA.settings.haptic;save();if(DATA.settings.haptic&&IC.Haptic)IC.Haptic.play([20,30,40]);render()};A.rpl=d=>{DATA.settings.replay=d.v==='on';save();render()};A.hpos=d=>{DATA.settings.hudPos=d.v;save();render()};
 A.snd=d=>{DATA.settings.sound=d.v==='on';Sound.on=DATA.settings.sound;if(!Sound.on)Sound.music(false);else{Sound.init();homeMusic(true)}save();render()};
+A.langS=d=>{if((DATA.settings.lang||'ko')===d.v)return;DATA.settings.lang=d.v;save();if(d.v==='en'){render();window.IC_I18N&&IC_I18N.run()}else location.reload()};
 A.musS=d=>{DATA.settings.homeMusic=d.v==='on';save();if(DATA.settings.homeMusic){Sound.init();homeMusic(true)}else Sound.music(false);render()};
 A.silS=d=>{DATA.settings.silentPlay=d.v==='on';save();Sound.session();render()};
 A.reset=()=>{if(!resetArm){resetArm=true;render();return}resetArm=false;DATA=D0();loadCustom();save();go('home')};
