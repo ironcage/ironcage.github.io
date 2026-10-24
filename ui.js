@@ -11,7 +11,11 @@ const DIFFS=IC.Fight.DIFF;
 
 /* ---------- sound ---------- */
 const Sound={ac:null,nb:null,on:true,
-  init(){if(this.ac||!this.on)return;setTimeout(()=>{try{Sound.loadBank()}catch(e){}},50);try{const ac=new (window.AudioContext||window.webkitAudioContext)();const b=ac.createBuffer(1,ac.sampleRate*.5,ac.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;this.ac=ac;this.nb=b;const b2=ac.createBuffer(2,ac.sampleRate*4,ac.sampleRate);for(let c=0;c<2;c++){const e=b2.getChannelData(c);let l=0;for(let i=0;i<e.length;i++){l=l*.6+(Math.random()*2-1)*.4;e[i]=l*1.6}}this.nb2=b2}catch(e){}},
+  /* iPhone silent switch: 'playback' keeps game sound on even when the phone is on silent (setting: 무음 모드에서도 소리) */
+  session(){const loud=!(typeof DATA!=='undefined'&&DATA.settings&&DATA.settings.silentPlay===false);
+    try{if(navigator.audioSession){navigator.audioSession.type=loud?'playback':'ambient';return}}catch(e){}
+    try{if(loud&&/iPhone|iPad|iPod/.test(navigator.userAgent)&&!this._sa){const a=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=');a.loop=true;a.setAttribute('playsinline','');a.volume=0.01;this._sa=a;a.play().catch(()=>{})}else if(!loud&&this._sa){this._sa.pause();this._sa=null}}catch(e){}},
+  init(){if(this.ac||!this.on)return;Sound.session();setTimeout(()=>{try{Sound.loadBank()}catch(e){}},50);try{const ac=new (window.AudioContext||window.webkitAudioContext)();const b=ac.createBuffer(1,ac.sampleRate*.5,ac.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;this.ac=ac;this.nb=b;const b2=ac.createBuffer(2,ac.sampleRate*4,ac.sampleRate);for(let c=0;c<2;c++){const e=b2.getChannelData(c);let l=0;for(let i=0;i<e.length;i++){l=l*.6+(Math.random()*2-1)*.4;e[i]=l*1.6}}this.nb2=b2}catch(e){}},
   noise(dur,type,freq,vol){const ac=this.ac,s=ac.createBufferSource();s.buffer=this.nb;const f=ac.createBiquadFilter();f.type=type;f.frequency.value=freq;const g=ac.createGain(),t=ac.currentTime;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);s.connect(f).connect(g).connect(ac.destination);s.start(t);s.stop(t+dur)},
   tone(fr,dur,vol,type='sine',to){const ac=this.ac,o=ac.createOscillator();o.type=type;const g=ac.createGain(),t=ac.currentTime;o.frequency.setValueAtTime(fr,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur)},
   play(k){if(!this.ac||!this.on)return;try{
@@ -49,6 +53,7 @@ const MySong={list:[],_db:null,
   songs(){return this.list.map(x=>this.obj(x))}};
 IC.mySong=k=>MySong.song(typeof k==='string'&&k.startsWith('mine:')?k.slice(5):null);
 Sound.music=function(on,song){
+  if(on&&typeof DATA!=='undefined'&&DATA.settings&&DATA.settings.homeMusic===false)return;/* 설정: 음악 끄기 = 메뉴 음악·입장곡 모두 끔 */
   if(on&&song&&song.mine){if(!this.ac||!this.on||this._mus)return;const it=MySong.find(song.mid);if(!it)return;const play=()=>{if(this._mus||!it.buf)return;const ac=this.ac,src=ac.createBufferSource();src.buffer=it.buf;src.loop=true;
       const g=ac.createGain();g.gain.value=0;g.gain.setTargetAtTime(song.vol||.85,ac.currentTime,.4);src.connect(g);g.connect(ac.destination);src.start(0,song.vol&&song.vol<.5?0:Math.min(20,it.buf.duration*.15));this._mus={g,timer:0,crowd:src}};
     if(it.buf)play();else MySong.decode(it).then(play);return}const genre=song&&song.g||'rock',K=song&&song.key||1;
@@ -1272,6 +1277,9 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <h3>은퇴한 선수</h3>${DATA.archive.length?`<div class="tw"><table><thead><tr><th>선수</th><th>체급</th><th>전적</th><th>타이틀</th><th>최고 순위</th></tr></thead><tbody>${DATA.archive.map(x=>`<tr><td>${esc(x.name)}</td><td>${clsName(x.cls)}</td><td>${x.rec.join('-')}</td><td>${x.titles}</td><td>${rankLabel(x.peak)}</td></tr>`).join('')}</tbody></table></div>`:'<p>아직 은퇴한 커리어 선수가 없습니다.</p>'}</div>
   <div class="panel"><div class="eyebrow">설정</div>
   <div class="field"><span class="lbl">라운드 시간</span>${secSeg()}</div>
+  <div class="field"><span class="lbl">🎵 음악 (메뉴 음악·입장곡)</span>${seg('musS',['on','off'],s.homeMusic!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
+  <div class="field"><span class="lbl">🔊 효과음·관중 소리</span>${seg('snd',['on','off'],s.sound!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
+  <div class="field"><span class="lbl">🔕 아이폰 무음 모드에서도 소리 내기</span>${seg('silS',['on','off'],s.silentPlay!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}<small class="hint2">켜면 옆 무음 스위치를 켜 둬도 게임 소리가 나요</small></div>
   <div class="field"><span class="lbl">🎵 내가 원하는 노래</span><div class="row"><label class="btn-go sm" style="cursor:pointer">📁 음악 파일 고르기<input type="file" accept="audio/*" multiple data-change="myPick" hidden></label><span class="mut">${MySong.list.length?`내 노래 ${MySong.list.length}곡 · 입장곡 화면에서 고르고 지울 수 있어요`:'폰의 mp3·m4a를 입장곡·홈 음악으로 (여러 곡 가능)'}</span></div></div>
   <div class="field"><span class="lbl">선수 입장·소개</span>${seg('walk',['on','off'],s.walkout!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <div class="field"><span class="lbl">경기 중 코치 지시</span>${seg('coachS',['on','off'],s.coach!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
@@ -1281,7 +1289,9 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <p>${Store.db?'진행 상황은 내 계정에 저장되어 다른 기기에서도 이어집니다.':'진행 상황은 이 브라우저에 저장됩니다.'}</p>
   <button class="btn" data-act="reset">${resetArm?'정말 모든 기록을 지울까요? 한 번 더 누르면 삭제':'모든 기록 초기화'}</button></div>`};
 A.walk=d=>{DATA.settings.walkout=d.v==='on';save();render()};A.coachS=d=>{DATA.settings.coach=d.v==='on';save();render()};A.voice=d=>{DATA.settings.voiceOn=d.v==='on';save();render()};A.gfx=d=>{DATA.settings.gfx=d.v;save();render()};A.nums=d=>{DATA.settings.nums=d.v==='on';save();render()};A.hapTest=()=>{try{if(navigator.vibrate&&!(IC.Haptic&&IC.Haptic.iosOK))navigator.vibrate([30,40,60])}catch(e){}};A.hap=d=>{DATA.settings.haptic=d.v==='on';IC.opts.haptic=DATA.settings.haptic;save();if(DATA.settings.haptic&&IC.Haptic)IC.Haptic.play([20,30,40]);render()};A.rpl=d=>{DATA.settings.replay=d.v==='on';save();render()};A.hpos=d=>{DATA.settings.hudPos=d.v;save();render()};
-A.snd=d=>{DATA.settings.sound=d.v==='on';Sound.on=DATA.settings.sound;save();render()};
+A.snd=d=>{DATA.settings.sound=d.v==='on';Sound.on=DATA.settings.sound;if(!Sound.on)Sound.music(false);else{Sound.init();homeMusic(true)}save();render()};
+A.musS=d=>{DATA.settings.homeMusic=d.v==='on';save();if(DATA.settings.homeMusic){Sound.init();homeMusic(true)}else Sound.music(false);render()};
+A.silS=d=>{DATA.settings.silentPlay=d.v==='on';save();Sound.session();render()};
 A.reset=()=>{if(!resetArm){resetArm=true;render();return}resetArm=false;DATA=D0();loadCustom();save();go('home')};
 
 /* ---------- tournament ---------- */
@@ -2294,9 +2304,9 @@ addEventListener('resize',checkOrient);addEventListener('orientationchange',()=>
 Store.init();Net.init();
 const loc=Store.local();if(loc&&loc.v===3)DATA=Object.assign(D0(),loc);
 if(!DATA.settings.wk2){DATA.settings.wk2=1;DATA.settings.walkout=true}
-DATA.settings.sound=true;DATA.settings.voiceOn=false;Sound.on=true;loadCustom();
+if(DATA.settings.sound==null)DATA.settings.sound=true;DATA.settings.voiceOn=false;Sound.on=DATA.settings.sound;loadCustom();
 {const R=DATA.records||{};if(DATA.unlv==null){DATA.unlv=1;const old=!!(DATA.career||DATA.wildc||DATA.tour||DATA.gp||DATA.gymm||(DATA.archive||[]).length||Object.keys(DATA.ach||{}).length||(R.quick&&(R.quick.w+R.quick.l+R.quick.d)));if(old){DATA.unlockAll=true;DATA.tutDone=true}try{Store.save(DATA)}catch(e){}}}
 MySong.load().then(()=>{if(SCREEN==='song'||SCREEN==='home')try{render()}catch(e){}});
 topinfo();go('home');try{showTitle()}catch(e){console.error(e)}
-Store.load().then(d=>{if(d&&d.v===3&&(d.at||0)>(DATA.at||0)){DATA=Object.assign(D0(),d);DATA.settings.sound=true;DATA.settings.voiceOn=false;if(!DATA.settings.wk2){DATA.settings.wk2=1;DATA.settings.walkout=true}loadCustom();topinfo();if(SCREEN==='home'&&game.hidden)render()}});
+Store.load().then(d=>{if(d&&d.v===3&&(d.at||0)>(DATA.at||0)){DATA=Object.assign(D0(),d);if(DATA.settings.sound==null)DATA.settings.sound=true;Sound.on=DATA.settings.sound;DATA.settings.voiceOn=false;if(!DATA.settings.wk2){DATA.settings.wk2=1;DATA.settings.walkout=true}loadCustom();topinfo();if(SCREEN==='home'&&game.hidden)render()}});
 })(window.IC);
