@@ -223,7 +223,7 @@ const Store={db:null,uid:null,ready:Promise.resolve(),
 };
 const D0=()=>({custom:[],v:3,settings:{diff:'normal',roundSec:120,sound:true,voiceOn:false,walkout:true,nums:false,replay:true,gfx:'3d'},records:{quick:{w:0,l:0,d:0},tour:{played:0,won:0},fin:{KO:0,TKO:0,'서브미션':0,'판정':0}},career:null,archive:[],hof:[],songs:{},tour:null});
 let DATA=D0();
-function save(){Store.save(DATA);topinfo();try{lbPush()}catch(e){}}
+function save(){Store.save(DATA);topinfo();try{lbPush()}catch(e){}try{CLOUD.later()}catch(e){}}
 function topinfo(){const c=DATA.career;$('#topinfo').innerHTML=c?`<strong>${esc(c.nick||c.name)}</strong> · ${c.rec.join('-')} · ${cRank(c)}`:''}
 
 /* ---------- fighter lookup ---------- */
@@ -1276,6 +1276,7 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <h3>업적 ${Object.keys(DATA.ach||{}).length} / ${ACH.length}</h3><div class="achgrid">${ACH.map(a=>`<div class="${(DATA.ach||{})[a.id]?'on':''}"><b>${esc(a.n)}</b><span>${esc(a.d)}</span></div>`).join('')}</div>
   <h3>은퇴한 선수</h3>${DATA.archive.length?`<div class="tw"><table><thead><tr><th>선수</th><th>체급</th><th>전적</th><th>타이틀</th><th>최고 순위</th></tr></thead><tbody>${DATA.archive.map(x=>`<tr><td>${esc(x.name)}</td><td>${clsName(x.cls)}</td><td>${x.rec.join('-')}</td><td>${x.titles}</td><td>${rankLabel(x.peak)}</td></tr>`).join('')}</tbody></table></div>`:'<p>아직 은퇴한 커리어 선수가 없습니다.</p>'}</div>
   <div class="panel"><div class="eyebrow">설정</div>
+  <div class="field"><span class="lbl">👤 계정 · 클라우드 저장</span>${CLOUD.linked()?`<div class="row"><span class="mut">구글 연결됨 · ${esc(DATA.auth.google)}${DATA.auth.pushed?' · 마지막 저장 '+new Date(DATA.auth.pushed).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):''}</span><button class="btn sm" data-act="cloudNow">지금 저장</button><button class="btn sm" data-act="gLogout">로그아웃</button></div>`:`<div class="row"><button class="btn-go sm" data-act="gLogin">G 구글로 로그인</button><span class="mut">로그인하면 폰을 바꿔도 기록이 그대로 이어져요</span></div>`}</div>
   <div class="field"><span class="lbl">라운드 시간</span>${secSeg()}</div>
   <div class="field"><span class="lbl">🎵 음악 (메뉴 음악·입장곡)</span>${seg('musS',['on','off'],s.homeMusic!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <div class="field"><span class="lbl">🔊 효과음·관중 소리</span>${seg('snd',['on','off'],s.sound!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
@@ -1936,6 +1937,41 @@ const AUTH={tok:null,exp:0,uid:null,
 FB.patch=async function(path,obj){const t=await AUTH.token();if(!t)throw new Error('noauth');const fields={};for(const k in obj)fields[k]=this.enc(obj[k]);
   const mask=Object.keys(obj).map(k=>'updateMask.fieldPaths='+encodeURIComponent(k)).join('&');
   const r=await fetch(`${this.base()}/${path}?${mask}`,{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},body:JSON.stringify({fields})});if(!r.ok)throw new Error('fb '+r.status);return r.json()};
+/* ---------- Google login + cloud save: link the game to a Google account so records survive a new phone ---------- */
+const FBCFG={apiKey:'AIzaSyBzgZeHnHkjGQApZ18FAv2hHYumkYbGM9M',authDomain:'iron-cage-daee5.firebaseapp.com',projectId:'iron-cage-daee5',storageBucket:'iron-cage-daee5.firebasestorage.app',messagingSenderId:'191409657836',appId:'1:191409657836:web:75c19c0b1b8f6cd57b52c9'};
+const CLOUD={busy:false,
+  linked(){return !!(DATA.auth&&DATA.auth.google)},
+  sdk(){if(window.firebase&&window.firebase.auth)return Promise.resolve(window.firebase);if(this._sdk)return this._sdk;
+    const ld=src=>new Promise((ok,no)=>{const e=document.createElement('script');e.src=src;e.onload=ok;e.onerror=()=>no(new Error('sdk'));document.head.appendChild(e)});
+    this._sdk=ld('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js').then(()=>ld('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js')).then(()=>{if(!firebase.apps.length)firebase.initializeApp(FBCFG);return firebase}).catch(e=>{this._sdk=null;throw e});return this._sdk},
+  async push(){if(!this.linked())return false;const t=await AUTH.token();if(!t)return false;const d=Object.assign({},DATA);delete d.auth;const json=JSON.stringify(d);if(json.length>900000)return false;
+    await FB.patch('saves/'+AUTH.uid,{json,at:Date.now()});DATA.auth.pushed=Date.now();try{localStorage.setItem(KEY,JSON.stringify(DATA))}catch(e){}return true},
+  later(){if(!this.linked())return;clearTimeout(this._t);this._t=setTimeout(()=>{this.push().catch(()=>{})},20000)},
+  async pull(){const t=await AUTH.token();if(!t)return null;const r=await fetch(`${FB.base()}/saves/${AUTH.uid}`,{headers:{Authorization:'Bearer '+t}});if(r.status===404)return null;if(!r.ok)throw new Error('pull '+r.status);
+    const j=await r.json();const f=j.fields||{};return{json:FB.dec(f.json),at:FB.dec(f.at)}},
+  async google(){if(this.busy)return;this.busy=true;toast('구글 로그인 창을 여는 중…');
+    try{const fb=await this.sdk(),auth=fb.auth(),prov=new fb.auth.GoogleAuthProvider();let cred;
+      try{cred=await auth.signInWithPopup(prov)}catch(e){const c=(e&&e.code)||'';
+        if(/popup-blocked|operation-not-supported|web-storage-unsupported/.test(c)){try{localStorage.setItem('ic_gpend','1')}catch(_){}await auth.signInWithRedirect(prov);return}
+        if(/popup-closed|cancelled-popup/.test(c)){toast('로그인을 취소했어요');return}throw e}
+      await this.after(cred.user)}
+    catch(e){toast(/sdk/.test(e&&e.message||'')?'인터넷 연결을 확인해 주세요':'구글 로그인을 아직 할 수 없어요 (서버 설정 중)')}
+    finally{this.busy=false}},
+  async resume(){let p=null;try{p=localStorage.getItem('ic_gpend')}catch(e){}if(!p)return;try{localStorage.removeItem('ic_gpend')}catch(e){}
+    try{const fb=await this.sdk(),r=await fb.auth().getRedirectResult();if(r&&r.user)await this.after(r.user)}catch(e){toast('구글 로그인에 실패했어요. Safari에서 다시 해 보세요')}},
+  async after(u){const old=DATA.auth||{},oldUid=old.uid;let oldTok=null;try{oldTok=await AUTH.token()}catch(e){}
+    if(oldUid&&oldUid!==u.uid&&oldTok&&!old.google){try{await fetch(`${FB.base()}/rank/${oldUid}`,{method:'DELETE',headers:{Authorization:'Bearer '+oldTok}})}catch(e){}}
+    DATA.auth={rt:u.refreshToken,uid:u.uid,google:u.email||'구글 계정'};AUTH.tok=null;AUTH.uid=u.uid;try{localStorage.setItem(KEY,JSON.stringify(DATA))}catch(e){}
+    let c=null;try{c=await this.pull()}catch(e){}
+    if(c&&c.json){const when=new Date(c.at||0).toLocaleString('ko-KR');const yes=await askPop('☁️','클라우드 기록이 있어요',`${when}에 저장된 기록이에요. 이 폰으로 불러올까요?`,'불러오기','이 폰 기록 쓰기');
+      if(yes){try{const d=JSON.parse(c.json);d.auth=DATA.auth;DATA=Object.assign(D0(),d);Sound.on=DATA.settings.sound!==false;Store.save(DATA);loadCustom();toast('☁️ 클라우드 기록을 불러왔어요!');go('home');return}catch(e){toast('기록을 불러오지 못했어요')}}}
+    try{await this.push();toast('✅ 구글 계정 연결 완료! 기록이 클라우드에 저장돼요')}catch(e){toast('구글 계정은 연결됐지만 저장은 잠시 뒤에 다시 할게요')}
+    try{rankPush()}catch(e){}render()},
+  async logout(){if(!this.linked())return;const ok=await askPop('👋','로그아웃할까요?','이 폰의 기록은 그대로 남아요. 다시 로그인하면 클라우드 기록을 불러올 수 있어요.','로그아웃','취소');if(!ok)return;
+    try{await this.push()}catch(e){}DATA.auth=null;AUTH.tok=null;AUTH.uid=null;save();try{window.firebase&&firebase.auth().signOut()}catch(e){}render()}};
+function askPop(ic,t,msg,yes,no){return new Promise(res=>{const el=document.createElement('div');el.className='lockpop';el.innerHTML=`<div><i>${ic}</i><b>${t}</b><p>${msg}</p><div class="row"><button class="btn-go sm" data-k="y">${yes}</button><button class="btn sm" data-k="n">${no}</button></div></div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.k;if(!k)return;el.remove();res(k==='y')})})}
+A.gLogin=()=>CLOUD.google();A.gLogout=()=>CLOUD.logout();A.cloudNow=async()=>{toast('저장 중…');try{toast(await CLOUD.push()?'☁️ 클라우드에 저장했어요':'저장할 수 없어요')}catch(e){toast('저장할 수 없어요. 잠시 뒤 다시 해 주세요')}render()};
 /* ---------- online career ranking ---------- */
 const RANK={by:'score',lists:{},err:false,busy:false,t:{},me:null};
 function rankStats(c){const h=c.history||[],w=h.filter(x=>x.res==='승');const ko=w.filter(x=>/KO/.test(x.method||'')).length,sub=w.filter(x=>x.method==='서브미션').length;
@@ -2381,7 +2417,7 @@ addEventListener('resize',checkOrient);addEventListener('orientationchange',()=>
   const el=document.documentElement;if(document.fullscreenElement||!el.requestFullscreen)return;try{const p=el.requestFullscreen({navigationUI:'hide'});if(p&&p.catch)p.catch(()=>{})}catch(e){}};
   addEventListener('pointerdown',firstTouch,true)}
 /* ---------- boot ---------- */
-Store.init();if(!STANDALONE)Net.init();
+Store.init();if(!STANDALONE)Net.init();setTimeout(()=>{try{CLOUD.resume()}catch(e){}},1500);
 const loc=Store.local();if(loc&&loc.v===3)DATA=Object.assign(D0(),loc);
 if(!DATA.settings.wk2){DATA.settings.wk2=1;DATA.settings.walkout=true}
 if(DATA.settings.sound==null)DATA.settings.sound=true;DATA.settings.voiceOn=false;Sound.on=DATA.settings.sound;loadCustom();
