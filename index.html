@@ -253,7 +253,8 @@ tr.tot td{border-bottom:none;font-weight:700}
 .overlay{background:var(--steel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
 @media (max-width:560px){.pb small,.kbd-only{display:none}.tile{min-height:96px}.stage{aspect-ratio:4/3;max-height:none}}
 /* immersive: fills the viewport */
-.game.immersive{position:fixed;inset:0 0 auto 0;height:var(--app-h,100%);z-index:50;background:#05060a;gap:8px;padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(10px,env(safe-area-inset-bottom,0px));padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));box-sizing:border-box}
+.game.immersive{position:fixed;inset:0;height:auto;min-height:var(--app-h,100%);z-index:50;background:#05060a;gap:8px;padding-top:max(8px,env(safe-area-inset-top,0px));padding-bottom:max(10px,env(safe-area-inset-bottom,0px));padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));box-sizing:border-box}
+@media (display-mode: standalone){.game.immersive{min-height:100vh}}
 .game.immersive .stage{flex:0 1 auto;min-height:0;aspect-ratio:4/5;max-height:64dvh;width:100%;height:auto}
 .game.immersive .pad{flex:1 1 auto;align-items:center}
 .game.immersive .cl.r .pb{min-height:54px}

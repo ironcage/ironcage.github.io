@@ -997,7 +997,7 @@ function loop(now){
   raf=requestAnimationFrame(loop);
 }
 let CFG=null,USE3D=false;
-function startFight(cfg){if(Sound._mus&&Sound._mus.menu)Sound.music(false);
+function startFight(cfg){[50,250,700,1500].forEach(d=>setTimeout(()=>{try{appHeight();fit()}catch(e){}},d));if(Sound._mus&&Sound._mus.menu)Sound.music(false);
   CFG=cfg;Sound.on=DATA.settings.sound;Sound.init();Crowd.start();if(IC.KO)IC.KO.reset();
   scr.hidden=true;game.hidden=false;between.hidden=true;pad.hidden=false;hintEl.hidden=false;
   $('#glabel').textContent=cfg.label||'';
