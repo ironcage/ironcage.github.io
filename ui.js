@@ -2132,15 +2132,49 @@ function fbRoom(name){const me=AUTH.uid,key='rooms/'+name;let mine={},peers={},s
     async leave(){gone=true;clearInterval(hb);stops.forEach(f=>f());stops=[];cbs=[];evs=[];try{await RTDB.req('DELETE',`${key}/p/${me}`)}catch(e){}
       if(mine.role==='host'){try{await RTDB.req('DELETE',key+'/e')}catch(e){}}}};
   return room}
+/* ---------- friends: personal friend code, friend list with online status, match invites (all on the existing RTDB rules) ---------- */
+const FR={stop:null,
+  code(){if(!DATA.fcode){const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let x='';for(let i=0;i<6;i++)x+=c[Math.random()*c.length|0];DATA.fcode=x;save()}return DATA.fcode},
+  list(){return DATA.friends||(DATA.friends=[])},
+  meName(){const f=myNetF();return (DATA.career&&DATA.career.name)||(f&&f.name)||'플레이어'},
+  async register(){try{await AUTH.token();if(!AUTH.uid)return;const f=myNetF();await RTDB.req('PATCH',`rooms/fc-${this.code()}/p/${AUTH.uid}`,{nm:this.meName(),ovr:(f&&f.ovr)||0,cls:(f&&f.cls)||'',t:{'.sv':'timestamp'}})}catch(e){}},
+  async lookup(code){const v=await RTDB.req('GET',`rooms/fc-${code}/p`);if(!v||typeof v!=='object')return null;const ids=Object.keys(v).sort((a,b)=>(+v[b].t||0)-(+v[a].t||0));return ids.length?{uid:ids[0],nm:v[ids[0]].nm||'플레이어'}:null},
+  async add(code){code=String(code||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(code.length!==6){toast('친구 코드는 6자리예요');return false}
+    if(code===this.code()){toast('내 코드예요 😄 친구의 코드를 넣어 주세요');return false}
+    if(this.list().some(x=>x.code===code)){toast('이미 친구예요');return false}
+    let r=null;try{r=await this.lookup(code)}catch(e){toast('지금은 친구를 찾을 수 없어요. 잠시 뒤 다시 해 주세요');return false}
+    if(!r){toast('그 코드의 친구를 찾지 못했어요. 친구가 온라인 탭을 한 번 열어야 등록돼요');return false}
+    this.list().push({uid:r.uid,code,nm:r.nm,at:Date.now()});save();toast(`👥 ${r.nm}님과 친구가 됐어요!`);
+    try{await RTDB.req('POST',`rooms/in-${r.uid}/e`,{topic:'friend',data:{nm:this.meName(),code:this.code()},by:AUTH.uid,ts:{'.sv':'timestamp'}})}catch(e){}return true},
+  remove(code){DATA.friends=this.list().filter(x=>x.code!==code);save()},
+  online(uid){return Net.peers.some(p=>p.by===uid&&!p.isMe)},
+  async invite(fr){try{await A.oHost();if(!Net.code)return;await RTDB.req('POST',`rooms/in-${fr.uid}/e`,{topic:'invite',data:{code:Net.code,nm:this.meName()},by:AUTH.uid,ts:{'.sv':'timestamp'}});toast(`📨 ${fr.nm}님에게 대전 신청을 보냈어요`)}catch(e){toast('대전 신청을 보내지 못했어요')}},
+  listen(){if(this.stop||!AUTH.uid)return;let first=true;const me=AUTH.uid;
+    this.stop=RTDB.stream(`rooms/in-${me}/e`,(tree,ev)=>{if(first&&ev.path==='/'){first=false;return}first=false;const k=(ev.path||'/').split('/').filter(Boolean);if(k.length!==1||!ev.data)return;const m=ev.data;
+      RTDB.req('DELETE',`rooms/in-${me}/e/${k[0]}`).catch(()=>{});
+      if(m.topic==='invite'&&m.data&&/^[a-z0-9]{4}$/.test(m.data.code||'')){askPop('🥊',`${esc(String(m.data.nm||'친구').slice(0,24))}님의 대전 신청!`,'지금 바로 한판 붙을까요?','수락','나중에').then(ok=>{if(ok){if(SCREEN!=='online')go('online');setTimeout(()=>A.oJoin({code:m.data.code}),400)}})}
+      else if(m.topic==='friend'&&m.data&&m.data.code&&!this.list().some(x=>x.uid===m.by)){this.list().push({uid:m.by,code:String(m.data.code).slice(0,6),nm:String(m.data.nm||'플레이어').slice(0,24),at:Date.now()});save();toast(`👥 ${String(m.data.nm||'누군가').slice(0,24)}님이 친구로 추가했어요!`);if(SCREEN==='online')softRender()}})},
+  sleep(){if(this.stop){this.stop();this.stop=null}}};
+A.frAdd=async()=>{const v=(($('#frcode')||{}).value||'');if(await FR.add(v))render()};
+A.frDel=async d=>{const f=FR.list().find(x=>x.code===d.code);if(!f)return;if(await askPop('👋',`${esc(f.nm)}님을 친구에서 삭제할까요?`,'','삭제','취소')){FR.remove(d.code);render()}};
+A.frInv=d=>{const f=FR.list().find(x=>x.code===d.code);if(f)FR.invite(f)};
+A.frShare=async()=>{const c=FR.code(),url=`https://ironcage.github.io/?f=${c}`;const t=`아이언 케이지에서 친구 하자! 🥊\n내 친구 코드: ${c}\n링크로 들어오면 바로 친구 추가돼요 👉 ${url}`;
+  try{if(navigator.share){await navigator.share({text:t});return}}catch(e){return}try{await navigator.clipboard.writeText(t);toast('친구 초대 메시지를 복사했어요')}catch(e){toast('내 친구 코드: '+c)}};
+A.netMe=()=>{DATA.netF='me';save();render()};
+function friendsPanel(){const L=FR.list(),c=FR.code();
+  return `<div class="panel frp"><div class="eyebrow">👥 친구</div>
+   <div class="frme"><span>내 친구 코드</span><b>${c}</b><button class="btn-go sm" data-act="frShare">📨 코드 공유</button></div>
+   <div class="row frad"><input id="frcode" maxlength="6" placeholder="친구 코드 6자리" autocomplete="off" autocapitalize="characters"><button class="btn sm" data-act="frAdd" ${Net.ok?'':'disabled'}>친구 추가</button></div>
+   ${L.length?`<div class="frlist">${L.map(f=>{const on=FR.online(f.uid);return `<div class="frrow"><i class="dot ${on?'open':'idle'}"></i><b>${esc(f.nm)}</b><small>${on?'접속 중':'오프라인'} · ${f.code}</small><button class="btn-go sm" data-act="frInv" data-code="${f.code}" ${Net.ok?'':'disabled'}>대전 신청</button><button class="btn sm" data-act="frDel" data-code="${f.code}" aria-label="삭제">✕</button></div>`}).join('')}</div>`:'<p class="mut">아직 친구가 없어요. 내 코드를 공유하거나 친구 코드를 넣어 보세요.</p>'}</div>`}
 const FBNet={async room(){const t=await AUTH.token();if(!t)throw new Error('noauth');await RTDB.url();return fbRoom('lobby')},
   user:{async id(){await AUTH.token();return AUTH.uid},async profiles(ids){const o={};for(const i of ids)o[i]={name:FBNAMES[i]||''};return o}}};
 const Net={room:null,user:null,uid:null,ok:false,names:{},peers:[],mr:null,role:null,code:null,lastS:null,lastInp:null,inp:{ax:0,az:0,blk:0,q:[]},seq:0,chat:[],gone:0,ended:false,unsub:[],sendT:0,
   init(){if(this._i)return this._i;this._i=(async()=>{try{let room,user;if(!window.claude||typeof window.claude.use!=='function'){room=await FBNet.room();user=FBNet.user}else [room,user]=await Promise.all([window.claude.use('room'),window.claude.use('user')]);this.room=room;this.user=user;
       if(user){try{this.uid=await user.id()}catch(e){}}
-      if(room){this.ok=true;room.onPeers(ch=>{this.peers=ch.peers;this.names4(ch.peers.map(p=>p.by));if(SCREEN==='online')softRender()},()=>{this.ok=false});this.lobby('idle')}}catch(e){this._fail=true;if(SCREEN==='online')softRender()}})();return this._i},
+      if(room){this.ok=true;if(STANDALONE){FR.register();FR.listen();let pf=null;try{pf=localStorage.getItem('ic_pf');localStorage.removeItem('ic_pf')}catch(e){}if(pf)setTimeout(()=>FR.add(pf).then(()=>{if(SCREEN==='online')render()}),800)}room.onPeers(ch=>{this.peers=ch.peers;this.names4(ch.peers.map(p=>p.by));if(SCREEN==='online')softRender()},()=>{this.ok=false});this.lobby('idle')}}catch(e){this._fail=true;if(SCREEN==='online')softRender()}})();return this._i},
   async names4(ids){ids=[...new Set(ids.filter(x=>x&&!(x in this.names)))];if(!ids.length||!this.user)return;ids.forEach(i=>this.names[i]='');try{const p=await this.user.profiles(ids);for(const i of ids)this.names[i]=(p&&p[i]&&p[i].name)||''}catch(e){}softRender()},
   /* public site: close the lobby connection when leaving the online screens (free plan has a connection limit) */
-  async sleep(){if(!STANDALONE||this.mr||!this.room)return;const r=this.room;this.room=null;this.ok=false;this._i=null;this.peers=[];try{await r.leave()}catch(e){}},
+  async sleep(){if(!STANDALONE||this.mr||!this.room)return;FR.sleep();const r=this.room;this.room=null;this.ok=false;this._i=null;this.peers=[];try{await r.leave()}catch(e){}},
   nm(by){return by&&by===this.uid?'나':(this.names[by]||'플레이어')},
   lobby(st,extra={}){if(!this.room)return;this.room.presence({st,code:extra.code||null,a:extra.a||null,b:extra.b||null}).catch(()=>{})},
   mpeers(){try{return this.mr?this.mr.peers():[]}catch(e){return[]}},
@@ -2217,7 +2251,9 @@ V.online=()=>{const me=myNetF(),R=ORec(),RG=DATA.records.ghost||{w:0,l:0};
   return `${back('home')}<div class="hofhead"><div class="eyebrow">온라인</div><h2>온라인 아레나</h2><p>${Net.ok?`지금 접속 ${ps.length}명`:'접속 정보를 불러오는 중…'}</p></div>
   ${Net.ok?`<div class="panel"><div class="eyebrow">접속 중</div><div class="who">${ps.map(p=>`<span class="${p.isMe?'me':''}"><i class="dot ${p.presence&&p.presence.st||'idle'}"></i>${esc(p.isMe?'나':Net.nm(p.by))}<small>${st[p.presence&&p.presence.st]||'로비'}</small></span>`).join('')||'<span>나 혼자예요</span>'}</div></div>`:
     `<div class="panel"><p>${STANDALONE?(Net._fail?'온라인 대전 서버를 준비하고 있어요. 곧 열려요!':'온라인 서버에 연결하는 중…'):'실시간 대전과 관전은 claude.ai에서 이 게임을 연 사람들끼리 연결됩니다.'}</p></div>`}
+  ${STANDALONE?friendsPanel():''}
   <div class="panel"><div class="eyebrow">내 온라인 선수</div>${fRowNet(me,'mine',`<button class="btn sm" data-act="nav" data-to="opick">바꾸기</button>`)}
+   ${DATA.career&&DATA.netF&&DATA.netF!=='me'?`<div class="row"><button class="btn-go sm" data-act="netMe">⭐ 내 커리어 선수(${esc(DATA.career.name)})로 싸우기</button></div>`:''}${!DATA.career?'<p class="mut">커리어에서 선수를 만들면 내 커리어 선수로도 온라인 대전을 할 수 있어요.</p>':''}
    <div class="kv"><div><span>실시간 대전</span><b>${R.w}-${R.l}-${R.d}</b></div><div><span>고스트 대전</span><b>${RG.w}-${RG.l}</b></div><div><span>주간 우승</span><b>${DATA.records.weekly||0}</b></div></div></div>
   <div class="panel"><div class="eyebrow">실시간 1:1 대전</div><h3>대전 방</h3>
    ${open.length?open.map(p=>`<div class="oroomrow"><b>${esc(Net.nm(p.by))}</b><span>${p.presence.a?esc(p.presence.a.n)+' · '+clsName(p.presence.a.c)+' · '+p.presence.a.o:''}</span><button class="btn-go sm" data-act="oJoin" data-code="${esc(p.presence.code)}">도전하기</button></div>`).join(''):'<p class="mut">열린 방이 없어요. 방을 만들고 친구를 기다려 보세요.</p>'}
@@ -2425,6 +2461,8 @@ addEventListener('resize',checkOrient);addEventListener('orientationchange',()=>
   const el=document.documentElement;if(document.fullscreenElement||!el.requestFullscreen)return;try{const p=el.requestFullscreen({navigationUI:'hide'});if(p&&p.catch)p.catch(()=>{})}catch(e){}};
   addEventListener('pointerdown',firstTouch,true)}
 /* ---------- boot ---------- */
+/* friend link ?f=CODE: remember it, open the online tab, add the friend once connected */
+try{const qf=new URLSearchParams(location.search).get('f');if(qf&&/^[A-Za-z0-9]{6}$/.test(qf)){localStorage.setItem('ic_pf',qf.toUpperCase());history.replaceState(null,'',location.pathname);setTimeout(()=>{try{const t=document.getElementById('titleScr');if(!t)go('online')}catch(e){}},2500)}}catch(e){}
 Store.init();if(!STANDALONE)Net.init();setTimeout(()=>{try{CLOUD.resume()}catch(e){}},1500);
 const loc=Store.local();if(loc&&loc.v===3)DATA=Object.assign(D0(),loc);
 if(!DATA.settings.wk2){DATA.settings.wk2=1;DATA.settings.walkout=true}
