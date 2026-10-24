@@ -252,7 +252,7 @@ function genFillers(cls,seed){
 /* ---------- router ---------- */
 let SCREEN='home',P={};
 const V={},A={};
-function go(s,p){if(!(CINE&&CINE.o.keep))releaseGl();if(typeof Crowd!=='undefined')Crowd.stop();if(s==='quick'||s==='legend'||s==='legsel')s='home';if(typeof Net!=='undefined'&&Net.mr&&!['oroom','oresult','online','opick'].includes(s))Net.leaveMatch();if(s!=='oresult'&&typeof removeOverlay==='function')removeOverlay();stopLoop();Announcer.stop();if(!(menuOk(s)&&Sound._mus&&Sound._mus.menu))Sound.music(false);if(immersive)setImmersive(false);document.querySelector('.app').classList.remove('wide');if(s!=='home')stopDemo();SCREEN=s;P=p||{};game.hidden=true;scr.hidden=false;render();window.scrollTo(0,0);if(menuOk(s)&&s!=='home')homeMusic();if(s==='home'){startDemo();homeMusic();setTimeout(()=>{try{checkUnlocks();if(!document.getElementById('titleScr')&&!document.querySelector('.lockpop')){if(!DATA.tutDone)tutOffer();else if(!DATA.settings.songTip&&!MySong.name)songTip()}}catch(e){}},500)}}
+function go(s,p){if(typeof Net!=='undefined'&&typeof STANDALONE!=='undefined'&&STANDALONE){if(['online','oroom','opick','oresult'].includes(s)){Net._fail=false;Net.init()}else setTimeout(()=>Net.sleep(),0)}if(!(CINE&&CINE.o.keep))releaseGl();if(typeof Crowd!=='undefined')Crowd.stop();if(s==='quick'||s==='legend'||s==='legsel')s='home';if(typeof Net!=='undefined'&&Net.mr&&!['oroom','oresult','online','opick'].includes(s))Net.leaveMatch();if(s!=='oresult'&&typeof removeOverlay==='function')removeOverlay();stopLoop();Announcer.stop();if(!(menuOk(s)&&Sound._mus&&Sound._mus.menu))Sound.music(false);if(immersive)setImmersive(false);document.querySelector('.app').classList.remove('wide');if(s!=='home')stopDemo();SCREEN=s;P=p||{};game.hidden=true;scr.hidden=false;render();window.scrollTo(0,0);if(menuOk(s)&&s!=='home')homeMusic();if(s==='home'){startDemo();homeMusic();setTimeout(()=>{try{checkUnlocks();if(!document.getElementById('titleScr')&&!document.querySelector('.lockpop')){if(!DATA.tutDone)tutOffer();else if(!DATA.settings.songTip&&!MySong.name)songTip()}}catch(e){}},500)}}
 function render(){if(!(CINE&&CINE.o.keep))releaseGl();const tb=!!TABOF[SCREEN];document.body.classList.toggle('tabbed',tb);scr.innerHTML=(tb?tabBar():'')+V[SCREEN](P);after();if(tb){const on=scr.querySelector('.tb.on');if(on)on.scrollIntoView({block:'nearest',inline:'center'})}}
 function after(){if(SCREEN==='weigh')requestAnimationFrame(runWeigh);if(SCREEN==='chub')requestAnimationFrame(runPress);if(SCREEN==='cpost'){requestAnimationFrame(runBelt);requestAnimationFrame(runTaunt)}drawPortraits()}
 function drawPortraits(){scr.querySelectorAll('canvas[data-pid]').forEach(el=>{const id=el.dataset.pid,d=id==='__wopp'?(DATA.wildc&&DATA.wildc.next):id==='__tmp'?P._tmp:id.startsWith('hof:')?((DATA.hof||[])[+id.slice(4)]||{}).f:id.startsWith('leg:')?LEG[+id.slice(4)]:id.startsWith('net:')?NETF[id.slice(4)]:getF(id);if(d)IC.Draw.portrait(el,d,el.dataset.side||'a',el.dataset.mode||'full')})}
@@ -2048,11 +2048,55 @@ const fSum=f=>f?{n:f.name,nk:f.nick,c:f.cls,o:f.ovr}:null;
 function netF(f,key){if(!f)return null;const d={...f,id:'net_'+key,me:false};NETF[key]=d;return d}
 function myNetF(){const k=DATA.netF;if((k==='me'||!k)&&DATA.career)return meData(DATA.career);const f=k&&k!=='me'?getF(k):null;if(f)return f;const L=ROSTER.filter(x=>!x.legend).sort((a,b)=>b.ovr-a.ovr);return L[IC.hash(String(Store.uid||Net.uid||'guest'))%Math.min(24,L.length)]}
 const ORec=()=>DATA.records.online=DATA.records.online||{w:0,l:0,d:0};
+/* ---------- Firebase Realtime Database room (REST + EventSource) — same shape as the claude room API, so the online arena runs on the public site ---------- */
+const RTDB={base:null,
+  cands(){let o=null;try{o=localStorage.getItem('ic_rtdb')}catch(e){}return [o,'https://iron-cage-daee5-default-rtdb.asia-southeast1.firebasedatabase.app','https://iron-cage-daee5-default-rtdb.firebaseio.com'].filter(Boolean)},
+  async url(){if(this.base)return this.base;const t=await AUTH.token();if(!t)throw new Error('noauth');
+    for(const u of this.cands()){try{const r=await fetch(`${u}/ping.json?auth=${t}`);if(r.status!==404){this.base=u;return u}}catch(e){}}throw new Error('nodb')},
+  async req(method,path,body){const b=await this.url(),t=await AUTH.token();const r=await fetch(`${b}/${path}.json?auth=${t}`,{method,headers:{'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});if(!r.ok)throw new Error('rtdb '+r.status);return r.status===204?null:r.json().catch(()=>null)},
+  /* live listener: keeps a local copy of the tree at `path`, calls fn(tree, ev) on every change, reconnects with a fresh token */
+  stream(path,fn){let es=null,closed=false,tree=null;
+    const setAt=(o,pp,v,merge)=>{const k=pp.split('/').filter(Boolean);if(!k.length){if(merge){o=Object.assign({},o||{});for(const x in v)if(v[x]===null)delete o[x];else o[x]=v[x];return o}return v}
+      o=(o&&typeof o==='object')?Object.assign({},o):{};let c=o;for(let i=0;i<k.length-1;i++){c[k[i]]=(c[k[i]]&&typeof c[k[i]]==='object')?Object.assign({},c[k[i]]):{};c=c[k[i]]}
+      const last=k[k.length-1];if(merge){const t0=Object.assign({},c[last]||{});for(const x in v)if(v[x]===null)delete t0[x];else t0[x]=v[x];c[last]=t0}else if(v===null)delete c[last];else c[last]=v;return o};
+    const open=async()=>{if(closed)return;try{const b=await this.url(),t=await AUTH.token();if(closed)return;es=new EventSource(`${b}/${path}.json?auth=${t}`);
+      const on=(merge)=>e=>{try{const m=JSON.parse(e.data);tree=setAt(tree,m.path,m.data,merge);fn(tree,{path:m.path,data:m.data,merge})}catch(_){}};
+      es.addEventListener('put',on(false));es.addEventListener('patch',on(true));
+      es.addEventListener('auth_revoked',()=>{es.close();AUTH.tok=null;setTimeout(open,300)});es.addEventListener('cancel',()=>{es.close();AUTH.tok=null;setTimeout(open,1500)});
+      es.onerror=()=>{if(es.readyState===2){setTimeout(open,2000)}}}catch(e){setTimeout(open,3000)}};
+    open();return ()=>{closed=true;try{es&&es.close()}catch(_){}}}};
+const FBNAMES={};
+function fbRoom(name){const me=AUTH.uid,key='rooms/'+name;let mine={},peers={},seen={},stops=[],cbs=[],evs=[],hb=0,gone=false;
+  const myName=()=>{const c=DATA.career;return (c&&c.name)||((DATA.netF&&getF(DATA.netF))||{}).name||'플레이어'};
+  const list=()=>{const now=Date.now(),out=[];for(const id in peers){const pr=peers[id];if(!pr||typeof pr!=='object')continue;if(id!==me&&now-(seen[id]||0)>12000)continue;
+      const {t,nm,...rest}=pr;if(nm)FBNAMES[id]=nm;out.push({by:id,presence:id===me?Object.assign({},rest,mine):rest,isMe:id===me,sameTab:id===me,kind:'viewer'})}
+    if(!out.some(p=>p.isMe)&&!gone)out.push({by:me,presence:Object.assign({},mine),isMe:true,sameTab:true,kind:'viewer'});return out};
+  const fire=()=>{const P=list();cbs.forEach(f=>{try{f({peers:P})}catch(e){}})};
+  stops.push(RTDB.stream(key+'/p',(tree,ev)=>{const now=Date.now(),prev=peers;peers=tree||{};
+    const k=(ev.path||'/').split('/').filter(Boolean);if(k.length)seen[k[0]]=now;else for(const id in peers){const pr=peers[id]||{};if(!prev[id]){if(Math.abs(now-(+pr.t||0))<20000)seen[id]=now}else if(JSON.stringify(prev[id])!==JSON.stringify(pr))seen[id]=now}fire()}));/* first load: only peers whose server heartbeat is recent count as online */
+  const send=patch=>RTDB.req('PATCH',`${key}/p/${me}`,Object.assign({},patch,{nm:myName(),t:{'.sv':'timestamp'}}));
+  hb=setInterval(()=>{if(!gone)send({}).catch(()=>{});fire()},4000);send({}).catch(()=>{});
+  const room={
+    presence(patch){Object.assign(mine,patch);for(const k in patch)if(patch[k]===null)delete mine[k];return send(patch)},
+    onPeers(f,err){cbs.push(f);setTimeout(()=>f({peers:list()}),0);return ()=>{cbs=cbs.filter(x=>x!==f)}},
+    peers(){return list()},
+    on(topic,f){if(!evs.length){let first=true;stops.push(RTDB.stream(key+'/e',(tree,ev)=>{if(first&&ev.path==='/'){first=false;return}first=false;const k=(ev.path||'/').split('/').filter(Boolean);if(k.length!==1||!ev.data)return;const m=ev.data;
+        evs.forEach(([tp,fn])=>{if(tp===m.topic)try{fn({data:m.data,by:m.by,isMe:m.by===me})}catch(e){}})}))}
+      const h=[topic,f];evs.push(h);return ()=>{evs=evs.filter(x=>x!==h)}},
+    emit(topic,data){return RTDB.req('POST',key+'/e',{topic,data,by:me,ts:{'.sv':'timestamp'}})},
+    async join(n){return fbRoom(n)},
+    async leave(){gone=true;clearInterval(hb);stops.forEach(f=>f());stops=[];cbs=[];evs=[];try{await RTDB.req('DELETE',`${key}/p/${me}`)}catch(e){}
+      if(mine.role==='host'){try{await RTDB.req('DELETE',key+'/e')}catch(e){}}}};
+  return room}
+const FBNet={async room(){const t=await AUTH.token();if(!t)throw new Error('noauth');await RTDB.url();return fbRoom('lobby')},
+  user:{async id(){await AUTH.token();return AUTH.uid},async profiles(ids){const o={};for(const i of ids)o[i]={name:FBNAMES[i]||''};return o}}};
 const Net={room:null,user:null,uid:null,ok:false,names:{},peers:[],mr:null,role:null,code:null,lastS:null,lastInp:null,inp:{ax:0,az:0,blk:0,q:[]},seq:0,chat:[],gone:0,ended:false,unsub:[],sendT:0,
-  init(){if(this._i)return this._i;this._i=(async()=>{try{if(!window.claude||typeof window.claude.use!=='function')return;const [room,user]=await Promise.all([window.claude.use('room'),window.claude.use('user')]);this.room=room;this.user=user;
+  init(){if(this._i)return this._i;this._i=(async()=>{try{let room,user;if(!window.claude||typeof window.claude.use!=='function'){room=await FBNet.room();user=FBNet.user}else [room,user]=await Promise.all([window.claude.use('room'),window.claude.use('user')]);this.room=room;this.user=user;
       if(user){try{this.uid=await user.id()}catch(e){}}
-      if(room){this.ok=true;room.onPeers(ch=>{this.peers=ch.peers;this.names4(ch.peers.map(p=>p.by));if(SCREEN==='online')softRender()},()=>{this.ok=false});this.lobby('idle')}}catch(e){}})();return this._i},
+      if(room){this.ok=true;room.onPeers(ch=>{this.peers=ch.peers;this.names4(ch.peers.map(p=>p.by));if(SCREEN==='online')softRender()},()=>{this.ok=false});this.lobby('idle')}}catch(e){this._fail=true;if(SCREEN==='online')softRender()}})();return this._i},
   async names4(ids){ids=[...new Set(ids.filter(x=>x&&!(x in this.names)))];if(!ids.length||!this.user)return;ids.forEach(i=>this.names[i]='');try{const p=await this.user.profiles(ids);for(const i of ids)this.names[i]=(p&&p[i]&&p[i].name)||''}catch(e){}softRender()},
+  /* public site: close the lobby connection when leaving the online screens (free plan has a connection limit) */
+  async sleep(){if(!STANDALONE||this.mr||!this.room)return;const r=this.room;this.room=null;this.ok=false;this._i=null;this.peers=[];try{await r.leave()}catch(e){}},
   nm(by){return by&&by===this.uid?'나':(this.names[by]||'플레이어')},
   lobby(st,extra={}){if(!this.room)return;this.room.presence({st,code:extra.code||null,a:extra.a||null,b:extra.b||null}).catch(()=>{})},
   mpeers(){try{return this.mr?this.mr.peers():[]}catch(e){return[]}},
@@ -2123,17 +2167,17 @@ function startMirror(role){const h=Net.peerRole('host'),g=Net.peerRole('guest');
 const roomCode=()=>{const c='abcdefghjkmnpqrstuvwxyz23456789';let s='';for(let i=0;i<4;i++)s+=c[Math.random()*c.length|0];return s};
 /* ---------- screens ---------- */
 const fRowNet=(f,key,right='')=>{NETF[key]=f;return `<div class="frow nf"><canvas class="pt" data-pid="net:${key}" data-mode="bust"></canvas><span><span class="nm" style="display:block">${esc(f.name)} <small style="opacity:.6">"${esc(f.nick||'')}"</small></span><small class="mut">${clsName(f.cls)} · ${esc((STYLES[f.style]||{}).name||'')} · ${(f.rec||[0,0,0]).join('-')}</small></span><span class="ovr">${f.ovr||''}</span>${right}</div>`};
-V.online=()=>{if(STANDALONE)return offNote('온라인 아레나');const me=myNetF(),R=ORec(),RG=DATA.records.ghost||{w:0,l:0};
+V.online=()=>{const me=myNetF(),R=ORec(),RG=DATA.records.ghost||{w:0,l:0};
   const ps=Net.peers.filter(p=>p.kind==='viewer'),open=ps.filter(p=>p.presence&&p.presence.st==='open'&&p.presence.code&&!p.isMe),live=ps.filter(p=>p.presence&&p.presence.st==='live'&&p.presence.code);
   const st={idle:'로비',open:'상대 기다리는 중',live:'대전 중',spec:'관전 중'};
   return `${back('home')}<div class="hofhead"><div class="eyebrow">온라인</div><h2>온라인 아레나</h2><p>${Net.ok?`지금 접속 ${ps.length}명`:'접속 정보를 불러오는 중…'}</p></div>
   ${Net.ok?`<div class="panel"><div class="eyebrow">접속 중</div><div class="who">${ps.map(p=>`<span class="${p.isMe?'me':''}"><i class="dot ${p.presence&&p.presence.st||'idle'}"></i>${esc(p.isMe?'나':Net.nm(p.by))}<small>${st[p.presence&&p.presence.st]||'로비'}</small></span>`).join('')||'<span>나 혼자예요</span>'}</div></div>`:
-    `<div class="panel"><p>실시간 대전과 관전은 claude.ai에서 이 게임을 연 사람들끼리 연결됩니다. 친구가 함께하려면 공유 메뉴에서 이 게임을 친구에게 공유해 주세요 (대전·채팅은 '참여' 권한 이상).</p></div>`}
+    `<div class="panel"><p>${STANDALONE?(Net._fail?'온라인 대전 서버를 준비하고 있어요. 곧 열려요!':'온라인 서버에 연결하는 중…'):'실시간 대전과 관전은 claude.ai에서 이 게임을 연 사람들끼리 연결됩니다.'}</p></div>`}
   <div class="panel"><div class="eyebrow">내 온라인 선수</div>${fRowNet(me,'mine',`<button class="btn sm" data-act="nav" data-to="opick">바꾸기</button>`)}
    <div class="kv"><div><span>실시간 대전</span><b>${R.w}-${R.l}-${R.d}</b></div><div><span>고스트 대전</span><b>${RG.w}-${RG.l}</b></div><div><span>주간 우승</span><b>${DATA.records.weekly||0}</b></div></div></div>
   <div class="panel"><div class="eyebrow">실시간 1:1 대전</div><h3>대전 방</h3>
    ${open.length?open.map(p=>`<div class="oroomrow"><b>${esc(Net.nm(p.by))}</b><span>${p.presence.a?esc(p.presence.a.n)+' · '+clsName(p.presence.a.c)+' · '+p.presence.a.o:''}</span><button class="btn-go sm" data-act="oJoin" data-code="${esc(p.presence.code)}">도전하기</button></div>`).join(''):'<p class="mut">열린 방이 없어요. 방을 만들고 친구를 기다려 보세요.</p>'}
-   <div class="row"><button class="btn-go" data-act="oHost" ${Net.ok?'':'disabled'}>방 만들기</button></div>
+   <div class="row"><button class="btn-go" data-act="oHost" ${Net.ok?'':'disabled'}>방 만들기</button><span class="ocode"><input id="ocode" maxlength="4" placeholder="방 코드" autocomplete="off" autocapitalize="off"><button class="btn sm" data-act="oCode" ${Net.ok?'':'disabled'}>코드로 입장</button></span></div>
    <h3>지금 진행 중인 경기</h3>${live.length?live.map(p=>`<div class="oroomrow live"><b>🔴 LIVE</b><span>${p.presence.a?esc(p.presence.a.n):''} vs ${p.presence.b?esc(p.presence.b.n):''}</span><button class="btn sm" data-act="oSpec" data-code="${esc(p.presence.code)}">관전</button></div>`).join(''):'<p class="mut">진행 중인 경기가 없어요.</p>'}</div>
   <div class="modes">
    <button class="tile" data-act="ghOpen"><span class="tn">고스트 대전</span><span class="td">친구들이 올린 선수(고스트)와 언제든 대전. 내 선수도 올려두면 친구들이 내 고스트에게 도전합니다.</span><span class="tx">비동기 대전</span></button>
@@ -2149,6 +2193,8 @@ A.opickSet=d=>{DATA.netF=d.id;save();go(P.back||'online')};
 A.oHost=async()=>{try{const code=roomCode();const mr=await Net.joinMatch(code,'host');const f=miniF(myNetF());await mr.presence({role:'host',f,st:'wait',cfg:{rounds:3,sec:DATA.settings.roundSec}});Net.lobby('open',{code,a:fSum(f)});go('oroom')}catch(e){alertNet()}};
 A.oJoin=async d=>{try{const mr=await Net.joinMatch(d.code,'guest');await new Promise(r=>setTimeout(r,500));const taken=Net.mpeers().some(p=>!p.isMe&&p.presence&&p.presence.role==='guest');
   if(taken){Net.role='spec';await mr.presence({role:'spec'})}else await mr.presence({role:'guest',f:miniF(myNetF())});go('oroom')}catch(e){alertNet()}};
+A.oCode=()=>{const v=(($('#ocode')||{}).value||'').trim().toLowerCase();if(v.length!==4){toast('친구에게 받은 4자리 방 코드를 넣어 주세요');return}A.oJoin({code:v})};
+A.oShare=async()=>{const t=`아이언 케이지에서 한판 붙자! 🥊\n방 코드: ${Net.code}\n1) 아래 링크 열기 → 2) 위쪽 '온라인' 탭 → 3) 방 코드 넣고 '코드로 입장'\nhttps://kevinthegoat5151-ui.github.io/iron-cage/`;try{if(navigator.share){await navigator.share({text:t});return}}catch(e){return}try{await navigator.clipboard.writeText(t);toast('초대 메시지를 복사했어요. 친구에게 붙여넣어 보내세요')}catch(e){toast('방 코드: '+Net.code)}};
 A.oSpec=async d=>{try{const mr=await Net.joinMatch(d.code,'spec');await mr.presence({role:'spec'});go('oroom')}catch(e){alertNet()}};
 A.oLeave=async()=>{removeOverlay();if(IC.Fight.S&&IC.Fight.S.mirror)IC.Fight.stop();stopLoop();between.hidden=true;await Net.leaveMatch();go('online')};
 function alertNet(){Net.chat=[];go('online');setTimeout(()=>{const p=document.querySelector('.hofhead p');if(p)p.textContent='방에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.'},50)}
@@ -2159,6 +2205,7 @@ V.oroom=()=>{if(!Net.mr)return `${back('online','← 온라인')}<div class="pan
   if(h&&h.presence.f)NETF.h=netF(h.presence.f,'h');if(g&&g.presence.f)NETF.g=netF(g.presence.f,'g');
   const host=Net.role==='host';
   return `<button class="back" data-act="oLeave">← 방 나가기</button><div class="panel"><div class="eyebrow">온라인 대전 방 · 코드 ${esc(Net.code)}${Net.role==='spec'?' · 관전 중':''}</div>
+  ${Net.role==='host'?`<div class="ocodebig"><span>방 코드</span><b>${esc((Net.code||'').toUpperCase())}</b><button class="btn-go sm" data-act="oShare">📨 친구 초대하기</button></div>`:''}
   <div class="vsbox">${card(h,'h','블루 코너 · 호스트')}<div class="vsx">VS</div>${card(g,'g','레드 코너 · 도전자')}</div>
   <p class="mut">관전 ${specs.length}명 · ${cfg.rounds}라운드${live?' · 경기 진행 중':''}</p>
   ${host?`<div class="field"><span class="lbl">라운드</span>${seg('oRounds',[3,5],cfg.rounds||3,v=>v+'라운드')}</div>
@@ -2334,7 +2381,7 @@ addEventListener('resize',checkOrient);addEventListener('orientationchange',()=>
   const el=document.documentElement;if(document.fullscreenElement||!el.requestFullscreen)return;try{const p=el.requestFullscreen({navigationUI:'hide'});if(p&&p.catch)p.catch(()=>{})}catch(e){}};
   addEventListener('pointerdown',firstTouch,true)}
 /* ---------- boot ---------- */
-Store.init();Net.init();
+Store.init();if(!STANDALONE)Net.init();
 const loc=Store.local();if(loc&&loc.v===3)DATA=Object.assign(D0(),loc);
 if(!DATA.settings.wk2){DATA.settings.wk2=1;DATA.settings.walkout=true}
 if(DATA.settings.sound==null)DATA.settings.sound=true;DATA.settings.voiceOn=false;Sound.on=DATA.settings.sound;loadCustom();
