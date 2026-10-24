@@ -533,26 +533,21 @@ function mcAttack(F,base){const A=F.A,m=A&&MC_ATK[A.anim];if(!m||!mcInfo(m.k))re
   if(!kick){const q=(m.hand||m.lim)==='nH'?'farHand':'nearHand',G={x:o.chest.x+F.f*(q==='nearHand'?24:17),y:o.chest.y-30};o[q]={x:lerp(o[q].x,G.x,edge),y:lerp(o[q].y,G.y,edge)};o[q==='nearHand'?'elbN':'elbF']='down'}
   return o}
 function mcLoop(F,key,t,speed=1,o={}){const I=mcInfo(key);if(!I)return null;const u=((t*speed/4)/(I.M.n))%1;return mcPose(F,key,u,o)}
-function kickPath(F,A,x,f,an){const H={lowkick:34,midkick:112,highkick:196}[an],R={lowkick:100,midkick:112,highkick:104}[an];
-  /* ROUND kick (not a push kick): the knee rises pointing at the target with the shin folded BEHIND it, then the shin whips
-     around the knee on an arc (down → forward → up) so the shin/instep lands sideways; it snaps back the same way and steps down behind.
-     The knee always stays on the top/front side of the leg, so it never flips. Worked in local coords (u = forward, y = down). */
-  const hipY=GY-92,sm=p=>p*p*(3-2*p),bz=(a,b,c,p)=>({x:(1-p)*(1-p)*a.x+2*(1-p)*p*b.x+p*p*c.x,y:(1-p)*(1-p)*a.y+2*(1-p)*p*b.y+p*p*c.y});
-  const W=(u,y)=>({x:x+f*u,y});
+function kickPath(F,A,x,f,an){const H={lowkick:40,midkick:112,highkick:188}[an],R={lowkick:100,midkick:112,highkick:106}[an];
+  /* clean kick, no flapping: the knee lifts toward the target with the shin hanging straight down under it, then the foot travels
+     in a straight line out to the target (sideways for body/head, low and level for the leg), and comes back along the same line. */
+  const hipY=GY-92,sm=p=>p*p*(3-2*p),W=(u,y)=>({x:x+f*u,y}),L=(a,b,k)=>({x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k});
   const B0=W(-24,GY),T=W(R,GY-H);
-  const kr={lowkick:{u:30,y:hipY+18},midkick:{u:36,y:hipY-8},highkick:{u:34,y:hipY-44}}[an];/* knee raised toward the target */
-  const kf={u:R*.52,y:(hipY+(GY-H))/2-(an==='lowkick'?-4:10)};/* knee at impact: leg almost straight */
-  const L0=44,L1=Math.hypot(R-kf.u,(GY-H)-kf.y);
-  const a0=Math.atan2(36,-12)/* shin folded back-down behind the knee */,a1=Math.atan2((GY-H)-kf.y,R-kf.u);
-  const shin=(ku,ky,ang,L)=>W(ku+Math.cos(ang)*L,ky+Math.sin(ang)*L);
+  const Kc={lowkick:W(30,hipY+14),midkick:W(34,hipY-4),highkick:W(32,hipY-30)}[an];/* chambered knee */
+  const Fc={x:Kc.x-f*4,y:Kc.y+46};/* foot hanging under the knee */
+  const Kx=W(R*.52,(Kc.y+T.y)/2+(an==='lowkick'?6:-6));/* knee at full extension: on the hip→foot line, leg nearly straight */
   const t=F.t,w=A.w,a=Math.max(1,A.a),r=Math.max(1,A.r);let foot,knee,ext=0,pivot=0;
-  const K0={u:10,y:GY-50};
-  if(t<w){const p=sm(t/w);const ku=lerp(K0.u,kr.u,p),ky=lerp(K0.y,kr.y,p);knee=W(ku,ky);
-    const fold=shin(kr.u,kr.y,a0,L0),bf=W(-24,GY);foot=p<1?{x:lerp(bf.x,fold.x+(knee.x-W(kr.u,0).x),sm(p)),y:lerp(bf.y,fold.y+(ky-kr.y),sm(p))}:fold;pivot=p*.5}
-  else if(t<w+a){const p=sm(Math.min(1,(t-w)/a));const ku=lerp(kr.u,kf.u,p),ky=lerp(kr.y,kf.y,p),ang=lerp(a0,a1,p),L=lerp(L0,L1,p);knee=W(ku,ky);foot=shin(ku,ky,ang,L);ext=p;pivot=.5+p*.5}
+  const K0=W(10,GY-50);
+  if(t<w){const p=sm(t/w);knee=L(K0,Kc,p);foot=L(B0,Fc,p);if(p<.5)foot.y=Math.min(foot.y,GY-2-p*40);pivot=p*.5}
+  else if(t<w+a){const p=sm(Math.min(1,(t-w)/a));foot=L(Fc,T,p);knee=L(Kc,Kx,p);ext=p;pivot=.5+p*.5}
   else{const p=Math.min(1,(t-w-a)/r);
-    if(p<.4){const q=sm(p/.4);const ku=lerp(kf.u,kr.u,q),ky=lerp(kf.y,kr.y,q),ang=lerp(a1,a0,q),L=lerp(L1,L0,q);knee=W(ku,ky);foot=shin(ku,ky,ang,L);ext=1-q;pivot=1}
-    else{const q=sm((p-.4)/.6);const fold=shin(kr.u,kr.y,a0,L0);foot=bz(fold,W(-6,GY-10),B0,q);const km={u:-6,y:(hipY+GY)/2};knee=W(lerp(kr.u,km.u,q),lerp(kr.y,km.y,q));pivot=1-q}}
+    if(p<.45){const q=sm(p/.45);foot=L(T,Fc,q);knee=L(Kx,Kc,q);ext=1-q;pivot=1}
+    else{const q=sm((p-.45)/.55);foot=L(Fc,B0,q);knee=L(Kc,W(-4,(hipY+GY)/2),q);pivot=1-q}}
   return{foot,knee,ext,pivot}}
 function poseStand(F,O,S){
   const x=F.x,f=F.f,A=F.A,an=A&&A.anim,t=S.frame,st=F.state,isK=st==='attack'&&(an==='lowkick'||an==='midkick'||an==='highkick'),kpv=isK?kickPath(F,A,x,f,an).pivot:0,E=isK?kpv*kpv*(3-2*kpv):ext(F),e=Math.max(E,0);/* kicks: one smooth progress curve drives everything, so nothing snaps when the windup ends */
@@ -2018,7 +2013,7 @@ function weighin(c,cw,ch,st){
   for(let r=0;r<5;r++)for(let k=-1;k<8;k++){const lx=60+k*110+(r%2)*55,ly=56+r*50;ctx.fillStyle=(r+k)%2?'rgba(232,179,58,.10)':'rgba(220,230,245,.07)';ctx.font='bold 15px sans-serif';ctx.fillText(logos[((r+k)%6+6)%6],lx,ly)}
   // LED header
   ctx.fillStyle='#07090e';ctx.fillRect(170,26,460,70);ctx.strokeStyle='rgba(232,179,58,.7)';ctx.lineWidth=2;ctx.strokeRect(170,26,460,70);
-  const sh=ctx.createLinearGradient(170,0,630,0);sh.addColorStop(0,'rgba(232,179,58,0)');sh.addColorStop((t*.006)%1,'rgba(232,179,58,.12)');sh.addColorStop(1,'rgba(232,179,58,0)');ctx.fillStyle=sh;ctx.fillRect(172,28,456,66);
+  const sh=ctx.createLinearGradient(170,0,630,0);sh.addColorStop(0,'rgba(232,179,58,0)');sh.addColorStop(Math.min(1,Math.max(0,(t*.006)%1)),'rgba(232,179,58,.12)');sh.addColorStop(1,'rgba(232,179,58,0)');ctx.fillStyle=sh;ctx.fillRect(172,28,456,66);
   ctx.font='30px "Black Han Sans",sans-serif';ctx.fillStyle='#e8b33a';ctx.fillText('공식 계체량',400,52);
   ctx.font='700 13px "IBM Plex Sans KR",sans-serif';ctx.fillStyle='rgba(233,230,223,.85)';ctx.fillText(`${st.cls} · 한계 체중 ${st.limLb} lb (${st.limKg} kg)${st.title?' · 타이틀전':''}`,400,80);
   // title belt on a stand
