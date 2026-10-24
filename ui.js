@@ -2232,7 +2232,7 @@ A.oHost=async()=>{try{const code=roomCode();const mr=await Net.joinMatch(code,'h
 A.oJoin=async d=>{try{const mr=await Net.joinMatch(d.code,'guest');await new Promise(r=>setTimeout(r,500));const taken=Net.mpeers().some(p=>!p.isMe&&p.presence&&p.presence.role==='guest');
   if(taken){Net.role='spec';await mr.presence({role:'spec'})}else await mr.presence({role:'guest',f:miniF(myNetF())});go('oroom')}catch(e){alertNet()}};
 A.oCode=()=>{const v=(($('#ocode')||{}).value||'').trim().toLowerCase();if(v.length!==4){toast('친구에게 받은 4자리 방 코드를 넣어 주세요');return}A.oJoin({code:v})};
-A.oShare=async()=>{const t=`아이언 케이지에서 한판 붙자! 🥊\n방 코드: ${Net.code}\n1) 아래 링크 열기 → 2) 위쪽 '온라인' 탭 → 3) 방 코드 넣고 '코드로 입장'\nhttps://kevinthegoat5151-ui.github.io/iron-cage/`;try{if(navigator.share){await navigator.share({text:t});return}}catch(e){return}try{await navigator.clipboard.writeText(t);toast('초대 메시지를 복사했어요. 친구에게 붙여넣어 보내세요')}catch(e){toast('방 코드: '+Net.code)}};
+A.oShare=async()=>{const t=`아이언 케이지에서 한판 붙자! 🥊\n방 코드: ${Net.code}\n1) 아래 링크 열기 → 2) 위쪽 '온라인' 탭 → 3) 방 코드 넣고 '코드로 입장'\nhttps://ironcage.github.io/`;try{if(navigator.share){await navigator.share({text:t});return}}catch(e){return}try{await navigator.clipboard.writeText(t);toast('초대 메시지를 복사했어요. 친구에게 붙여넣어 보내세요')}catch(e){toast('방 코드: '+Net.code)}};
 A.oSpec=async d=>{try{const mr=await Net.joinMatch(d.code,'spec');await mr.presence({role:'spec'});go('oroom')}catch(e){alertNet()}};
 A.oLeave=async()=>{removeOverlay();if(IC.Fight.S&&IC.Fight.S.mirror)IC.Fight.stop();stopLoop();between.hidden=true;await Net.leaveMatch();go('online')};
 function alertNet(){Net.chat=[];go('online');setTimeout(()=>{const p=document.querySelector('.hofhead p');if(p)p.textContent='방에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.'},50)}

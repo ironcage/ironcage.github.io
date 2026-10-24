@@ -4,7 +4,7 @@
 
 ## 프로젝트 사실
 - 2D(Canvas) MMA 게임 PWA. 파일: data.js, engine.js, draw.js, ui.js, mocap.js, index.html(CSS), sw.js
-- 사이트: https://kevinthegoat5151-ui.github.io/iron-cage/ (main 브랜치 푸시 = 배포)
+- 사이트: https://ironcage.github.io/ (main 브랜치 푸시 = 배포)
 - 게임은 2D로 유지한다. 3D 전환 금지.
 - index.html 4번째 줄의 google-site-verification 메타 태그는 절대 지우지 않는다.
 - 원본 Claude 아티팩트 v48은 절대 수정하지 않는다.
