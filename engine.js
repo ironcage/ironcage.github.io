@@ -750,7 +750,7 @@ function netInput(R){if(!S||!S.remote||!R)return;S.rin=R;const E=S.b,P=S.a;
     if(S.mode!=='fight')continue;
     if(S.sub){mashFor(E);continue}if(q[1]==='mash')continue;E.slot=resolveFor(E,P,!!q[2],q[1]);E.bufT=10}}
 const r1=v=>Math.round(v*10)/10;
-const NK=['x','z','f','t','walk','koT','head','body','legs','lgL','lgR','cuts','st','stun','moveDir','meter','heart','rocked','flash'];
+const NK=['x','z','f','t','walk','koT','head','body','legs','lgL','lgR','cuts','st','stun','moveDir','meter','heart','rocked','flash','perfK','perfT','hidden','walkShirt'];
 function nF(F){const o={s:F.state,b:F.blockHeld?1:0};for(const k of NK){const v=F[k];if(v)o[k]=typeof v==='number'?r1(v):v}
   if(F.A)o.A=[F.A.anim,F.A.w,F.A.a,F.A.r,F.A.special?1:0,F.A.kind||'',F.A.id||'',F.A.target||''];
   if(F.g&&(F.g.act||F.g.t))o.g=[F.g.act,F.g.t,F.g.A?F.g.A.w:0,F.g.A?F.g.A.r:0,F.g.A?F.g.A.dmg||0:0,F.g.A?F.g.A.target||'':''];
@@ -763,9 +763,18 @@ function netSnap(){if(!S)return null;const o={fr:S.frame,m:S.mode,rd:S.round,rs:
   if(S.feed.length)o.fd=S.feed.map(f=>[f.text,f.t,f.who]);
   if(S.shake>.5)o.sh=r1(S.shake);if(S.flashScr)o.fs=S.flashScr;if(S.zoomKick>.01)o.zk=r1(S.zoomKick);if(S.camFocus)o.cf=S.camFocus;if(S.winSide)o.ws=S.winSide;
   if(S.ded)o.dd=[S.ded.a,S.ded.b];if(S.nl.length)o.nl=S.nl.slice(-14);
+  /* walkout travels too, so the other phone sees the whole entrance */
+  if(S.walk){const W=S.walk;o.wk={i:W.i,k:W.k,t:W.t,ax:r1(W.ax||0),hy:r1(W.hype||0),rit:W.rit||0,rv:W.ritV||0,cap:W.cap||null,tn:r1(W.tension||0),ev:W.ev||null,
+    ln:W.lines.map(l=>[l.kind,l.text,l.t]),py:W.pyro?[W.pyro.t,W.pyro.at]:null,sa:W.songA&&W.songA.n,sb:W.songB&&W.songB.n,bub:W.bub?W.bub.map(x=>[x.F===S.a?'a':'b',x.text,x.t0]):null}}
   if(S.result){const r=S.result;o.res={winner:r.winner,method:r.method,detail:r.detail,round:r.round,time:r.time,cards:r.cards}}
   return o}
-function applyF(F,o){F.state=o.s;F.blockHeld=!!o.b;for(const k of NK){const v=o[k]??0;if(k==='x'||k==='z'){F['_t'+k]=v;if(F['_t'+k+'0']==null||Math.abs(F[k]-v)>60)F[k]=v;F['_t'+k+'0']=1}else F[k]=v}
+/* guest prediction: the strike starts on this phone right away; the host's version takes over once it arrives */
+function predict(id){if(!S||!S.mirror||S.spec||S.mode!=='fight'||S.gr||S.cl||S.sub)return;const P=S.p;if(!P||P.state==='attack'||P.state==='hit'||P.stun>0)return;
+  let k=id;if(typeof k==='string'&&k[0]==='@'){try{k=resolveFor(P,P===S.a?S.b:S.a,!!S.held.block,k)}catch(e){return}}const M=MV[k];if(!M||M.kind||!M.anim)return;
+  P.state='attack';P.A=Object.assign({},M);P.t=0;P._pred=performance.now()}
+function applyF(F,o){if(F._pred&&performance.now()-F._pred<450&&o.s!=='attack'&&o.s!=='hit'){const st=F.state,A=F.A,t=F.t;F.blockHeld=!!o.b;for(const k of NK){if(k==='t')continue;const v=o[k]??0;if(k==='x'||k==='z'){F['_t'+k]=v}else F[k]=v}F.state=st;F.A=A;F.t=t;return}
+  if(o.s==='attack')F._pred=0;
+  F.state=o.s;F.blockHeld=!!o.b;for(const k of NK){const v=o[k]??0;if(k==='x'||k==='z'){F['_t'+k]=v;if(F['_t'+k+'0']==null||Math.abs(F[k]-v)>60)F[k]=v;F['_t'+k+'0']=1}else F[k]=v}
   F.A=o.A?{anim:o.A[0],w:o.A[1],a:o.A[2],r:o.A[3],special:!!o.A[4],kind:o.A[5]||undefined,id:o.A[6],target:o.A[7]}:null;
   F.g=o.g?{act:o.g[0],t:o.g[1],A:o.g[0]?{w:o.g[2],r:o.g[3],dmg:o.g[4],target:o.g[5]}:null}:{act:null,t:0,A:null};
   F.react=o.re?{k:o.re[0],t:o.re[1],d:o.re[2],up:!!o.re[3]}:null;F.inj=o.inj?Object.fromEntries(o.inj.map(k=>[k,1])):null;F.fouls=o.fo||0}
@@ -778,13 +787,17 @@ function applyNet(o){if(!S||!S.mirror||!o)return;const by=x=>x==='a'?S.a:S.b,ot=
   S.banner=o.bn?{text:o.bn[0],col:o.bn[1],t:o.bn[2],max:o.bn[3],sub:o.bn[4]||null}:null;
   S.feed=(o.fd||[]).map(f=>({text:f[0],t:f[1],who:f[2]}));S.shake=Math.max(S.shake,o.sh||0);S.flashScr=o.fs||0;S.zoomKick=o.zk||0;S.camFocus=o.cf||null;S.winSide=o.ws||null;
   if(o.dd)S.ded={a:o.dd[0],b:o.dd[1]};
+  if(o.wk){const w=o.wk,W=S.walk||(S.walk={lines:[]});Object.assign(W,{i:w.i,k:w.k,t:w.t,ax:w.ax,hype:w.hy,rit:w.rit,ritV:w.rv,cap:w.cap,tension:w.tn,ev:w.ev,
+      lines:w.ln.map(l=>({kind:l[0],text:l[1],t:l[2]})),pyro:w.py?{t:w.py[0],at:w.py[1]}:null,songA:IC.SONGS.find(x=>x.n===w.sa)||{n:w.sa||'',gn:'입장곡',g:'rock'},songB:IC.SONGS.find(x=>x.n===w.sb)||{n:w.sb||'',gn:'입장곡',g:'rock'},bub:w.bub?w.bub.map(x=>({F:by(x[0]),text:x[1],t0:x[2]})):null})}
+  else S.walk=null;
   if(o.res)S.result=o.res;
   for(const e of o.nl||[]){if(e[0]<=(S.nlast||0))continue;S.nlast=e[0];const k=e[1];
     try{if(k==='b')blood(e[2],e[3],e[4],e[5]);else if(k==='a')bloodArc(e[2],e[3],e[4],e[5]);else if(k==='u')burst(e[2],e[3],e[4],e[5]);else if(k==='t')floatText(e[2],e[3],e[4],e[5],e[6]);else if(k==='w')sweat(e[2],e[3],e[4]);
       else if(k==='r')S.rings.push({x:e[2],y:e[3],r:4,l:14,big:!!e[4]});else if(k==='s')sfx(e[2]);else if(k==='i')sfxHit(e[2],e[3])}catch(_){}}
   S.netAt=performance.now();return prevM!==S.mode?S.mode:null}
 function mirrorStep(){S.frame++;
-  for(const F of [S.a,S.b]){if(F._tx!=null)F.x+=(F._tx-F.x)*.45;if(F._tz!=null)F.z=(F.z||0)+(F._tz-(F.z||0))*.45;if(F.react&&F.react.t<30)F.react.t+=.5}
+  for(const F of [S.a,S.b]){if(F._pred&&F.state==='attack'){F.t++;if(F.A&&F.t>F.A.w+F.A.a+F.A.r){F.state='idle';F.A=null;F._pred=0}}
+    if(F._tx!=null)F.x+=(F._tx-F.x)*.45;if(F._tz!=null)F.z=(F.z||0)+(F._tz-(F.z||0))*.45;if(F.react&&F.react.t<30)F.react.t+=.5}
   for(const r of S.rings){r.r+=r.big?3.2:2.2;r.l--}S.rings=S.rings.filter(r=>r.l>0);if(S.flashScr>0)S.flashScr--;
   for(const s of S.sparks){s.x+=s.vx;s.y+=s.vy;s.vy+=s.drop?.35:.25;s.l--;if(s.drop&&s.y>GY+2&&!s.st){s.st=1;s.l=0;if(S.stains.length<220){const C=S.cage,px=s.x-C.x,pz=rnd(-10,24)-C.z,co=Math.cos(-C.ang),si=Math.sin(-C.ang);S.stains.push({lx:px*co-pz*si,lz:px*si+pz*co,r:rnd(1.5,4)*(s.r?s.r/1.8:1)})}}}
   S.sparks=S.sparks.filter(s=>s.l>0);for(const t of S.texts){t.y-=.8;t.l--}S.texts=S.texts.filter(t=>t.l>0);
@@ -876,7 +889,7 @@ const WK=[{k:'blueAisle',d:880},{k:'blueIn',d:320},{k:'redAisle',d:880},{k:'redI
 /* signature entrance performance per fighting style */
 const PERF={boxer:'shadow',kickboxer:'kicks',karate:'kicks',taekwondo:'kicks',muaythai:'waikru',wrestler:'chest',sambo:'chest',bjj:'bow',brawler:'taunt',allround:'taunt'};
 const PERFN={shadow:'섀도복싱',kicks:'허공에 하이킥',waikru:'와이크루 의식',chest:'가슴을 두드리며 포효',bow:'옥타곤에 절',taunt:'관중 도발'};
-const songOf=F=>{const S0=IC.SONGS,k=IC.songPick?IC.songPick(F.d):null;if(typeof k==='string'&&k.startsWith('mine')&&IC.mySong&&IC.mySong(k))return IC.mySong(k);return S0[k!=null&&S0[k]?k:IC.hash((F.d.id||'')+F.name)%S0.length]};
+const songOf=F=>{if(F.d&&F.d._song)return F.d._song;const S0=IC.SONGS,k=IC.songPick?IC.songPick(F.d):null;if(typeof k==='string'&&k.startsWith('mine')&&IC.mySong&&IC.mySong(k))return IC.mySong(k);return S0[k!=null&&S0[k]?k:IC.hash((F.d.id||'')+F.name)%S0.length]};
 const AISLE0=-300,AISLE1=600;
 function startWalkout(){
   const a=S.a,b=S.b;
@@ -1269,7 +1282,7 @@ IC.Fight={DECT,
   releaseAll(){if(S)S.held={left:false,right:false,block:false,up:false,dn:false,ax:0,az:0}},
   axis(v,w){if(S){S.held.ax=v;S.held.az=w||0;if(S.mirror&&S.netOut)S.netOut('h')}},
   pause(on){if(S&&!S.remote&&!S.mirror)S.paused=on},
-  netSnap,applyNet,netInput,
+  netSnap,applyNet,netInput,predict,
   oppLeft(){if(!S||S.result)return;S.mode='fight';finish(S.p,'TKO','상대 연결 끊김');say('상대의 연결이 끊겼습니다.')},
   skipIntro(){skipWalkout()},
   skipReplay(){if(!S||S.mode!=='replay'||!S.rp)return;if(S.rp.hl){S.hlQ=[];S.mode='over';S.rp=null;const cb=S.hlDone;S.hlDone=null;if(cb)cb()}else startOutro()},

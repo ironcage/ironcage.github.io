@@ -997,11 +997,11 @@ function loop(now){
   raf=requestAnimationFrame(loop);
 }
 let CFG=null,USE3D=false;
-function startFight(cfg){[50,250,700,1500].forEach(d=>setTimeout(()=>{try{appHeight();fit()}catch(e){}},d));if(Sound._mus&&Sound._mus.menu)Sound.music(false);
+function startFight(cfg){game.classList.remove('mirror');[50,250,700,1500].forEach(d=>setTimeout(()=>{try{appHeight();fit()}catch(e){}},d));if(Sound._mus&&Sound._mus.menu)Sound.music(false);
   CFG=cfg;Sound.on=DATA.settings.sound;Sound.init();Crowd.start();if(IC.KO)IC.KO.reset();
   scr.hidden=true;game.hidden=false;between.hidden=true;pad.hidden=false;hintEl.hidden=false;
   $('#glabel').textContent=cfg.label||'';
-  stopDemo();IC.opts.nums=!!DATA.settings.nums;IC.opts.haptic=DATA.settings.haptic!==false;IC.Fight.start({walkout:!cfg.online&&!cfg.noWalk&&DATA.settings.walkout!==false,replay:!cfg.online&&DATA.settings.replay!==false,remote:cfg.online==='host',coach:DATA.settings.coach!==false,a:cfg.a,b:cfg.b,rounds:cfg.rounds||3,roundSec:cfg.roundSec||DATA.settings.roundSec,diff:cfg.diff||'normal',title:cfg.title,practice:cfg.practice,condition:cfg.condition,wild:!!cfg.wild,pat:cfg.pat||null,gim:cfg.gim||null,arena:cfg.arena!=null?cfg.arena:cfg.practice?0:cfg.title?3:cfg.online?2:cfg.wild?1:2,
+  stopDemo();IC.opts.nums=!!DATA.settings.nums;IC.opts.haptic=DATA.settings.haptic!==false;IC.Fight.start({walkout:(!cfg.online||cfg.online==='host')&&!cfg.noWalk&&DATA.settings.walkout!==false,replay:!cfg.online&&DATA.settings.replay!==false,remote:cfg.online==='host',coach:DATA.settings.coach!==false,a:cfg.a,b:cfg.b,rounds:cfg.rounds||3,roundSec:cfg.roundSec||DATA.settings.roundSec,diff:cfg.diff||'normal',title:cfg.title,practice:cfg.practice,condition:cfg.condition,wild:!!cfg.wild,pat:cfg.pat||null,gim:cfg.gim||null,arena:cfg.arena!=null?cfg.arena:cfg.practice?0:cfg.title?3:cfg.online?2:cfg.wild?1:2,
     onRound:showBetween,onEnd:res=>{stopLoop();res.ach=checkFightAch(res,cfg);setTimeout(()=>cfg.onResult(res),30)}});
   const S=IC.Fight.S;
   try{if(!cfg.practice){const ov=f=>f.ovr!=null?f:Object.assign({},f,{ovr:IC.ovrOf(f.s,f.style)});S.odds=oddsOf(ov(cfg.a),ov(cfg.b))}}catch(e){S.odds=null}
@@ -2109,7 +2109,25 @@ const RTDB={base:null,
       es.addEventListener('auth_revoked',()=>{es.close();AUTH.tok=null;setTimeout(open,300)});es.addEventListener('cancel',()=>{es.close();AUTH.tok=null;setTimeout(open,1500)});
       es.onerror=()=>{if(es.readyState===2){setTimeout(open,2000)}}}catch(e){setTimeout(open,3000)}};
     open();return ()=>{closed=true;try{es&&es.close()}catch(_){}}}};
-const FBNAMES={};
+/* ---------- direct phone-to-phone link (WebRTC data channel), signalled through the match room; the server path stays as fallback ---------- */
+const P2P={pc:null,sd:null,inp:null,open:false,role:null,q:[],
+  reset(){try{this.pc&&this.pc.close()}catch(e){}this.pc=null;this.sd=null;this.inp=null;this.open=false;this.role=null;this.q=[]},
+  mk(role){this.reset();this.role=role;if(typeof RTCPeerConnection==='undefined')return null;
+    const pc=new RTCPeerConnection({iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302']}]});this.pc=pc;
+    pc.onicecandidate=e=>{if(e.candidate)this.sig({c:e.candidate.toJSON()})};
+    pc.onconnectionstatechange=()=>{if(['failed','closed','disconnected'].includes(pc.connectionState)){this.open=false}};
+    pc.ondatachannel=e=>this.bind(e.channel);return pc},
+  bind(ch){if(ch.label==='s')this.sd=ch;else this.inp=ch;ch.onopen=()=>{this.open=!!(this.sd&&this.sd.readyState==='open'&&this.inp&&this.inp.readyState==='open')};ch.onclose=()=>{this.open=false};
+    ch.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}if(m.s&&this.role==='guest'){Net.gotSnap(m.s)}else if(m.i&&this.role==='host'){IC.Fight.netInput(m.i)}}},
+  sig(o){try{Net.mr&&Net.mr.emit('sig',Object.assign({from:this.role},o)).catch(()=>{})}catch(e){}},
+  async host(){const pc=this.mk('host');if(!pc)return;this.bind(pc.createDataChannel('s',{ordered:false,maxRetransmits:0}));this.bind(pc.createDataChannel('i',{ordered:true}));
+    const of=await pc.createOffer();await pc.setLocalDescription(of);this.sig({sdp:pc.localDescription.toJSON()})},
+  async onSig(m){const d=m.data||{};if(!d||d.from===this.role||m.isMe)return;
+    try{if(d.sdp&&d.sdp.type==='offer'&&Net.role==='guest'){const pc=this.mk('guest');if(!pc)return;await pc.setRemoteDescription(d.sdp);const an=await pc.createAnswer();await pc.setLocalDescription(an);this.sig({sdp:pc.localDescription.toJSON()});for(const c of this.q.splice(0))pc.addIceCandidate(c).catch(()=>{})}
+      else if(d.sdp&&d.sdp.type==='answer'&&this.role==='host'&&this.pc){await this.pc.setRemoteDescription(d.sdp);for(const c of this.q.splice(0))this.pc.addIceCandidate(c).catch(()=>{})}
+      else if(d.c){if(this.pc&&this.pc.remoteDescription)this.pc.addIceCandidate(d.c).catch(()=>{});else this.q.push(d.c)}}catch(e){}},
+  send(ch,o){try{if(ch&&ch.readyState==='open'){ch.send(JSON.stringify(o));return true}}catch(e){}return false}};
+IC._p2p=P2P;const FBNAMES={};
 function fbRoom(name){const me=AUTH.uid,key='rooms/'+name;let mine={},peers={},seen={},stops=[],cbs=[],evs=[],hb=0,gone=false;
   const myName=()=>{const c=DATA.career;return (c&&c.name)||((DATA.netF&&getF(DATA.netF))||{}).name||'플레이어'};
   const list=()=>{const now=Date.now(),out=[];for(const id in peers){const pr=peers[id];if(!pr||typeof pr!=='object')continue;if(id!==me&&now-(seen[id]||0)>12000)continue;
@@ -2118,7 +2136,10 @@ function fbRoom(name){const me=AUTH.uid,key='rooms/'+name;let mine={},peers={},s
   const fire=()=>{const P=list();cbs.forEach(f=>{try{f({peers:P})}catch(e){}})};
   stops.push(RTDB.stream(key+'/p',(tree,ev)=>{const now=Date.now(),prev=peers;peers=tree||{};
     const k=(ev.path||'/').split('/').filter(Boolean);if(k.length)seen[k[0]]=now;else for(const id in peers){const pr=peers[id]||{};if(!prev[id]){if(Math.abs(now-(+pr.t||0))<20000)seen[id]=now}else if(JSON.stringify(prev[id])!==JSON.stringify(pr))seen[id]=now}fire()}));/* first load: only peers whose server heartbeat is recent count as online */
-  const send=patch=>RTDB.req('PATCH',`${key}/p/${me}`,Object.assign({},patch,{nm:myName(),t:{'.sv':'timestamp'}}));
+  let inflight=false,pend=null;
+  const flush=()=>{if(inflight||!pend||gone&&!pend.__final)return;const body=pend;pend=null;inflight=true;delete body.__final;
+    RTDB.req('PATCH',`${key}/p/${me}`,Object.assign(body,{nm:myName(),t:{'.sv':'timestamp'}})).catch(()=>{}).finally(()=>{inflight=false;if(pend)flush()})};
+  const send=patch=>{pend=Object.assign(pend||{},patch);flush();return Promise.resolve()};
   hb=setInterval(()=>{if(!gone)send({}).catch(()=>{});fire()},4000);send({}).catch(()=>{});
   const room={
     presence(patch){Object.assign(mine,patch);for(const k in patch)if(patch[k]===null)delete mine[k];return send(patch)},
@@ -2183,25 +2204,34 @@ const Net={room:null,user:null,uid:null,ok:false,names:{},peers:[],mr:null,role:
     const mr=await this.room.join('m-'+code);this.mr=mr;this.code=code;this.role=role;this.chat=[];this.lastS=null;this.lastInp=null;this.inp={ax:0,az:0,blk:0,q:[]};this.ended=false;this.gone=0;
     this.unsub=[mr.onPeers(ch=>{this.names4(ch.peers.map(p=>p.by));if(SCREEN==='oroom'){if(this.role!=='host'){const h=this.peerRole('host');if(h&&h.presence.st==='live'&&h.presence.s&&game.hidden&&!this.ended)startMirror(this.role)}softRender()}},()=>{}),
       mr.on('chat',m=>{const t=m.data&&typeof m.data.t==='string'?m.data.t.slice(0,120):'';if(!t)return;this.chat.push({by:m.by,t,ts:Date.now(),me:m.isMe});if(this.chat.length>40)this.chat.shift();this.names4([m.by]);drawChat()}),
+      mr.on('sig',m=>P2P.onSig(m)),
       mr.on('cheer',m=>{const e=m.data&&typeof m.data.e==='string'?m.data.e:'';if(CHEERS.includes(e))floatEmoji(e)})];
     this.names4([this.uid]);return mr},
-  async leaveMatch(){const mr=this.mr;this.mr=null;this.role=null;this.code=null;this.unsub.forEach(u=>{try{u()}catch(e){}});this.unsub=[];if(mr){try{await mr.leave()}catch(e){}}this.lobby('idle')},
+  async leaveMatch(){P2P.reset();const mr=this.mr;this.mr=null;this.role=null;this.code=null;this.unsub.forEach(u=>{try{u()}catch(e){}});this.unsub=[];if(mr){try{await mr.leave()}catch(e){}}this.lobby('idle')},
   out(k,id,g){const S=IC.Fight.S;if(!S||!this.mr||this.role!=='guest')return;const H=S.held,i=this.inp;
     i.ax=Math.round((H.ax||((H.right?1:0)-(H.left?1:0)))*100)/100;i.az=Math.round((H.az||((H.dn?1:0)-(H.up?1:0)))*100)/100;i.blk=H.block?1:0;
     if(k==='p'){i.q.push([++this.seq,id,g?1:0]);if(i.q.length>8)i.q.shift()}
-    this.mr.presence({inp:{ax:i.ax,az:i.az,blk:i.blk,q:i.q.slice()}}).catch(()=>{})},
+    const inp={ax:i.ax,az:i.az,blk:i.blk,q:i.q.slice()};const direct=P2P.send(P2P.inp,{i:inp});if(!direct||k==='p')this.mr.presence({inp}).catch(()=>{});
+    if(k==='p'&&IC.Fight.predict)IC.Fight.predict(id)},
+  gotSnap(s){if(!s||(this.lastFr!=null&&s.fr<=this.lastFr&&s.fr>this.lastFr-600))return;this.lastFr=s.fr;this.lastS=s;const m=IC.Fight.applyNet(s);if(m)netMode(m);netWalkMusic()},
   frame(){const S=IC.Fight.S;if(!S||!this.mr)return;const now=performance.now();
     if(this.role==='host'){
-      if(now-this.sendT>40){this.sendT=now;const s=IC.Fight.netSnap();if(s)this.mr.presence({s}).catch(()=>{})}
+      if(P2P.open){if(now-(this.dT||0)>32){this.dT=now;const s=IC.Fight.netSnap();if(s)P2P.send(P2P.sd,{s})}if(now-this.sendT>400){this.sendT=now;const s=IC.Fight.netSnap();if(s)this.mr.presence({s}).catch(()=>{})}}
+      else if(now-this.sendT>40){this.sendT=now;const s=IC.Fight.netSnap();if(s)this.mr.presence({s}).catch(()=>{})}
       const g=this.peerRole('guest');
       if(g){this.gone=0;const inp=g.presence.inp;if(inp&&inp!==this.lastInp){this.lastInp=inp;IC.Fight.netInput(inp)}}
       else if(S.mode==='fight'||S.mode==='intro'){if(!this.gone)this.gone=now;else if(now-this.gone>7000){this.gone=0;IC.Fight.oppLeft()}}
     }else{
       const h=this.peerRole('host');
-      if(h){this.gone=0;const s=h.presence.s;if(s&&s!==this.lastS){this.lastS=s;const m=IC.Fight.applyNet(s);if(m)netMode(m)}}
+      if(h){this.gone=0;const s=h.presence.s;if(s&&s!==this.lastS)this.gotSnap(s)}
       else if(!this.ended){if(!this.gone)this.gone=now;else if(now-this.gone>7000){this.ended=true;stopLoop();between.innerHTML=`<div class="eyebrow">온라인</div><h3>호스트 연결이 끊겼습니다</h3><p>상대가 나갔거나 인터넷이 끊겼어요.</p><button class="btn-go" id="netBack">온라인 로비로</button>`;between.hidden=false;pad.hidden=true;$('#netBack').onclick=()=>{A.oLeave()}}}
       if(this.role==='spec'&&S.frame%20===0)drawVote()}}
 };
+/* guest/spectator: the host runs the walkout, this phone plays the music itself (host fighter: their built-in song, my fighter: my song) */
+let NWK=null;function netWalkMusic(){const S=IC.Fight.S;const k=S&&S.walk&&S.walk.k||null;if(k===NWK)return;NWK=k;
+  try{if(k==='blueAisle'){Sound.music(false);const n=S.walk.songA&&S.walk.songA.n;Sound.music(true,IC.SONGS.find(x=>x.n===n)||IC.SONGS[0])}
+    else if(k==='redAisle'){Sound.music(false);Sound.music(true,Net.role==='guest'?songObj(myNetF()):IC.SONGS[0])}
+    else if(!k||k==='officials')Sound.music(false)}catch(e){}}
 const CHEERS=['🔥','👏','😱','💪','👊','🥊','😂','🏆'];
 function netMode(m){const S=IC.Fight.S;if(!S)return;
   if(m==='between'){between.innerHTML=`<div class="eyebrow">${S.round}라운드 종료</div><h3>라운드 휴식</h3><p>${esc(S.a.nick)} 머리 ${Math.round(S.a.head)} · 몸통 ${Math.round(S.a.body)} · 다리 ${Math.round(S.a.legs)}<br>${esc(S.b.nick)} 머리 ${Math.round(S.b.head)} · 몸통 ${Math.round(S.b.body)} · 다리 ${Math.round(S.b.legs)}</p><p>호스트가 다음 라운드를 시작하면 바로 이어집니다 (최대 12초).</p>`;between.hidden=false;pad.hidden=true;hintEl.hidden=true}
@@ -2234,7 +2264,7 @@ async function netCheer(e){if(!Net.mr)return;try{await Net.mr.emit('cheer',{e})}
 async function netSay(t){t=String(t||'').trim().slice(0,120);if(!t||!Net.mr)return;try{await Net.mr.emit('chat',{t})}catch(err){Net.chat.push({by:Net.uid,t:'(채팅 권한이 없어요 — 게임을 공유한 사람에게 참여 권한을 받아야 해요)',ts:Date.now()});drawChat()}}
 function startMirror(role){const h=Net.peerRole('host'),g=Net.peerRole('guest');if(!h||!g||!h.presence.f||!g.presence.f)return;
   const a=netF(h.presence.f,'h'),b=netF(g.presence.f,'g'),cfg=h.presence.cfg||{};
-  CFG={online:role,label:role==='spec'?'관전':'온라인 대전'};Sound.on=DATA.settings.sound;Sound.init();Sound.music(false);
+  CFG={online:role,label:role==='spec'?'관전':'온라인 대전'};NWK=null;Net.lastFr=null;game.classList.add('mirror');Sound.on=DATA.settings.sound;Sound.init();Sound.music(false);
   scr.hidden=true;game.hidden=false;between.hidden=true;pad.hidden=role==='spec';hintEl.hidden=role==='spec';
   $('#glabel').textContent=role==='spec'?`관전 · ${a.nick} vs ${b.nick}`:`온라인 대전 · ${Net.nm(h.by)}`;
   stopDemo();IC.opts.nums=!!DATA.settings.nums;
@@ -2298,10 +2328,10 @@ A.oCheer=d=>netCheer(d.e);
 A.oWatch=()=>{const h=Net.peerRole('host');if(h&&h.presence.s)startMirror(Net.role)};
 A.oRounds=d=>{if(Net.mr&&Net.role==='host'){Net.mr.presence({cfg:{rounds:+d.v,sec:DATA.settings.roundSec}}).catch(()=>{});setTimeout(render,120)}};
 A.oStart=()=>{const g=Net.peerRole('guest'),h=Net.peerRole('host');if(!g||!g.presence.f)return;const cfg=(h&&h.presence.cfg)||{rounds:3,sec:DATA.settings.roundSec};
-  const a=myNetF(),b=netF(g.presence.f,'g');Net.ended=false;Net.lastInp=null;Net.gone=0;
+  const a=Object.assign({},myNetF(),{_song:songObj(myNetF())}),b=netF(g.presence.f,'g');Net.ended=false;Net.lastInp=null;Net.gone=0;
   Net.mr.presence({st:'live'}).catch(()=>{});Net.lobby('live',{code:Net.code,a:fSum(a),b:fSum(b)});
   startFight({a,b,rounds:cfg.rounds,roundSec:cfg.sec||DATA.settings.roundSec,diff:'normal',online:'host',label:`온라인 대전 · ${Net.nm(g.by)}`,onResult:res=>netEnd(res)});
-  netOverlay('host')};
+  netOverlay('host');Net.lastFr=null;setTimeout(()=>{P2P.host().catch(()=>{})},300)};
 V.oresult=p=>{const r=p.res||{},side=p.side,R=ORec(),win=side&&r.winner===side,lose=side&&r.winner&&r.winner!==side;
   const wn=r.winner==='a'?p.a:r.winner==='b'?p.b:null;if(p.a)NETF.ra=p.a;if(p.b)NETF.rb=p.b;
   return `<div class="panel"><div class="eyebrow">온라인 대전 결과</div><h2 class="big"><span class="${win?'g':''}">${side?win?'승리!':lose?'패배':'무승부':wn?esc(wn.nick)+' 승리':'무승부'}</span></h2>
