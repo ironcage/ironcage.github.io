@@ -2541,6 +2541,13 @@ function inappGate(){if(!INAPP||!gate||gate.dataset.inapp)return;gate.dataset.in
 function checkOrient(){const portrait=window.innerHeight>window.innerWidth;if(!gate)return;if(portrait)inappGate();const was=!gate.hidden;gate.hidden=!portrait;if(portrait)gateStart();
   if(portrait&&!was){if(JOY)JOY.reset();heldKeys={};
     const S=IC.Fight.S;if(!game.hidden&&S&&between.hidden&&!(CFG&&CFG.online)&&['fight','intro'].includes(S.mode))openPause()}}
+/* opened from a chat link: KakaoTalk / LINE (and in-app browsers on Android) can hand the page straight to the real browser,
+   so the game opens ready to play without the gate. iOS Instagram can't — it keeps the gate with the Safari button. */
+(function autoOut(){if(!INAPP)return;const ua=navigator.userAgent||'',and=/Android/i.test(ua),kk=/KAKAOTALK/i.test(ua),ln=/Line\//.test(ua);if(!(kk||ln||and))return;
+  try{if(sessionStorage.getItem('ic_out'))return;sessionStorage.setItem('ic_out','1')}catch(e){}
+  const u=location.href.split('#')[0];
+  if(ln){location.href=u+(u.includes('?')?'&':'?')+'openExternalBrowser=1';return}
+  setTimeout(openOut,60)})();
 addEventListener('resize',checkOrient);addEventListener('orientationchange',()=>setTimeout(checkOrient,120));checkOrient();
 {let fsTried=false;const firstTouch=()=>{if(fsTried)return;fsTried=true;removeEventListener('pointerdown',firstTouch,true);
   const el=document.documentElement;if(document.fullscreenElement||!el.requestFullscreen)return;try{const p=el.requestFullscreen({navigationUI:'hide'});if(p&&p.catch)p.catch(()=>{})}catch(e){}};

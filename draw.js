@@ -1971,7 +1971,7 @@ function renderOverlay(S0,c,cssW,cssH,o3d){
   {const g=(OPT.topGap||0)*W/(cssW||800)/HS;if(g>0){ctx.fillStyle='#07080b';ctx.fillRect(0,0,WH,g);ctx.translate(0,g);HH-=g}}
   if(S.replay)replayOverlay(S);
   else{
-    if(!S.demo&&S.mode!=='outro'&&S.mode!=='decision'&&!S.walk){hud(S);comboOverlay(S);injuryHud(S)}
+    if(!S.demo&&!IC.__nohud&&S.mode!=='outro'&&S.mode!=='decision'&&!S.walk){hud(S);comboOverlay(S);injuryHud(S)}
     if(S.mode==='intro')introOverlay(S);
     if(S.mode==='decision')decisionOverlay(S);
     if(!S.demo&&S.mode!=='outro'&&(!S.walk||/faceoff|touch|officials/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
@@ -2028,7 +2028,7 @@ function render_(S0,c,cssW,cssH,o3d){
   {const g=(OPT.topGap||0)*W/(cssW||800)/HS;if(g>0){ctx.fillStyle='#07080b';ctx.fillRect(0,0,WH,g);ctx.translate(0,g);HH-=g}}
   if(S.replay)replayOverlay(S);
   else{
-    if(!S.demo&&S.mode!=='outro'&&S.mode!=='decision'&&!S.walk){hud(S);comboOverlay(S);injuryHud(S)}
+    if(!S.demo&&!IC.__nohud&&S.mode!=='outro'&&S.mode!=='decision'&&!S.walk){hud(S);comboOverlay(S);injuryHud(S)}
     if(S.mode==='intro')introOverlay(S);
     if(S.mode==='decision')decisionOverlay(S);
     if(!S.demo&&S.mode!=='outro'&&(!S.walk||/faceoff|touch|officials/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
