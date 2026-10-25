@@ -35,14 +35,20 @@ function quantize(img){const d=img.data,n=W*H,o=new Uint8Array(n);
     o[i]=(Math.round(r/85)<<4)|(Math.round(g/85)<<2)|Math.round(bl/85)}return o}
 /* ---------- ring buffer of the last few seconds ---------- */
 const cap=document.createElement('canvas');cap.width=W;cap.height=H;const cx=cap.getContext('2d',{willReadFrequently:true});
-let ring=[],last=0,pending=null;
+let ring=[],last=0,pending=null;const pool=[];
+/* keep each frame as a tiny canvas (stays on the GPU); pixels are read back only when a finish is baked,
+   so the fight never pays for a GPU→CPU readback while it is being played */
 function capture(srcs,S){
   const now=performance.now();if(now-last<1000/FPS)return;last=now;
-  try{cx.fillStyle='#000';cx.fillRect(0,0,W,H);for(const c of srcs)if(c&&c.width&&!c.hidden)cx.drawImage(c,0,0,W,H);
-    ring.push({img:cx.getImageData(0,0,W,H),t:now});const keep=Math.ceil((KEEP+1.2)*FPS);if(ring.length>keep)ring.shift()}catch(e){}
-  if(pending&&now-pending.at>650){const p=pending;pending=null;const fr=ring.filter(f=>f.t>=p.at-KEEP*1000&&f.t<=p.at+650);bake(fr,p.meta)}}
+  try{const keep=Math.ceil((KEEP+1.2)*FPS);let c=ring.length>=keep?ring.shift().c:(pool.pop()||null);
+    if(!c){c=document.createElement('canvas');c.width=W;c.height=H}
+    const x=c.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,W,H);for(const s of srcs)if(s&&s.width&&!s.hidden)x.drawImage(s,0,0,W,H);
+    ring.push({c,t:now})}catch(e){}
+  if(pending&&now-pending.at>650){const p=pending;pending=null;const fr=ring.filter(f=>f.t>=p.at-KEEP*1000&&f.t<=p.at+650);
+    const imgs=[];for(const f of fr){try{cx.clearRect(0,0,W,H);cx.drawImage(f.c,0,0);imgs.push({img:cx.getImageData(0,0,W,H)})}catch(e){}}
+    bake(imgs,p.meta)}}
 function finishSeen(meta){if(pending)return;pending={at:performance.now(),meta}}
-function reset(){ring=[];pending=null}
+function reset(){for(const f of ring)pool.push(f.c);ring=[];pending=null}
 function bake(fr,meta){if(fr.length<6)return;
   const frames=[];let i=0;const step=()=>{const t0=performance.now();while(i<fr.length&&performance.now()-t0<8){frames.push(quantize(fr[i].img));i++}
     if(i<fr.length){setTimeout(step,0);return}

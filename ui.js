@@ -944,7 +944,7 @@ const ctx=cv.getContext('2d');
 /* render at the screen's real pixel size (logical width stays 800) so text and lines stay sharp when stretched to fullscreen */
 function fit(){const dpr=Math.min(2.5,window.devicePixelRatio||1),w=cv.clientWidth||800,h=cv.clientHeight||450;
   /* backing resolution capped: past ~1700px wide the phone only pays for pixels nobody can see */
-  const pw=Math.round(Math.min(w*Math.min(dpr,2),1700)),ph=Math.round(pw*h/w);
+  const pw=Math.round(Math.min(w*Math.min(dpr,2),matchMedia("(pointer:coarse)").matches?1400:1700)),ph=Math.round(pw*h/w);
   IC.opts.topGap=0;IC.opts.hudBottom=false;
   if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph}const k=pw/800;ctx.setTransform(k,0,0,k,0,0);ctx.imageSmoothingQuality='high';
   /* HUD unit in CSS px (the canvas HUD is drawn in 800-wide units scaled by HS); lets the DOM exit/pause buttons sit beside the clock,
@@ -956,7 +956,7 @@ function fit(){const dpr=Math.min(2.5,window.devicePixelRatio||1),w=cv.clientWid
    which left a black band under the fight. Size the full-screen game from the real screen instead, re-checked after rotation settles. */
 function appHeight(){const standalone=navigator.standalone||matchMedia('(display-mode: standalone)').matches,land=matchMedia('(orientation: landscape)').matches;
   let h=Math.max(window.innerHeight||0,(window.visualViewport&&visualViewport.height)||0);
-  if(standalone&&screen&&screen.width&&screen.height){const sh=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);if(sh>h)h=sh}
+  const iosPhone=/iPhone|iPod/.test(navigator.userAgent);if((standalone||(iosPhone&&land))&&screen&&screen.width&&screen.height){const sh=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);if(sh>h)h=sh}
   document.documentElement.style.setProperty('--app-h',h+'px')}
 appHeight();['resize','orientationchange','pageshow'].forEach(ev=>addEventListener(ev,()=>{appHeight();[60,300,800].forEach(d=>setTimeout(()=>{appHeight();fit()},d))}));
 try{visualViewport.addEventListener('resize',()=>{appHeight();fit()})}catch(e){}

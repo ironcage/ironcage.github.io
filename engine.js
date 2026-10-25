@@ -774,12 +774,16 @@ function predict(id){if(!S||!S.mirror||S.spec||S.mode!=='fight'||S.gr||S.cl||S.s
   P.state='attack';P.A=Object.assign({},M);P.t=0;P._pred=performance.now()}
 function applyF(F,o){if(F._pred&&performance.now()-F._pred<450&&o.s!=='attack'&&o.s!=='hit'){const st=F.state,A=F.A,t=F.t;F.blockHeld=!!o.b;for(const k of NK){if(k==='t')continue;const v=o[k]??0;if(k==='x'||k==='z'){F['_t'+k]=v}else F[k]=v}F.state=st;F.A=A;F.t=t;return}
   if(o.s==='attack')F._pred=0;
-  F.state=o.s;F.blockHeld=!!o.b;for(const k of NK){const v=o[k]??0;if(k==='x'||k==='z'){F['_t'+k]=v;if(F['_t'+k+'0']==null||Math.abs(F[k]-v)>60)F[k]=v;F['_t'+k+'0']=1}else F[k]=v}
+  /* smooth playback between snapshots: the guest keeps ticking the move clock itself, so a strike plays every frame instead of
+     jumping in steps whenever a packet lands; it only snaps when the host's clock is clearly different (new move / big drift) */
+  const sameMove=F.state===o.s&&((!F.A&&!o.A)||(F.A&&o.A&&F.A.anim===o.A[0]&&F.A.id===o.A[6])),tHost=o.t??0;
+  if(F._lw!=null&&o.walk!=null&&F._lfr!=null&&S.netFr>F._lfr)F._wr=clamp((o.walk-F._lw)/(S.netFr-F._lfr),-1,1);F._lw=o.walk??0;F._lfr=S.netFr;
+  F.state=o.s;F.blockHeld=!!o.b;for(const k of NK){const v=o[k]??0;if(k==='t'&&sameMove&&Math.abs(F.t-v)<=4){F.t+=(v-F.t)*.3;continue}if(k==='walk'&&Math.abs((F.walk||0)-v)<1.5){F.walk+=(v-F.walk)*.3;continue}if(k==='x'||k==='z'){F['_t'+k]=v;if(F['_t'+k+'0']==null||Math.abs(F[k]-v)>60)F[k]=v;F['_t'+k+'0']=1}else F[k]=v}
   F.A=o.A?{anim:o.A[0],w:o.A[1],a:o.A[2],r:o.A[3],special:!!o.A[4],kind:o.A[5]||undefined,id:o.A[6],target:o.A[7]}:null;
   F.g=o.g?{act:o.g[0],t:o.g[1],A:o.g[0]?{w:o.g[2],r:o.g[3],dmg:o.g[4],target:o.g[5]}:null}:{act:null,t:0,A:null};
   F.react=o.re?{k:o.re[0],t:o.re[1],d:o.re[2],up:!!o.re[3]}:null;F.inj=o.inj?Object.fromEntries(o.inj.map(k=>[k,1])):null;F.fouls=o.fo||0}
 function applyNet(o){if(!S||!S.mirror||!o)return;const by=x=>x==='a'?S.a:S.b,ot=x=>x==='a'?S.b:S.a,prevM=S.mode;
-  S.mode=o.m==='replay'?'fight':o.m;S.round=o.rd;S.rounds=o.rs;S.timer=o.tm;applyF(S.a,o.a);applyF(S.b,o.b);
+  S.netFr=o.fr;S.mode=o.m==='replay'?'fight':o.m;S.round=o.rd;S.rounds=o.rs;S.timer=o.tm;applyF(S.a,o.a);applyF(S.b,o.b);
   const rf=o.rf;Object.assign(S.ref,{x:rf[0],z:rf[1],f:rf[2],state:rf[3],walk:rf[4],moving:!!rf[5]});S.cage={x:o.cg[0],z:o.cg[1],ang:o.cg[2]};S.camTheta=o.th;S.lean=o.ln;
   S.gr=o.gr?{top:by(o.gr[0]),bot:ot(o.gr[0]),pos:o.gr[1],cx:o.gr[2],hd:o.gr[3],cz:o.gr[4],idle:0}:null;
   S.cl=o.cl?{ctrl:by(o.cl[0]),other:ot(o.cl[0]),cage:!!o.cl[1],cx:o.cl[2],dir:o.cl[3],cz:o.cl[4],idle:0}:null;
@@ -797,6 +801,7 @@ function applyNet(o){if(!S||!S.mirror||!o)return;const by=x=>x==='a'?S.a:S.b,ot=
   S.netAt=performance.now();return prevM!==S.mode?S.mode:null}
 function mirrorStep(){S.frame++;
   for(const F of [S.a,S.b]){if(F._pred&&F.state==='attack'){F.t++;if(F.A&&F.t>F.A.w+F.A.a+F.A.r){F.state='idle';F.A=null;F._pred=0}}
+    else if(S.mode==='fight'||S.mode==='intro'){if(F.A&&F.state==='attack'){if(F.t<F.A.w+F.A.a+F.A.r)F.t++}else if(F.state!=='ko')F.t++;if(F._wr)F.walk=(F.walk||0)+F._wr}
     if(F._tx!=null)F.x+=(F._tx-F.x)*.45;if(F._tz!=null)F.z=(F.z||0)+(F._tz-(F.z||0))*.45;if(F.react&&F.react.t<30)F.react.t+=.5}
   for(const r of S.rings){r.r+=r.big?3.2:2.2;r.l--}S.rings=S.rings.filter(r=>r.l>0);if(S.flashScr>0)S.flashScr--;
   for(const s of S.sparks){s.x+=s.vx;s.y+=s.vy;s.vy+=s.drop?.35:.25;s.l--;if(s.drop&&s.y>GY+2&&!s.st){s.st=1;s.l=0;if(S.stains.length<220){const C=S.cage,px=s.x-C.x,pz=rnd(-10,24)-C.z,co=Math.cos(-C.ang),si=Math.sin(-C.ang);S.stains.push({lx:px*co-pz*si,lz:px*si+pz*co,r:rnd(1.5,4)*(s.r?s.r/1.8:1)})}}}
