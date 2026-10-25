@@ -1,6 +1,6 @@
 /* 아이언 케이지 — 서비스 워커 (오프라인 실행)
    게임 파일을 바꿔 올릴 때는 아래 VERSION 숫자를 하나 올려 주세요. 그래야 폰에 있는 옛 버전이 새 버전으로 바뀝니다. */
-const VERSION = 'iron-cage-pwa-v118';
+const VERSION = 'iron-cage-pwa-v119';
 const FONT_CACHE = 'iron-cage-fonts';
 const APP_FILES = [
   './',
@@ -109,6 +109,8 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.origin !== self.location.origin) return;
+  // 3D 시험판(/3d/)은 별도 저장소의 다른 게임: 이 서비스워커는 손대지 않음 (2D 게임 저장본을 덮어쓰지 않게)
+  if (url.pathname.startsWith('/3d/') || url.pathname === '/3d') return;
 
   // 게임 파일: 이번 VERSION으로 저장해 둔 파일을 사용 (인터넷 없이도 실행).
   // 새 버전은 sw.js의 VERSION을 바꿔 올리면 다음 실행 때 통째로 교체됩니다.
