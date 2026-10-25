@@ -2600,6 +2600,44 @@ function beltScene(c,cw,ch,t,d,cls,o={}){
   const vg=ctx.createRadialGradient(400,VHw/2,VHw*.35,400,VHw/2,720);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.5)');ctx.fillStyle=vg;ctx.fillRect(0,0,800,VHw);
 }
 /* 선수 초상 */
+/* career hub: your fighter standing in the gym, breathing (UFC-career style home screen) */
+let HUBBG=null;
+function hubScene(canvas,d,t){
+  const dpr=Math.min(2,window.devicePixelRatio||1),cw=canvas.clientWidth||300,ch=canvas.clientHeight||400;
+  if(canvas.width!==Math.round(cw*dpr)||canvas.height!==Math.round(ch*dpr)){canvas.width=Math.round(cw*dpr);canvas.height=Math.round(ch*dpr);HUBBG=null}
+  ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+  /* the gym is static: paint it once into a buffer */
+  const key=cw+'x'+ch;if(!HUBBG||HUBBG.key!==key){const b=document.createElement('canvas');b.width=canvas.width;b.height=canvas.height;const s=ctx;ctx=b.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+    const wall=ctx.createLinearGradient(0,0,0,ch);wall.addColorStop(0,'#45484e');wall.addColorStop(.62,'#2c2e33');wall.addColorStop(1,'#1b1c20');ctx.fillStyle=wall;ctx.fillRect(0,0,cw,ch);
+    ctx.fillStyle='#d4a032';ctx.fillRect(cw*.52,ch*.12,cw*.48,ch*.5);ctx.fillStyle='rgba(0,0,0,.18)';ctx.fillRect(cw*.52,ch*.12,cw*.48,ch*.03);
+    /* windows with daylight */
+    for(let i=0;i<3;i++){const x=cw*(.58+i*.13),w=cw*.1,y=ch*.04,h=ch*.12;ctx.fillStyle='#e9eef5';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#2a2c30';ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);ctx.beginPath();ctx.moveTo(x+w/2,y);ctx.lineTo(x+w/2,y+h);ctx.moveTo(x,y+h/2);ctx.lineTo(x+w,y+h/2);ctx.stroke()}
+    /* fight posters on the left wall */
+    for(let i=0;i<3;i++){const x=cw*(.04+i*.15),y=ch*.1;ctx.fillStyle='#14161a';ctx.fillRect(x,y,cw*.12,ch*.13);ctx.fillStyle=['#7a1e1e','#1e3a7a','#4a4a4a'][i];ctx.fillRect(x+4,y+4,cw*.12-8,ch*.07);ctx.fillStyle='#e8b33a';ctx.fillRect(x+4,y+ch*.09,cw*.07,3)}
+    /* ceiling light */
+    ctx.fillStyle='#f5f6f8';ctx.fillRect(cw*.3,ch*.02,cw*.16,5);{const g=ctx.createRadialGradient(cw*.38,ch*.03,2,cw*.38,ch*.03,ch*.5);g.addColorStop(0,'rgba(255,250,235,.25)');g.addColorStop(1,'rgba(255,250,235,0)');ctx.fillStyle=g;ctx.fillRect(0,0,cw,ch)}
+    /* practice cage behind: top rail, posts, chain-link */
+    const cy0=ch*.36,cy1=ch*.8;ctx.save();ctx.beginPath();ctx.rect(0,cy0,cw,cy1-cy0);ctx.clip();ctx.strokeStyle='rgba(150,156,166,.38)';ctx.lineWidth=1.2;ctx.beginPath();
+    for(let x=-ch;x<cw+ch;x+=11){ctx.moveTo(x,cy0);ctx.lineTo(x+(cy1-cy0),cy1);ctx.moveTo(x+(cy1-cy0),cy0);ctx.lineTo(x,cy1)}ctx.stroke();ctx.restore();
+    ctx.fillStyle='#16171b';ctx.fillRect(0,cy0-8,cw,10);
+    for(const px of [cw*.12,cw*.62]){ctx.fillStyle='#101114';ctx.fillRect(px-7,cy0-8,14,cy1-cy0+20);ctx.fillStyle='#1d1f24';ctx.fillRect(px-11,cy0+10,22,cy1-cy0-30);
+      ctx.save();ctx.translate(px,(cy0+cy1)/2);ctx.rotate(-Math.PI/2);ctx.fillStyle='#e9e6df';ctx.font=`800 ${Math.max(9,cw*.028)}px "Black Han Sans",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('IRON CAGE',0,0);ctx.restore()}
+    /* yellow padded pillar + plyo boxes */
+    ctx.fillStyle='#e0b43a';ctx.beginPath();ctx.roundRect(cw*.3,ch*.42,cw*.05,ch*.36,6);ctx.fill();ctx.fillStyle='rgba(0,0,0,.2)';ctx.fillRect(cw*.33,ch*.42,cw*.02,ch*.36);
+    for(let i=0;i<2;i++){ctx.fillStyle=i?'#24262b':'#2c2f35';ctx.fillRect(cw*.8,ch*(.66-i*.09),cw*.18,ch*.09);ctx.fillStyle='rgba(255,255,255,.55)';ctx.font=`700 ${Math.max(8,cw*.022)}px sans-serif`;ctx.textAlign='left';ctx.fillText('SOFT BOX',cw*.82,ch*(.715-i*.09))}
+    /* mat with yellow stripes in perspective */
+    const fy=ch*.8;const fl=ctx.createLinearGradient(0,fy,0,ch);fl.addColorStop(0,'#2a2c31');fl.addColorStop(1,'#141518');ctx.fillStyle=fl;ctx.fillRect(0,fy,cw,ch-fy);
+    ctx.fillStyle='#d9a93a';ctx.beginPath();ctx.moveTo(cw*.05,ch);ctx.lineTo(cw*.42,fy+4);ctx.lineTo(cw*.47,fy+4);ctx.lineTo(cw*.2,ch);ctx.fill();
+    ctx.beginPath();ctx.moveTo(cw*.55,fy+ (ch-fy)*.55);ctx.lineTo(cw,fy+(ch-fy)*.4);ctx.lineTo(cw,fy+(ch-fy)*.5);ctx.lineTo(cw*.6,fy+(ch-fy)*.66);ctx.fill();
+    const v=ctx.createRadialGradient(cw*.6,ch*.55,ch*.2,cw*.6,ch*.55,Math.max(cw,ch)*.85);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=v;ctx.fillRect(0,0,cw,ch);
+    HUBBG={key,b};ctx=s}
+  ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(HUBBG.b,0,0);ctx.setTransform(dpr,0,0,dpr,0,0);
+  /* the fighter: rash guard on, breathing, weight shifting */
+  const F={d,look:d.look,corner:'#3d7ff0',head:100,body:100,legs:100,cuts:0,rocked:0,flash:0,state:'idle',st:100,side:'a',_t:t,walkShirt:'#5a5f69'};
+  const k=Math.min(ch*.9/252,cw*.75/120),x=cw*.4+Math.sin(t*.012)*2;
+  ctx.save();ctx.translate(x,ch*.97);ctx.scale(k,k);
+  const sh=ctx.createRadialGradient(0,0,2,0,0,70);sh.addColorStop(0,'rgba(0,0,0,.55)');sh.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=sh;ctx.save();ctx.scale(1,.16);ctx.beginPath();ctx.arc(0,0,70,0,7);ctx.fill();ctx.restore();
+  ctx.scale(1,1+Math.sin(t*.05)*.006);drawFront(F,t,{dmg:{head:100,cuts:0},t,sweat:.15});ctx.restore()}
 function portrait(canvas,d,side,mode){
   const dpr=Math.min(2,window.devicePixelRatio||1),cw=canvas.clientWidth||150,ch=canvas.clientHeight||Math.round(cw*190/150);
   canvas.width=cw*dpr;canvas.height=ch*dpr;
@@ -2628,5 +2666,5 @@ function solve(J){
   const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
   return{f,hip:J.hip,chest:J.chest,head,hAng:Math.atan2(sd.y,sd.x)+Math.PI/2+(J.tilt||0)*f,shN,shF,hipN,hipF,kneeN:legN.j,kneeF:legF.j,footN:legN.end,footF:legF.end,elbN:armN.j,elbF:armF.j,handN:armN.end,handF:armF.end,footDirN:J.footN||f,footDirF:J.footF||f,mood:J.mood};
 }
-IC.Draw={_body:(c,F,J)=>{ctx=c;drawBody(F,J)},_ko:(c,F)=>{ctx=c;ctx.strokeStyle="#888";ctx.beginPath();ctx.moveTo(200,GY);ctx.lineTo(600,GY);ctx.stroke();drawBody(F,koPose(F,poseStand(F,F,{frame:0,cl:null}),0))},_cmp:(c,F,mood)=>{ctx=c;ctx.save();ctx.translate(60,60);ctx.scale(2.6,2.6);const o=fighterLook(F,{mood});drawHead(F,{x:0,y:0},0,1,o);ctx.restore();ctx.save();ctx.translate(170,62);ctx.scale(2.1,2.1);ctx.translate(0,212);drawFront(F,0,{noBuild:true,dmg:{head:F.head,cuts:F.cuts,mood},t:0,sweat:o.sweat});ctx.restore()},cornerPOV,cornerUFC,roundBreak,_ground:(c,S)=>{ctx=c;drawGround(S)},render,portrait,weighin,beltScene,koScene,KOI,gateScene,GATE,tauntScene,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
+IC.Draw={_body:(c,F,J)=>{ctx=c;drawBody(F,J)},_ko:(c,F)=>{ctx=c;ctx.strokeStyle="#888";ctx.beginPath();ctx.moveTo(200,GY);ctx.lineTo(600,GY);ctx.stroke();drawBody(F,koPose(F,poseStand(F,F,{frame:0,cl:null}),0))},_cmp:(c,F,mood)=>{ctx=c;ctx.save();ctx.translate(60,60);ctx.scale(2.6,2.6);const o=fighterLook(F,{mood});drawHead(F,{x:0,y:0},0,1,o);ctx.restore();ctx.save();ctx.translate(170,62);ctx.scale(2.1,2.1);ctx.translate(0,212);drawFront(F,0,{noBuild:true,dmg:{head:F.head,cuts:F.cuts,mood},t:0,sweat:o.sweat});ctx.restore()},cornerPOV,cornerUFC,roundBreak,_ground:(c,S)=>{ctx=c;drawGround(S)},render,portrait,hubScene,weighin,beltScene,koScene,KOI,gateScene,GATE,tauntScene,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
 })(window.IC);

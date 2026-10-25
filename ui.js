@@ -254,7 +254,7 @@ let SCREEN='home',P={};
 const V={},A={};
 function go(s,p){if(typeof Net!=='undefined'&&typeof STANDALONE!=='undefined'&&STANDALONE){if(['online','oroom','opick','oresult'].includes(s)){Net._fail=false;Net.init()}else setTimeout(()=>Net.sleep(),0)}if(!(CINE&&CINE.o.keep))releaseGl();if(typeof Crowd!=='undefined')Crowd.stop();if(s==='quick'||s==='legend'||s==='legsel')s='home';if(typeof Net!=='undefined'&&Net.mr&&!['oroom','oresult','online','opick'].includes(s))Net.leaveMatch();if(s!=='oresult'&&typeof removeOverlay==='function')removeOverlay();stopLoop();Announcer.stop();if(!(menuOk(s)&&Sound._mus&&Sound._mus.menu))Sound.music(false);if(immersive)setImmersive(false);document.querySelector('.app').classList.remove('wide');if(s!=='home')stopDemo();SCREEN=s;P=p||{};game.hidden=true;scr.hidden=false;render();window.scrollTo(0,0);if(menuOk(s)&&s!=='home')homeMusic();if(s==='home'){startDemo();homeMusic();setTimeout(()=>{try{checkUnlocks();if(!document.getElementById('titleScr')&&!document.querySelector('.lockpop')){if(!DATA.tutDone)tutOffer();else if(!DATA.settings.songTip&&!MySong.name)songTip()}}catch(e){}},500)}}
 function render(){if(!(CINE&&CINE.o.keep))releaseGl();const tb=!!TABOF[SCREEN];document.body.classList.toggle('tabbed',tb);scr.innerHTML=(tb?tabBar():'')+V[SCREEN](P);after();if(tb){const on=scr.querySelector('.tb.on');if(on)on.scrollIntoView({block:'nearest',inline:'center'})}}
-function after(){if(SCREEN==='weigh')requestAnimationFrame(runWeigh);if(SCREEN==='chub')requestAnimationFrame(runPress);if(SCREEN==='cpost'){requestAnimationFrame(runBelt);requestAnimationFrame(runTaunt)}drawPortraits()}
+function after(){if(SCREEN==='weigh')requestAnimationFrame(runWeigh);if(SCREEN==='chub'){requestAnimationFrame(runPress);requestAnimationFrame(runHub)}if(SCREEN==='cpost'){requestAnimationFrame(runBelt);requestAnimationFrame(runTaunt)}drawPortraits()}
 function drawPortraits(){scr.querySelectorAll('canvas[data-pid]').forEach(el=>{const id=el.dataset.pid,d=id==='__wopp'?(DATA.wildc&&DATA.wildc.next):id==='__tmp'?P._tmp:id.startsWith('hof:')?((DATA.hof||[])[+id.slice(4)]||{}).f:id.startsWith('leg:')?LEG[+id.slice(4)]:id.startsWith('net:')?NETF[id.slice(4)]:getF(id);if(d)IC.Draw.portrait(el,d,el.dataset.side||'a',el.dataset.mode||'full')})}
 IC.onFaceLoad=()=>{if(!scr.hidden)try{drawPortraits()}catch(e){}};
 scr.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el||el.disabled)return;Sound.init();const f=A[el.dataset.act];if(f)f(el.dataset,el)});
@@ -958,7 +958,15 @@ function appHeight(){const standalone=navigator.standalone||matchMedia('(display
   let h=Math.max(window.innerHeight||0,(window.visualViewport&&visualViewport.height)||0);
   const iosPhone=/iPhone|iPod/.test(navigator.userAgent);if((standalone||(iosPhone&&land))&&screen&&screen.width&&screen.height){const sh=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);if(sh>h)h=sh}
   document.documentElement.style.setProperty('--app-h',h+'px')}
-appHeight();['resize','orientationchange','pageshow'].forEach(ev=>addEventListener(ev,()=>{appHeight();[60,300,800].forEach(d=>setTimeout(()=>{appHeight();fit()},d))}));
+/* iOS home-screen app bug: once the keyboard has been open (typing a name, chat), WebKit keeps the window ~one status bar shorter
+   until the app is killed — the strip below shows as a black band. Hiding and re-showing a full-screen element makes it re-measure. */
+function remeasureVP(){try{const standalone=navigator.standalone||matchMedia('(display-mode: standalone)').matches;if(!standalone||!screen||!screen.width)return;
+  const land=matchMedia('(orientation: landscape)').matches,want=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);
+  if(want-window.innerHeight<=4)return;
+  for(const el of [document.querySelector('.app'),game]){if(!el||el.hidden)continue;const d=el.style.display;el.style.display='none';void el.offsetHeight;el.style.display=d}
+  appHeight();fit()}catch(e){}}
+document.addEventListener('focusout',e=>{if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))[150,450].forEach(d=>setTimeout(remeasureVP,d))});
+appHeight();['resize','orientationchange','pageshow'].forEach(ev=>addEventListener(ev,()=>{appHeight();[60,300,800].forEach(d=>setTimeout(()=>{appHeight();fit()},d));setTimeout(remeasureVP,900)}));
 try{visualViewport.addEventListener('resize',()=>{appHeight();fit()})}catch(e){}
 fit();addEventListener('resize',()=>{autoImmersive();fit()});
 try{new ResizeObserver(()=>fit()).observe(cv)}catch(e){}
@@ -966,7 +974,7 @@ try{new ResizeObserver(()=>fit()).observe(cv)}catch(e){}
 let immersive=false,fsByUs=false;
 const landscapePhone=()=>window.matchMedia('(orientation: landscape) and (max-height: 540px)').matches;
 function setImmersive(on,auto){
-  immersive=on;game.classList.toggle('immersive',on);document.body.classList.toggle('noscroll',on);
+  if(on)setTimeout(remeasureVP,60);immersive=on;game.classList.toggle('immersive',on);document.body.classList.toggle('noscroll',on);
   $('#fsBtn').textContent=on?'나가기':'전체화면';
   if(on&&!auto){const el=document.documentElement;try{const p=el.requestFullscreen&&el.requestFullscreen({navigationUI:'hide'});if(p&&p.then)p.then(()=>{fsByUs=true;try{const o=screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape');if(o&&o.catch)o.catch(()=>{})}catch(e){}}).catch(()=>{})}catch(e){}}
   if(!on&&fsByUs&&document.fullscreenElement){try{document.exitFullscreen()}catch(e){}fsByUs=false}
@@ -1461,8 +1469,7 @@ function hubPanel(c){const R=c.rival,rf=rivalF(c),[fl,fc]=fitLab(c.fit),un=unrea
   <button class="hcell" data-act="nav" data-to="cphone"><span>휴대폰</span><b>${un?`<em class="badge">${un}</em> 새 메시지`:'메시지 없음'}</b><small>${un?esc(whoName(c,c.msgs.find(m=>!m.done||!m.read).from)[0]):'코치·매니저·라이벌'}</small></button>
   <div class="hcell"><span>피트니스 · ${c.day}일차</span><b style="color:${fc}">${Math.round(c.fit)} ${fl}</b><div class="meter"><i style="width:${c.fit}%;background:${fc}"></i></div></div>
   ${R?`<div class="hcell rival"><span>라이벌 · 같은 체육관</span><b>${esc(R.name)} "${esc(R.nick)}"</b><small>${rf?`종합 ${rf.ovr} · ${rf.rec.join('-')}`:''} · ${R.inMain?(ri>=0?rankLabel(ri):'랭킹 외'):'지역 단체'}${R.fights?` · 맞대결 ${R.losses}승 ${R.wins}패`:''}</small><div class="meter heat"><i style="width:${R.heat}%"></i></div><small>열기 ${Math.round(R.heat)}${R.heat>=45&&R.inMain?' · 라이벌전 가능':''}</small></div>`:''}
-  </div>
-  <div class="panel"><div class="between-row"><div class="eyebrow">SNS</div><button class="btn sm" data-act="nav" data-to="csns">전체 보기</button></div><div class="feed">${c.feed.slice(0,3).map(postHtml).join('')||'<p>조용합니다.</p>'}</div></div>`}
+  </div>`}
 V.chub=()=>{const c=ensureC(DATA.career),me=meData(c),idx=c.order.indexOf('me'),gym=GYMS.find(g=>g.id===c.gym);
   let main='';
   if(c.phase==='offers'){
@@ -1482,16 +1489,41 @@ V.chub=()=>{const c=ensureC(DATA.career),me=meData(c),idx=c.order.indexOf('me'),
       <button class="act" data-act="cPress" data-v="callout"><b>KO 예고</b><span>“2라운드 안에 재운다.”</span><span>인지도 +12 · (T)KO로 이기면 인지도 +10 추가, 못 하면 인지도 −10</span></button></div>`}
     else main=`${evm}<h3>파이트 나이트</h3><p>${esc(f.name)}와 ${o.rounds}라운드${o.title?' 타이틀전':''}. 컨디션 ${Math.round(c.energy)}%. 기자회견: ${({respect:'존중',taunt:'도발',callout:'KO 예고'})[o.press]}</p><button class="btn-go" data-act="cFight">입장</button>`;
   }
-  return `${back('home')}<div class="panel"><div class="chead"><canvas data-pid="me"></canvas><div style="display:flex;flex-direction:column;gap:4px;min-width:0">
-  <div class="eyebrow">${clsName(c.cls)} · ${cRank(c)}${c.isChamp?' · 방어 '+c.titleDef+'회':''}${c.kc?' · 👑 킹 오브 케이지':''}${c.league==='super'?' · ⭐ 슈퍼리그'+(hofScore(c).total>=HOF_NEED?' (명예의 전당 난이도)':''):''}${(c.belts||[]).length>1?' · '+c.belts.length+'체급 챔피언':''}</div><h2 class="big" style="font-size:clamp(26px,6vw,42px)">${esc(c.name)}</h2>
-  <p>"${esc(c.nick)}" · ${STYLES[c.style].name} · ${esc(c.from)} · ${Math.floor(c.age)}세</p></div></div>
-  <div class="kv"><div><span>전적</span><b>${c.rec.join('-')}</b></div><div><span>종합</span><b>${me.ovr}</b></div><div><span>인지도</span><b>${Math.round(c.hype)}</b></div><div><span>연승</span><b>${c.streak}</b></div><div data-act="nav" data-to="hof" style="cursor:pointer"><span>명예의 전당</span><b style="color:${hofScore(c).total>=HOF_NEED?'var(--gold)':'inherit'}">${hofScore(c).total}<small style="font-size:12px;color:var(--muted)"> / ${HOF_NEED}</small></b></div><div><span>체육관</span><b style="font-size:15px">${gym.name}</b></div></div></div>
-  <div class="panel">${main}</div>
+  /* UFC-career style home: status strip on top, big tiles on the left, your fighter in the gym on the right */
+  const hs=hofScore(c).total,age=Math.floor(c.age),life=age<=24?'신인':age<=30?'전성기':age<=34?'베테랑':'노장',stars=Math.max(.5,Math.min(5,Math.round((me.ovr-50)/8*2)/2));
+  const fitC=['#e0453a','#e8833a','#e8c23a','#7bc043','#3fae5a'],fseg=Math.ceil(c.fit/20);
+  const deal=c.phase==='offers'?['파이트 오퍼',`${c.offers.length}건 도착`]:c.phase==='camp'?['체결된 경기',`D-${Math.max(0,(c.camp.len||CAMP_LEN)-(c.camp.day||0))}`]:['파이트 나이트','오늘 밤'];
+  const opp=c.phase==='offers'?(c.offers[0]&&c.offers[0].opp):c.fight&&c.fight.opp,of=opp?getF(opp,c):null;
+  const bigT=c.phase==='offers'?'파이트 오퍼':c.phase==='camp'?'파이트 캠프':'파이트 나이트',bigS=c.phase==='offers'?`${c.offers.length}개의 제안 · 상대를 고르세요`:of?`vs ${esc(of.name)} "${esc(of.nick)}"`:'';
+  const top=`<section class="chub2">
+  <div class="cstat">
+    <div class="cs w"><span>피트니스 <b>${Math.round(c.fit)}</b></span><div class="fseg">${fitC.map((col,i)=>`<i style="background:${i<fseg?col:'rgba(255,255,255,.12)'}"></i>`).join('')}</div></div>
+    <div class="cs w"><span>인지도 <b>${Math.round(c.hype)}</b></span><div class="hbar"><i style="width:${Math.min(100,c.hype)}%"></i></div></div>
+    <div class="cs"><span>전적</span><b>${c.rec.join('-')}</b></div>
+    <div class="cs"><span>스킬 포인트</span><b class="${c.pts>0?'g':''}">${c.pts}</b></div>
+    <div class="cs"><span>연승</span><b>${c.streak}</b></div>
+    <div class="cs"><span>선수 수명</span><b>${life}</b></div>
+    <div class="cdeal ${c.phase}"><span>${deal[0]}</span><b>${deal[1]}</b></div>
+  </div>
+  <div class="cgrid">
+    <div class="ctiles">
+      <button class="ct big ${c.phase}" data-act="hubMain">${of?`<canvas class="ctop" data-pid="${esc(opp)}" data-side="b" data-mode="bust"></canvas>`:''}<span class="cth">${bigT}</span><span class="cts">${bigS}</span><em>${c.phase==='offers'?'제안 보기':c.phase==='camp'?'캠프로 가기':'입장하기'} ›</em></button>
+      <button class="ct sns" data-act="nav" data-to="csns"><span class="cth sm">소셜 미디어</span>${c.feed.slice(0,3).map(p=>`<span class="cpost"><b>${esc(p.name||'')}</b> <small>${esc(p.handle||'')}</small><span>${esc(p.text||'')}</span></span>`).join('')||'<span class="cts">아직 조용합니다</span>'}</button>
+      <button class="ct prog" data-act="nav" data-to="hof"><span class="cth sm">진행 상황</span><span class="cts">명예의 전당 <b>${hs}</b> / ${HOF_NEED}</span><span class="cpb"><i style="width:${Math.min(100,hs/HOF_NEED*100)}%"></i></span></button>
+      <button class="ct sm2" data-act="nav" data-to="cstats"><span class="cth sm">능력치</span><span class="cts">종합 ${me.ovr}${c.pts>0?` · 포인트 ${c.pts}`:''}</span></button>
+      <button class="ct sm2" data-act="songOpen" data-id="me"><span class="cth sm">입장곡</span><span class="cts">${esc((typeof MySong!=='undefined'&&MySong.name)||'내 노래로 바꾸기')}</span></button>
+      <button class="ct sm2" data-act="nav" data-to="cphone"><span class="cth sm">휴대폰${unread(c)?` <em class="badge">${unread(c)}</em>`:''}</span><span class="cts">코치·매니저·라이벌</span></button>
+    </div>
+    <div class="cfig"><canvas id="hubF"></canvas><div class="cplate"><em>@${esc(c.nick)}</em><b>${esc(c.name)}</b><i class="cline"></i><span>${clsName(c.cls)} · ${cRank(c)}${c.isChamp?' · 챔피언':''} <span class="stars">${[1,2,3,4,5].map(n=>`<i class="${stars>=n?'on':stars>=n-.5?'half':''}">★</i>`).join('')}</span></span><small>${STYLES[c.style].name} · ${esc(c.from)} · ${age}세 · ${gym.name}</small></div></div>
+  </div></section>`;
+  return `${back('home')}${top}
+  <div class="panel" id="cmain">${main}</div>
   ${hubPanel(c)}
   <div class="panel"><div class="row">
     <button class="btn" data-act="nav" data-to="cstats">능력치${c.pts>0?` · 포인트 ${c.pts}`:''}</button><button class="btn" data-act="nav" data-to="cgym">체육관</button><button class="btn" data-act="nav" data-to="cspec">필살기</button><button class="btn" data-act="songOpen" data-id="me">입장곡</button>${PHOTO_HEADS?'<button class="btn" data-act="nav" data-to="cface">얼굴</button>':''}
     <button class="btn" data-act="nav" data-to="crank">랭킹</button><button class="btn" data-act="nav" data-to="cclass" ${c.phase==='fight'?'disabled':''}>체급 변경</button><button class="btn" data-act="nav" data-to="chist">전적</button><button class="btn" data-act="nav" data-to="cevents">지난 이벤트</button><button class="btn" data-act="nav" data-to="csns">SNS</button><button class="btn" data-act="nav" data-to="cphone">휴대폰${unread(c)?` <em class="badge">${unread(c)}</em>`:''}</button><button class="btn" data-act="nav" data-to="cretire">은퇴</button></div>
   ${c.news.length?`<h3>${clsName(c.cls)} 소식</h3><div class="log">${c.news.slice(0,5).map(n=>`<div>${esc(n)}</div>`).join('')}</div>`:''}</div>`};
+A.hubMain=()=>{const c=DATA.career;if(c&&c.phase==='camp'){go('camp');return}const m=$('#cmain');if(m)m.scrollIntoView({behavior:'smooth',block:'start'})};
 A.cReroll=()=>{const c=DATA.career;if(c.phase!=='offers')return;c.rerolled=(c.rerolled||0)+1;const old=c.offers.map(o=>o.opp);c.recent=[...(c.recent||[]),...old];c.offers=makeOffers(c);c.recent=c.recent.slice(0,4);save();render()};
 A.cAccept=d=>{{const c0=DATA.career;if(c0)c0.rerolled=0}const c=DATA.career,o=c.offers[+d.i],gym=GYMS.find(g=>g.id===c.gym);
   c.fight=o;try{o.card=buildCard(c,o)}catch(e){console.error(e)}c.phase='camp';ensureC(c);c.camp={day:0,len:CAMP_LEN,cal:[],log:[],scout:false,injured:false};c.energy=Math.max(c.energy,70);
@@ -2431,6 +2463,9 @@ function startCine(host,C,o={}){stopCine();if(!host||!IC.R3D||!IC.R3D.init(gl))r
 function stopCine(){if(!CINE)return;cancelAnimationFrame(CINE.raf);CINE=null;homeGl()}
 function homeGl(){gl.classList.remove('cinegl');if(gl.parentElement!==$('#stage'))$('#stage').insertBefore(gl,cv);gl.hidden=true}
 function releaseGl(){stopCine();if(W3){W3=null;cancelAnimationFrame(wRaf)}homeGl()}
+/* career hub: keep the fighter breathing in the gym while this screen is open */
+let hubRaf=0;function runHub(){cancelAnimationFrame(hubRaf);const c=DATA.career;if(!c)return;const d=getF('me',c),t0=performance.now();
+  const fr=now=>{const el=$('#hubF');if(!el||SCREEN!=='chub'||document.hidden){hubRaf=0;return}try{IC.Draw.hubScene(el,d,(now-t0)/1000*60)}catch(e){console.error(e);return}hubRaf=requestAnimationFrame(fr)};hubRaf=requestAnimationFrame(fr)}
 function runPress(){const h=$('#pressHost'),c=DATA.career;if(!h||!c||!c.fight)return;const f=getF(c.fight.opp,c);if(!startCine(h,{set:'press',a:meData(c),b:f,speaker:'b'},{tick:C=>{C.speaker=Math.floor(C.t/260)%2?'a':'b'}}))h.remove()}
 function heroFighter(){const c=DATA.career;if(c)try{return meData(c)}catch(e){}return IC.byClass('lw').slice().sort((a,b)=>b.ovr-a.ovr)[0]}
 /* ---------- 타이틀 인트로: 전광판·스포트라이트 아레나 + 스틸 로고 + TAP TO START → 3D 벨트 세레머니 ---------- */
