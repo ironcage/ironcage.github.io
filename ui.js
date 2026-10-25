@@ -1146,7 +1146,7 @@ function runCorner(info){
   const fr=now=>{if(done)return;/* the first frame's timestamp can be a hair earlier than t0: clamp, or lines[-1] crashes and the corner never ends */const t=Math.max(0,(now-t0)/1000*60),li=clamp(Math.floor(t/per),0,lines.length-1),lt=t-li*per;
     if(li!==lastLi){lastLi=li;try{Sound.play('coach')}catch(e){}if(hp<40&&li%2===0)try{Sound.play('heart')}catch(e){}}
     const c2=cv.getContext('2d'),k=cv.width/800;c2.setTransform(k,0,0,k,0,0);
-    IC.Draw.cornerUFC(c2,cv.clientWidth||800,cv.clientHeight||450,t,{coach,me:a,tips,lines,li,typed:Math.floor(lt*1.4),talking:lt<lines[li].length/1.4+12,round:info.round,plan,left:Math.max(0,60-t/total*60)});
+    IC.Draw.cornerPOV(c2,cv.clientWidth||800,cv.clientHeight||450,t,{coach,me:a,opp:b,tips,stats:info.last&&info.last.ra?{a:info.last.ra,b:info.last.rb}:null,lines,li,typed:Math.floor(lt*1.4),talking:lt<lines[li].length/1.4+12,round:info.round,plan,left:Math.max(0,60-t/total*60)});
     if(t>=total){finish();return}cornerRaf=requestAnimationFrame(fr)};
   cornerRaf=requestAnimationFrame(fr)}
 /* between rounds, before the corner: a short broadcast card — round stats, who took it, next round number. Tap to skip. */
