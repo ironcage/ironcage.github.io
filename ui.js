@@ -1128,6 +1128,8 @@ function runCorner(info){
   IC.Fight.setPlan(plan);
   const lines=[pick(['숨 쉬어. 크게 들이마시고… 내쉬어.','나 봐! 나 보라고. 괜찮아, 잘하고 있어.','물 한 모금 마셔. 천천히.'])].concat((info.advice||[]).slice(0,2)).concat(a.cuts>=2?['컷맨이 지혈 중이야. 눈 위 상처 조심해, 이마로 받지 마.']:[]).concat([pl,info.round+1>=(S.rounds||3)?'마지막 라운드야! 다 쏟아붓고 와!':'벨 울린다. 일어나!']);
   const coach={d:{id:'coach_'+(a.d.id||a.d.name)},look:{skin:'#d9a47e',hair:'#2a1f1a',hairStyle:'buzz',beard:true,trunk:'#222'},corner:a.corner,walkShirt:S.wild?'#1a1a1a':'#1f3a6e',kind:'fighter'};
+  /* injury cards: what's hurt on him (attack it) and on you (protect it) */
+  const tips=Object.keys(b.inj||{}).map(k=>({k,mine:false})).concat(Object.keys(a.inj||{}).map(k=>({k,mine:true}))).filter(x=>IC.Fight.INJT&&IC.Fight.INJT[x.k]);
   CORNER=true;stopLoop();game.classList.add('cornering');pad.hidden=true;hintEl.hidden=true;between.hidden=true;
   const per=150,total=lines.length*per+40,t0=performance.now();let done=false,lastLi=-1;
   const finish=()=>{if(done)return;done=true;CORNER=false;game.classList.remove('cornering');cancelAnimationFrame(cornerRaf);cv.removeEventListener('pointerdown',skip);try{Sound.play('bell')}catch(e){}
@@ -1136,7 +1138,7 @@ function runCorner(info){
   const fr=now=>{if(done)return;/* the first frame's timestamp can be a hair earlier than t0: clamp, or lines[-1] crashes and the corner never ends */const t=Math.max(0,(now-t0)/1000*60),li=clamp(Math.floor(t/per),0,lines.length-1),lt=t-li*per;
     if(li!==lastLi){lastLi=li;try{Sound.play('coach')}catch(e){}if(hp<40&&li%2===0)try{Sound.play('heart')}catch(e){}}
     const c2=cv.getContext('2d'),k=cv.width/800;c2.setTransform(k,0,0,k,0,0);
-    IC.Draw.cornerPOV(c2,cv.clientWidth||800,cv.clientHeight||450,t,{coach,me:a,lines,li,typed:Math.floor(lt*1.4),talking:lt<lines[li].length/1.4+12,round:info.round,plan,left:Math.max(0,60-t/total*60)});
+    IC.Draw.cornerUFC(c2,cv.clientWidth||800,cv.clientHeight||450,t,{coach,me:a,tips,lines,li,typed:Math.floor(lt*1.4),talking:lt<lines[li].length/1.4+12,round:info.round,plan,left:Math.max(0,60-t/total*60)});
     if(t>=total){finish();return}cornerRaf=requestAnimationFrame(fr)};
   cornerRaf=requestAnimationFrame(fr)}
 /* between rounds, before the corner: a short broadcast card — round stats, who took it, next round number. Tap to skip. */
