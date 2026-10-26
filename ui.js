@@ -960,9 +960,14 @@ function appHeight(){const standalone=navigator.standalone||matchMedia('(display
   document.documentElement.style.setProperty('--app-h',h+'px')}
 /* iOS home-screen app bug: once the keyboard has been open (typing a name, chat), WebKit keeps the window ~one status bar shorter
    until the app is killed — the strip below shows as a black band. Hiding and re-showing a full-screen element makes it re-measure. */
-function remeasureVP(){try{const standalone=navigator.standalone||matchMedia('(display-mode: standalone)').matches;if(!standalone||!screen||!screen.width)return;
+let vpT=0;function vpDiag(){clearInterval(vpT);let el=document.getElementById('vpDiag');if(!(DATA.settings&&DATA.settings.vpDiag)){if(el)el.remove();return}
+  if(!el){el=document.createElement('div');el.id='vpDiag';el.style.cssText='position:fixed;left:4px;top:4px;z-index:99999;background:rgba(0,0,0,.75);color:#7fff9a;font:11px/1.35 monospace;padding:4px 6px;border-radius:4px;pointer-events:none;white-space:pre';document.body.appendChild(el)}
+  const up=()=>{const v=window.visualViewport,r=cv.getBoundingClientRect(),g=game.getBoundingClientRect(),cs=getComputedStyle(document.documentElement);
+    el.textContent=`inner ${innerWidth}x${innerHeight}  vv ${v?Math.round(v.width)+'x'+Math.round(v.height)+' top'+Math.round(v.offsetTop):'-'}\nscreen ${screen.width}x${screen.height}  app-h ${cs.getPropertyValue('--app-h')}  docH ${document.documentElement.clientHeight}\ngame ${Math.round(g.top)}+${Math.round(g.height)}  cv ${Math.round(r.top)}+${Math.round(r.height)}  imm ${immersive?1:0}\nstandalone ${navigator.standalone?1:0}/${matchMedia('(display-mode: standalone)').matches?1:0}  safe ${cs.getPropertyValue('--sab')||''}\n${(navigator.userAgent.match(/OS [\d_]+/)||[''])[0]}`};
+  up();vpT=setInterval(up,600)}
+function remeasureVP(force){try{const standalone=navigator.standalone||matchMedia('(display-mode: standalone)').matches;if(!(standalone||/iPhone|iPod/.test(navigator.userAgent))||!screen||!screen.width)return;
   const land=matchMedia('(orientation: landscape)').matches,want=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);
-  if(want-window.innerHeight<=4)return;
+  if(!force&&want-window.innerHeight<=4)return;window.scrollTo(0,0);
   for(const el of [document.querySelector('.app'),game]){if(!el||el.hidden)continue;const d=el.style.display;el.style.display='none';void el.offsetHeight;el.style.display=d}
   appHeight();fit()}catch(e){}}
 document.addEventListener('focusout',e=>{if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))[150,450].forEach(d=>setTimeout(remeasureVP,d))});
@@ -974,7 +979,7 @@ try{new ResizeObserver(()=>fit()).observe(cv)}catch(e){}
 let immersive=false,fsByUs=false;
 const landscapePhone=()=>window.matchMedia('(orientation: landscape) and (max-height: 540px)').matches;
 function setImmersive(on,auto){
-  if(on)setTimeout(remeasureVP,60);immersive=on;game.classList.toggle('immersive',on);document.body.classList.toggle('noscroll',on);
+  if(on){[60,700].forEach(d=>setTimeout(()=>remeasureVP(true),d));vpDiag()}immersive=on;game.classList.toggle('immersive',on);document.body.classList.toggle('noscroll',on);
   $('#fsBtn').textContent=on?'나가기':'전체화면';
   if(on&&!auto){const el=document.documentElement;try{const p=el.requestFullscreen&&el.requestFullscreen({navigationUI:'hide'});if(p&&p.then)p.then(()=>{fsByUs=true;try{const o=screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape');if(o&&o.catch)o.catch(()=>{})}catch(e){}}).catch(()=>{})}catch(e){}}
   if(!on&&fsByUs&&document.fullscreenElement){try{document.exitFullscreen()}catch(e){}fsByUs=false}
@@ -1298,6 +1303,7 @@ V.records=()=>{const R=DATA.records,s=DATA.settings;
   <div class="field"><span class="lbl">라운드 시간</span>${secSeg()}</div>
   <div class="field"><span class="lbl">🎵 음악 (메뉴 음악·입장곡)</span>${seg('musS',['on','off'],s.homeMusic!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
   <div class="field"><span class="lbl">🔊 효과음·관중 소리</span>${seg('snd',['on','off'],s.sound!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
+  <div class="field"><span class="lbl">🧪 화면 정보 보기 (검은 띠 확인용)</span>${seg('vpS',['on','off'],s.vpDiag?'on':'off',v=>v==='on'?'켜기':'끄기')}<small class="hint2">켜고 경기 화면을 캡처해서 보내 주세요</small></div>
   <div class="field"><span class="lbl">🔕 아이폰 무음 모드에서도 소리 내기</span>${seg('silS',['on','off'],s.silentPlay!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}<small class="hint2">켜면 옆 무음 스위치를 켜 둬도 게임 소리가 나요</small></div>
   <div class="field"><span class="lbl">🎵 내가 원하는 노래</span><div class="row"><label class="btn-go sm" style="cursor:pointer">📁 음악 파일 고르기<input type="file" accept="audio/*" multiple data-change="myPick" hidden></label><span class="mut">${MySong.list.length?`내 노래 ${MySong.list.length}곡 · 입장곡 화면에서 고르고 지울 수 있어요`:'폰의 mp3·m4a를 입장곡·홈 음악으로 (여러 곡 가능)'}</span></div></div>
   <div class="field"><span class="lbl">선수 입장·소개</span>${seg('walk',['on','off'],s.walkout!==false?'on':'off',v=>v==='on'?'켜기':'끄기')}</div>
@@ -1311,6 +1317,7 @@ A.walk=d=>{DATA.settings.walkout=d.v==='on';save();render()};A.coachS=d=>{DATA.s
 A.snd=d=>{DATA.settings.sound=d.v==='on';Sound.on=DATA.settings.sound;if(!Sound.on)Sound.music(false);else{Sound.init();homeMusic(true)}save();render()};
 A.langS=d=>{if((DATA.settings.lang||'ko')===d.v)return;DATA.settings.lang=d.v;save();if(d.v==='en'){render();window.IC_I18N&&IC_I18N.run()}else location.reload()};
 A.musS=d=>{DATA.settings.homeMusic=d.v==='on';save();if(DATA.settings.homeMusic){Sound.init();homeMusic(true)}else Sound.music(false);render()};
+A.vpS=d=>{DATA.settings.vpDiag=d.v==='on';save();vpDiag();render()};
 A.silS=d=>{DATA.settings.silentPlay=d.v==='on';save();Sound.session();render()};
 A.reset=()=>{if(!resetArm){resetArm=true;render();return}resetArm=false;DATA=D0();loadCustom();save();go('home')};
 
@@ -2551,6 +2558,7 @@ function checkOrient(){const portrait=window.innerHeight>window.innerWidth;if(!g
   const u=location.href.split('#')[0];
   if(ln){location.href=u+(u.includes('?')?'&':'?')+'openExternalBrowser=1';return}
   setTimeout(openOut,60)})();
+try{setTimeout(vpDiag,500)}catch(e){}
 addEventListener('resize',checkOrient);addEventListener('orientationchange',()=>setTimeout(checkOrient,120));checkOrient();
 {let fsTried=false;const firstTouch=()=>{if(fsTried)return;fsTried=true;removeEventListener('pointerdown',firstTouch,true);
   const el=document.documentElement;if(document.fullscreenElement||!el.requestFullscreen)return;try{const p=el.requestFullscreen({navigationUI:'hide'});if(p&&p.catch)p.catch(()=>{})}catch(e){}};
