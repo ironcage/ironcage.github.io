@@ -1408,7 +1408,7 @@ A.crGo=()=>{keepInputs();const name=CR.name.trim();if(!name){const n=$('#crName'
   const s=IC.makeStats(CR.style,56,Math.random);
   const c={v:1,seed,name,nick:CR.nick.trim()||name,from:CR.from,cls:CR.cls,style:CR.style,look:{skin:CR.skin,hair:CR.hair,hairStyle:CR.hairStyle,beard:CR.beard,trunk:CR.trunk,tattoo:false,face:CR.face},
     s,special:STYLES[CR.style].sp[0],unlocked:[...STYLES[CR.style].sp],age:22,rec:[0,0,0],hype:5,gym:'local',energy:100,phase:'offers',offers:[],fight:null,camp:null,
-    pts:3,streak:0,isChamp:false,titleDef:0,titles:0,peak:99,history:[],news:['지역 단체에서 프로 커리어를 시작합니다. 3승을 거두면 IRON CAGE 입성 테스트 기회가 옵니다.'],tier:'regional',reg:{w:0,l:0},locals:[],belts:[],cutRisk:0,height:Math.round((C.h[0]+C.h[1])/2),reach:Math.round((C.reach[0]+C.reach[1])/2),fillers:genFillers(CR.cls,seed),order:[]};
+    pts:10,streak:0,isChamp:false,titleDef:0,titles:0,peak:99,history:[],news:['지역 단체에서 프로 커리어를 시작합니다. 3승을 거두면 IRON CAGE 입성 테스트 기회가 옵니다.'],tier:'regional',reg:{w:0,l:0},locals:[],belts:[],cutRisk:0,height:Math.round((C.h[0]+C.h[1])/2),reach:Math.round((C.reach[0]+C.reach[1])/2),fillers:genFillers(CR.cls,seed),order:[]};
   const ids=[...IC.byClass(CR.cls).map(f=>f.id),...c.fillers.map(f=>f.id)];
   c.order=ids.sort((x,y)=>getF(y,c).ovr-getF(x,c).ovr);c.order.push('me');
   c.offers=makeOffers(c);DATA.career=c;save();go('chub')};
@@ -1482,12 +1482,12 @@ V.chub=()=>{const c=ensureC(DATA.career),me=meData(c),idx=c.order.indexOf('me'),
     const f=getF(c.fight.opp,c);main=`${c.fight.card?`<div class="evmini"><span>${c.fight.card.reg?'지역 대회':'넘버링 이벤트'}</span><b>${esc(c.fight.card.name)}</b><em>${esc(c.fight.card.city)} · ${(c.fight.card.bouts.find(b=>b.me)||{}).slot||''}</em><button class="btn sm" data-act="nav" data-to="ccard">대진표</button></div>`:''}<h3>파이트 캠프 · D-${Math.max(0,(c.camp.len||CAMP_LEN)-(c.camp.day||0))}</h3><p>상대: ${esc(f.name)} (${STYLES[f.style].name}, 종합 ${f.ovr})</p><button class="btn-go blue" data-act="nav" data-to="camp">캠프로 가기</button>`;
   }else if(c.phase==='fight'){
     const f=getF(c.fight.opp,c),o=c.fight;const evm=o.card?`<div class="evmini"><span>${o.card.reg?'지역 대회':'넘버링 이벤트'} · 오늘 밤</span><b>${esc(o.card.name)}</b><em>${esc(o.card.city)} · ${(o.card.bouts.find(b=>b.me)||{}).slot||''}</em><button class="btn sm" data-act="nav" data-to="ccard">대진표</button></div>`:'';
-    if(!o.press){o.trash=o.trash||talk('press',{me:c.nick,op:f.nick});
+    if(false){o.trash=o.trash||talk('press',{me:c.nick,op:f.nick});
       main=`${evm}<div class="cine3d" id="pressHost"><span class="cTag">기자회견 · LIVE</span></div><h3>기자회견</h3><div class="advice"><b>${esc(f.nick)}</b> · “${esc(o.trash)}”</div><p>어떻게 받아칠까요? 선택에 따라 인지도와 상대의 독기가 달라집니다.</p>
       <div class="acts"><button class="act" data-act="cPress" data-v="respect"><b>존중</b><span>“좋은 선수다. 케이지에서 보여 주겠다.”</span><span>인지도 +2 · 상대 평정심 유지</span></button>
       <button class="act" data-act="cPress" data-v="taunt"><b>도발</b><span>“넌 내 연습 상대 수준이야.”</span><span>인지도 +8 · 상대가 독기를 품음 (데미지 +5%)</span></button>
       <button class="act" data-act="cPress" data-v="callout"><b>KO 예고</b><span>“2라운드 안에 재운다.”</span><span>인지도 +12 · (T)KO로 이기면 인지도 +10 추가, 못 하면 인지도 −10</span></button></div>`}
-    else main=`${evm}<h3>파이트 나이트</h3><p>${esc(f.name)}와 ${o.rounds}라운드${o.title?' 타이틀전':''}. 컨디션 ${Math.round(c.energy)}%. 기자회견: ${({respect:'존중',taunt:'도발',callout:'KO 예고'})[o.press]}</p><button class="btn-go" data-act="cFight">입장</button>`;
+    else main=`${evm}<h3>파이트 나이트</h3><p>${esc(f.name)}와 ${o.rounds}라운드${o.title?' 타이틀전':''}. 컨디션 ${Math.round(c.energy)}%.</p><button class="btn-go" data-act="cFight">입장</button>`;
   }
   /* UFC-career style home: status strip on top, big tiles on the left, your fighter in the gym on the right */
   const hs=hofScore(c).total,age=Math.floor(c.age),life=age<=24?'신인':age<=30?'전성기':age<=34?'베테랑':'노장',stars=Math.max(.5,Math.min(5,Math.round((me.ovr-50)/8*2)/2));
@@ -1643,7 +1643,7 @@ const EVS=[
  {id:'gameplan',t:'코치와 전술 회의',x:'코치가 이번 상대를 어떻게 공략할지 묻습니다.',ch:[{t:'타격으로 압박',h:'경기력 +3%',eff:{buff:1.03,stat:{pow:.5}}},{t:'레슬링으로 지치게',h:'경기력 +3%',eff:{buff:1.03,stat:{td:.5}}},{t:'카운터로 기다린다',h:'받는 데미지↓',eff:{buff:1.02,scout:true}}]},
  {id:'leak',t:'상대 훈련 영상 유출',x:'상대 진영의 비공개 훈련 영상이 커뮤니티에 돌고 있습니다.',ch:[{t:'본다',h:'상대 분석 · 논란 20%',p:.8,ok:{msg:'상대 습관을 파악했습니다.',eff:{scout:true}},bad:{msg:'"유출 영상 본 선수" 논란',eff:{scout:true,hype:-4}}},{t:'정정당당하게',h:'인지도↑',eff:{hype:2,post:['fan','{me} 유출 영상 안 본다고 함. 멋있다']}}]},
  {id:'trapq',t:'인터뷰 함정 질문',x:'기자가 "지난 경기 판정 운이 좋았던 것 아니냐"고 묻습니다.',ch:[{t:'정면 반박',h:'인지도↑ · 역풍 30%',p:.7,ok:{msg:'카리스마 있는 답변이 화제가 됐습니다.',eff:{hype:4}},bad:{msg:'발끈한 장면만 편집돼 퍼졌습니다.',eff:{hype:-4}}},{t:'웃어넘긴다',h:'안전',eff:{hype:1}}]},
- {id:'mentor',t:'후배 지도',x:'체육관 막내가 기술을 봐 달라고 합니다.',ch:[{t:'가르쳐 준다',h:'능력치 포인트 +1 · 에너지↓',eff:{pts:1,energy:-6}},{t:'다음에',h:'',eff:{}}]},
+ {id:'mentor',t:'후배 지도',x:'체육관 막내가 기술을 봐 달라고 합니다.',ch:[{t:'가르쳐 준다',h:'능력치 포인트 +1 · 에너지↓',eff:{pts:2,energy:-6}},{t:'다음에',h:'',eff:{}}]},
  {id:'altitude',t:'고지대 훈련 캠프',x:'산악 지대 고지대 훈련에 합류할 수 있습니다.',ch:[{t:'합류',h:'피트니스↑↑ 에너지↓',eff:{fit:10,energy:-14}},{t:'패스',h:'',eff:{}}]},
  {id:'cold',t:'감기 기운',x:'목이 칼칼하고 몸이 무겁습니다.',ch:[{t:'하루 푹 쉰다',h:'에너지↑ 피트니스↓',eff:{energy:12,fit:-3}},{t:'강행한다',h:'위험 50%',p:.5,ok:{msg:'땀 빼고 나니 개운합니다.',eff:{fit:2}},bad:{msg:'몸살이 났습니다.',eff:{energy:-22,fit:-3}}}]},
  {id:'legend',t:'레전드의 연락',x:'명예의 전당 레전드 한도윤이 조언을 해 주겠다며 연락해 왔습니다.',ch:[{t:'조언을 듣는다',h:'맷집·체력 상승',eff:{stat:{chin:1.5,car:1.5},hype:2}},{t:'정중히 사양',h:'',eff:{}}]},
@@ -1704,7 +1704,7 @@ A.cDo=d=>{const c=ensureC(DATA.career),cp=c.camp,a=CACTS[d.k],gym=GYMS.find(g=>g
   else if(d.k==='tape'){cp.scout=true;cp.tape=tapeReport(getF(c.fight.opp,c));m+='상대 영상을 분석했습니다.'}
   else if(d.k==='media'){const r=pick([['팟캐스트 출연',2,1500],['방송 인터뷰',1,2000],['유튜브 콜라보',2,1200]]);c.hype=clamp(c.hype+r[1],0,100);m+=`${r[0]} — 인지도 +${r[1]}`;if(Math.random()<.5)post(c,'press',`${c.nick}: "이번 경기, 확실한 결과로 보여드리겠다" (${r[0]})`)}
   else{const mul=gym.mul[a.grp]*(cp.gymBoost||1)*(.45+.55*en/100),gains=[];
-    for(const k of a.stats){const cur=c.s[k];let g=.75*mul*Math.max(.15,1-(cur-55)/50)*rnd(.7,1.3);if(k==='chin')g*=.4;c.s[k]=Math.min(99,cur+g);gains.push(`${STATN[k]} +${g.toFixed(1)}`)}
+    for(const k of a.stats){const cur=c.s[k];let g=1.5*mul*Math.max(.25,1-(cur-55)/50)*rnd(.75,1.3);if(k==='chin')g*=.4;c.s[k]=Math.min(99,cur+g);gains.push(`${STATN[k]} +${g.toFixed(1)}`)}
     m+=gains.join(', ');
     if(Math.random()<a.inj+(en<30?.12:0)){cp.injured=true;m+=' · <b style="color:var(--red-t)">부상!</b>'}}
   c.energy=clamp(c.energy+a.en,0,100);c.fit=clamp(c.fit+a.fit*(en<30?.5:1),0,100);
@@ -1737,7 +1737,7 @@ function afterFight(c,res,o,won,opp){
   }
   // phone reactions
   if(won)msg(c,'coach',[pick(['오늘 정말 잘했다.','계획대로 됐어. 자랑스럽다.']),`이틀 쉬고 다시 시작하자.`],[{t:'감사합니다, 코치님',eff:{energy:5},res:'푹 쉬어라.'},{t:'바로 다음 캠프 가죠',eff:{fit:4,energy:-5},res:'그 열정 좋다. 대신 무리는 하지 마.'}]);
-  else msg(c,'coach',['오늘 결과는 잊어. 테이프 다시 보고 뭐가 문제였는지 같이 보자.'],[{t:'제가 부족했어요',eff:{pts:1},res:'인정하는 게 시작이다. 다시 올라가자.'},{t:'판정이 이상했어요',eff:{hype:1,heat:2},res:'…그 마음 알지만, 판정에 맡기지 않는 경기를 하자.'}]);
+  else msg(c,'coach',['오늘 결과는 잊어. 테이프 다시 보고 뭐가 문제였는지 같이 보자.'],[{t:'제가 부족했어요',eff:{pts:2},res:'인정하는 게 시작이다. 다시 올라가자.'},{t:'판정이 이상했어요',eff:{hype:1,heat:2},res:'…그 마음 알지만, 판정에 맡기지 않는 경기를 하자.'}]);
   if(won&&c.hype>=25&&Math.random()<.45)msg(c,'sponsor',[`${c.name} 선수님, 볼타 에너지입니다. 다음 경기 트렁크 스폰서 제안드립니다.`],[{t:'수락',eff:{hype:2},res:'감사합니다! 계약서 보내드릴게요.'},{t:'고민해 볼게요',eff:{},res:'언제든 연락 주세요.'}]);
   if(!won&&Math.random()<.5)msg(c,'mom',['밥은 먹었니? 다친 데는 없고?'],[{t:'괜찮아요 엄마',eff:{energy:4},res:'다음엔 꼭 이길 거야. 엄마가 응원해.'}]);
   if(R&&R.inMain&&R.heat>=45&&!isRival&&Math.random()<.6)msg(c,'manager',[`${R.name} 측에서 라이벌전 얘기가 나오고 있어요. 팬들 반응이 뜨거워요.`],[{t:'붙여 주세요',eff:{heat:8,hype:3},res:'오케이! 다음 제안에 넣어 볼게요.'},{t:'아직은 때가 아니에요',eff:{heat:-3},res:'알겠어요.'}]);
@@ -1861,7 +1861,7 @@ function careerResult(res){setTimeout(()=>{try{rankPush()}catch(e){}},1500);
     else moveMe(c,before+3);
     if(res.method==='KO'||res.method==='TKO')c.s.chin=Math.max(30,c.s.chin-1.5);
   }
-  c.pts+=won?(res.perf?4:3):1;
+  c.pts+=won?(res.perf?10:8):3;
   c.age+=.4;
   if(c.age>32)for(const k of ['spd','car','chin','pow'])c.s[k]=Math.max(30,c.s[k]-rnd(0,.8));
   const after=c.order.indexOf('me');if(c.tier!=='regional')c.peak=Math.min(c.peak,after);
@@ -1914,11 +1914,13 @@ A.cClass=d=>{const c=DATA.career;if(c.phase==='fight'||d.id===c.cls)return;
   if(wasChamp&&c.tier!=='regional'){const champ=c.order[0];if(champ!=='me')c.offers.unshift({opp:champ,title:true,rounds:5,purse:Math.round(150000+c.hype*2000),superfight:true})}
   save();go('chub')};
 V.cstats=()=>{const c=DATA.career,me=meData(c);
-  const cost=v=>v<70?1:v<85?2:3;
+  const cost=v=>PCOST(v).c;
   return `${back('chub','← 커리어')}<div class="panel"><div class="eyebrow">능력치 · 종합 ${me.ovr}</div><h2 class="big">포인트 <span class="g">${c.pts}</span></h2>
-  <p>경기에서 얻은 포인트를 원하는 능력치에 투자하세요. 높은 능력치일수록 비용이 큽니다 (70 미만 1, 85 미만 2, 그 이상 3).</p>
-  ${Object.entries(IC.STAT_GROUP).map(([g,ks])=>`<h3>${g}</h3><div class="sbars" style="grid-template-columns:auto 1fr auto auto">${ks.map(k=>{const v=me.s[k];return `<span class="n">${STATN[k]}</span><span class="track"><i class="${v>=88?'hi':v>=75?'mid':''}" style="width:${v}%"></i></span><span class="v">${v}</span><button class="plus" data-act="cPlus" data-k="${k}" ${c.pts<cost(v)||v>=99?'disabled':''} aria-label="${STATN[k]} 올리기">+</button>`}).join('')}</div>`).join('')}</div>`};
-A.cPlus=d=>{const c=DATA.career,v=Math.round(c.s[d.k]),cost=v<70?1:v<85?2:3;if(c.pts<cost||v>=99)return;c.pts-=cost;c.s[d.k]=Math.min(99,Math.round(c.s[d.k])+1);save();render()};
+  <p>경기에서 얻은 포인트를 원하는 능력치에 투자하세요. 이기면 8포인트(멋지게 이기면 10), 져도 3포인트. 75 미만은 1포인트에 <b>+2</b>, 88 미만은 1포인트에 +1, 그 이상은 2포인트에 +1.</p>
+  ${Object.entries(IC.STAT_GROUP).map(([g,ks])=>`<h3>${g}</h3><div class="sbars" style="grid-template-columns:auto 1fr auto auto auto">${ks.map(k=>{const v=me.s[k];return `<span class="n">${STATN[k]}</span><span class="track"><i class="${v>=88?'hi':v>=75?'mid':''}" style="width:${v}%"></i></span><span class="v">${v}</span><button class="plus" data-act="cPlus" data-k="${k}" ${c.pts<cost(v)||v>=99?'disabled':''} aria-label="${STATN[k]} 올리기">+${PCOST(v).g}</button><button class="plus x5" data-act="cPlus" data-k="${k}" data-n="5" ${c.pts<cost(v)||v>=99?'disabled':''} aria-label="${STATN[k]} 다섯 번 올리기">×5</button>`}).join('')}</div>`).join('')}</div>`};
+/* stat points: cheap and fast while a stat is low, slower near the top */
+const PCOST=v=>v<75?{c:1,g:2}:v<88?{c:1,g:1}:{c:2,g:1};
+A.cPlus=d=>{const c=DATA.career,v=Math.round(c.s[d.k]),q=PCOST(v),n=d.n==='5'?5:1;let left=n;while(left-->0){const vv=Math.round(c.s[d.k]),qq=PCOST(vv);if(c.pts<qq.c||vv>=99)break;c.pts-=qq.c;c.s[d.k]=Math.min(99,vv+qq.g)}save();render()};
 V.cgym=()=>{const c=DATA.career;
   return `${back('chub','← 커리어')}<div class="panel"><div class="eyebrow">체육관</div><h2 class="big">어디서 캠프를 차릴까</h2><p>체육관마다 훈련 효율이 다릅니다. 일부는 인지도가 있어야 들어갈 수 있어요.</p>
   <div class="acts">${GYMS.map(g=>`<button class="act" data-act="cGym" data-id="${g.id}" ${g.minHype&&c.hype<g.minHype?'disabled':''} style="${g.id===c.gym?'border-color:var(--gold)':''}"><b>${g.name}${g.id===c.gym?' · 현재':''}</b><span>${g.desc}</span><span>타격 ×${g.mul.strike} · 레슬링 ×${g.mul.wrestle} · 주짓수 ×${g.mul.bjj}</span></button>`).join('')}</div></div>`};
@@ -2264,8 +2266,9 @@ const Net={room:null,user:null,uid:null,ok:false,names:{},peers:[],mr:null,role:
 };
 /* guest/spectator: the host runs the walkout, this phone plays the music itself (host fighter: their built-in song, my fighter: my song) */
 let NWK=null;function netWalkMusic(){const S=IC.Fight.S;const k=S&&S.walk&&S.walk.k||null;if(k===NWK)return;NWK=k;
-  try{if(k==='blueAisle'){Sound.music(false);const n=S.walk.songA&&S.walk.songA.n;Sound.music(true,IC.SONGS.find(x=>x.n===n)||IC.SONGS[0])}
-    else if(k==='redAisle'){Sound.music(false);Sound.music(true,Net.role==='guest'?songObj(myNetF()):IC.SONGS[0])}
+  const grp=x=>/^blue(Ann|Aisle)$/.test(x||'')?'blue':/^red(Ann|Aisle)$/.test(x||'')?'red':x,g=grp(k),pg=grp(netWalkMusic.pk);netWalkMusic.pk=k;if(g===pg&&(g==='blue'||g==='red'))return;
+  try{if(g==='blue'){Sound.music(false);const n=S.walk.songA&&S.walk.songA.n;Sound.music(true,IC.SONGS.find(x=>x.n===n)||IC.SONGS[0])}
+    else if(g==='red'){Sound.music(false);Sound.music(true,Net.role==='guest'?songObj(myNetF()):IC.SONGS[0])}
     else if(!k||k==='officials')Sound.music(false)}catch(e){}}
 const CHEERS=['🔥','👏','😱','💪','👊','🥊','😂','🏆'];
 function netMode(m){const S=IC.Fight.S;if(!S)return;

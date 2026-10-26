@@ -1222,7 +1222,7 @@ function computeCam(S){
   if(VH>470)z*=Math.min(1.35,Math.sqrt(VH/450)*.95);
   z*=1+(S.zoomKick||0);
   /* keep every head below the HUD band (plates + commentary line): cap the zoom and lift the framing */
-  if(!S.gr&&!S.replay&&!S.demo&&(S.mode==='fight'||S.mode==='pause'||S.mode==='between')){const hb=(OPT.hudBottom?94:130)*HS,headTop=165;
+  if(!S.gr&&!S.replay&&!S.demo&&(S.mode==='fight'||S.mode==='pause'||S.mode==='between')){const hb=(OPT.hudBottom?94:108)*HS,headTop=165;
     const zc=(VH-hb-4)/(GY+6-headTop);if(z>zc)z=zc;const fyMax=headTop+(VH/2-hb)/z;if(fy>fyMax)fy=fyMax}
   const k=S.replay?.12:.07;
   cam.x+=(fx-cam.x)*k;cam.y+=(fy-cam.y)*k*.7;cam.z+=(z-cam.z)*k*.4;
@@ -1974,7 +1974,7 @@ function renderOverlay(S0,c,cssW,cssH,o3d){
     if(!S.demo&&!IC.__nohud&&S.mode!=='outro'&&S.mode!=='decision'&&!S.walk){hud(S);comboOverlay(S);injuryHud(S)}
     if(S.mode==='intro')introOverlay(S);
     if(S.mode==='decision')decisionOverlay(S);
-    if(!S.demo&&S.mode!=='outro'&&(!S.walk||/faceoff|touch|officials/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
+    if(!S.demo&&!(IC.__nohud&&!S.walk)&&S.mode!=='outro'&&(!S.walk||/faceoff|touch|officials/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
     if(S.mode==='outro'&&!S.demo)outroClose(S);
   }
   ctx.restore();
@@ -1992,7 +1992,7 @@ function render_(S0,c,cssW,cssH,o3d){
   ctx.translate(W/2+sx,VH/2+sy+(OPT.topGap||0)*W/(cssW||800)*.5);ctx.scale(cam.z,cam.z);ctx.translate(-cam.x,-cam.y);
   arena(S);
   const items=[{z:(S.ref&&S.ref.z)??-50,d:()=>drawRef(S)}];
-  if(S.walk&&((S.walk.k==='officials'&&S.walk.t>30)||(/Ann$/.test(S.walk.k||'')&&S.walk.t<ANN_CUT+4)))items.push({z:-10,d:()=>drawAnnouncer(S)});
+  if(S.walk&&((S.walk.k==='officials'&&S.walk.t>30)||(/Ann$/.test(S.walk.k||'')&&S.walk.t<ANN_CUT)))items.push({z:-10,d:()=>drawAnnouncer(S)});
   if(S.gr)items.push({z:S.gr.cz||0,d:()=>drawGround(S)});
   else for(const F of [S.a,S.b])if(!F.hidden)items.push({z:(F.z||0)+(F.state==='attack'?.5:0),d:()=>drawStandingFighter(F,F===S.a?S.b:S.a,S)});
   items.sort((p,q)=>p.z-q.z).forEach(i=>i.d());
@@ -2031,7 +2031,7 @@ function render_(S0,c,cssW,cssH,o3d){
     if(!S.demo&&!IC.__nohud&&S.mode!=='outro'&&S.mode!=='decision'&&!S.walk){hud(S);comboOverlay(S);injuryHud(S)}
     if(S.mode==='intro')introOverlay(S);
     if(S.mode==='decision')decisionOverlay(S);
-    if(!S.demo&&S.mode!=='outro'&&(!S.walk||/faceoff|touch|officials/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
+    if(!S.demo&&!(IC.__nohud&&!S.walk)&&S.mode!=='outro'&&(!S.walk||/faceoff|touch|officials/.test(S.walk.k||'')))bannerDraw(S);stanceCall(S);
     if(S.mode==='outro'&&!S.demo)outroClose(S);
   }
   ctx.restore();

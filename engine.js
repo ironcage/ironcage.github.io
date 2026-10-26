@@ -900,7 +900,7 @@ function startRound(){
 }
 /* ---------- walkout & announcer ---------- */
 /* one continuous broadcast, like a real card: walk → cage-side checks → into the cage and a lap → opponent the same → in-cage introductions → referee */
-const WK=[{k:'blueAisle',d:880},{k:'blueIn',d:320},{k:'redAisle',d:880},{k:'redIn',d:320},{k:'officials',d:240},{k:'blueAnn',d:420},{k:'redAnn',d:420},{k:'tape',d:480},{k:'rules',d:240},{k:'faceoff',d:175},{k:'touch',d:50},{k:'back',d:50},{k:'coach',d:200},{k:'door',d:130},{k:'ready',d:160}];
+const WK=[{k:'blueAnn',d:420,off:150},{k:'blueAisle',d:560},{k:'blueIn',d:320},{k:'redAnn',d:420,off:150},{k:'redAisle',d:560},{k:'redIn',d:320},{k:'officials',d:240},{k:'tape',d:480},{k:'rules',d:240},{k:'faceoff',d:175},{k:'touch',d:50},{k:'back',d:50},{k:'coach',d:200},{k:'door',d:130},{k:'ready',d:160}];
 /* signature entrance performance per fighting style */
 const PERF={boxer:'shadow',kickboxer:'kicks',karate:'kicks',taekwondo:'kicks',muaythai:'waikru',wrestler:'chest',sambo:'chest',bjj:'bow',brawler:'taunt',allround:'taunt'};
 const PERFN={shadow:'섀도복싱',kicks:'허공에 하이킥',waikru:'와이크루 의식',chest:'가슴을 두드리며 포효',bow:'옥타곤에 절',taunt:'관중 도발'};
@@ -908,7 +908,7 @@ const songOf=F=>{if(F.d&&F.d._song)return F.d._song;const S0=IC.SONGS,k=IC.songP
 const AISLE0=-300,AISLE1=600;
 function startWalkout(){
   const a=S.a,b=S.b;
-  S.walk={i:0,t:0,k:'blueAisle',lines:[],ax:AISLE0,songA:songOf(a),songB:songOf(b),hype:0};S.introLen=1;S.phaseT=1;
+  S.walk={i:0,t:WK[0].off||0,k:WK[0].k,lines:[],ax:AISLE0,songA:songOf(a),songB:songOf(b),hype:0};S.introLen=1;S.phaseT=1;
   a.x=110;a.z=-30;a.f=1;b.x=760;b.z=-30;b.f=-1;a.state='idle';b.state='idle';b.hidden=true;
   S.ref.x=400;S.ref.z=-150;S.ref.state='idle';
   const cls=(IC.CLASSES.find(c=>c.id===a.d.cls)||{}).name||'';
@@ -927,7 +927,7 @@ function stepWalkout(){
   /* real walkout, step by step: tunnel warm-up → lights & music → walk with stops for fans → cage-side checks → up the steps */
   const aisle=(F,song,corner)=>{
     const t=W.t;F.perfK=PERF[F.d.style]||'taunt';W.cap=null;W.ritV=0;
-    if(t===1){W.rit=0;W.ax=AISLE0;F.walkShirt=F.corner;F.walk=0;if(!S.demo&&IC.Sound&&IC.Sound.music){IC.Sound.music(false);IC.Sound.music(true,song)}
+    if(t===1){W.rit=0;W.ax=AISLE0;F.walkShirt=F.corner;F.walk=0;if(!S.demo&&IC.Sound&&IC.Sound.music&&W.mus!==song){IC.Sound.music(false);IC.Sound.music(true,song);W.mus=song}
       ann(corner,`${corner==='blue'?'블루':'레드'} 코너, ${F.nick} ${F.name}! 입장곡 '${song.n}'이 울려 퍼집니다!`);sfx('crowd')}
     F.f=1;
     if(t<=110){/* backstage tunnel: last pad work with the coach before the curtain */
@@ -942,14 +942,9 @@ function stepWalkout(){
       if(tw===40)say('시큐리티와 팀이 선수를 둘러싸고 함께 걷습니다');
       if(tw===220)say(`관중석에서 "${F.nick}!" 연호가 터져 나옵니다`);
       if(fans)W.cap='🙌 팬들과 하이파이브';
-    }else{/* at the cage steps — every check a real fighter goes through */
-      W.ax=AISLE1;const r=++W.rit;F.state='idle';W.hype=.3;
-      if(r<60){W.cap='👕 셔츠·모자를 벗습니다';W.ritV=0;if(r===30){F.walkShirt=null;sfx('crowd')}if(r===2)say(`${F.nick}, 케이지 앞에 도착! 셔츠를 벗습니다`)}
-      else if(r<150){W.cap='🧴 컷맨 · 얼굴에 바셀린';W.ritV=10;if(r===62)say(`컷맨이 ${F.nick}의 눈썹과 광대에 바셀린을 바릅니다`)}
-      else if(r<215){W.cap='🦷 커미션 · 마우스피스 & 글러브 검사';W.ritV=55;F.state='perf';F.perfK='arms';F.perfT=r-150;if(r===152)say('커미션이 글러브 테이핑에 사인하고 마우스피스를 확인합니다')}
-      else if(r<270){W.cap='🧤 커미션 · 몸 & 보호대 검사';W.ritV=70;F.state='perf';F.perfK='arms';F.perfT=r-215;if(r===217)say('몸에 이물질이 없는지, 보호대를 찼는지 마지막 검사')}
-      else if(r<330){W.cap='🤝 코치와 포옹';W.ritV=90;F.state='perf';F.perfK='bow';F.perfT=r-270;if(r===272){say(`${F.nick}, 코치와 뜨겁게 포옹합니다`);sfx('crowd')}}
-      else{W.cap='⬆️ 옥타곤 계단을 오릅니다';W.ritV=Math.min(119,92+(r-330));F.state='perf';F.perfK='bow';F.perfT=r-290;if(r===332){say('옥타곤 계단을 올라… 케이지 안으로!');W.pyro={t:0,at:'perf'}}}
+    }else{/* end of the walkway: straight up the steps into the cage */
+      W.ax=AISLE1;const r=++W.rit;F.state='perf';F.perfK='bow';F.perfT=r;W.hype=.5;W.ritV=0;W.cap='⬆️ 옥타곤으로 들어갑니다';
+      if(r===2){F.walkShirt=null;say(`${F.nick}, 셔츠를 벗어 던지고 옥타곤 계단을 오릅니다!`);W.pyro={t:0,at:'perf'};sfx('crowd')}
     }
     if(t%60===40)sfx('crowd');
   };
@@ -963,13 +958,13 @@ function stepWalkout(){
       if(W.t===1){if(!S.demo&&IC.Sound&&IC.Sound.music)IC.Sound.music(false);sfx('bell');ann('main','레이디스 앤 젠틀맨… 여러분이 기다려 온 바로 그 순간입니다!')}
       if(W.t===80){const RF=['허브 딘','마크 고다드','제이슨 허족','키스 피터슨'],J=['데릭 클리어리','수 커스','마이크 벨'];ann('main',`오늘 경기 주심은 ${RF[IC.hash(a.name+b.name)%RF.length]}! 부심은 ${J.join(', ')}입니다`)}
       if(W.t===170){ann('main','IT’S TIME!!!');sfx('crowd');sfx('reveal');banner('IT’S TIME!','#e8b33a',60);W.pyro={t:0,at:'ann'}}break}
-    case 'blueAnn':walkTo(a,250,0,3);a.f=1;if(W.t===1&&!S.demo&&IC.Sound&&IC.Sound.music){IC.Sound.music(false);IC.Sound.music(true,W.songA)}if(W.t===4)ann('blue',annText(a,'블루'));if(W.t===160){sfx('crowd');say(`관중이 "${a.nick}"를 연호합니다!`)}b.f=-1;b.state='idle';if(W.t===60)sfx('reveal');if(W.t>40){a.perfK=PERF[a.d.style]||'taunt';a.state=W.t<110?'perf':'idle';a.perfT=W.t-40}if(W.t===62)W.pyro={t:0,at:'ann'};break;
+    case 'blueAnn':{const t0=st.off||0;a.f=1;if(W.t===t0+1&&!S.demo&&IC.Sound&&IC.Sound.music&&W.mus!==W.songA){IC.Sound.music(false);IC.Sound.music(true,W.songA);W.mus=W.songA}if(W.t===t0+1)ann('blue',annText(a,'블루'));}if(W.t===160){sfx('crowd');say(`관중이 "${a.nick}"를 연호합니다!`)}b.f=-1;b.state='idle';if(W.t===60)sfx('reveal');if(W.t>40){a.perfK=PERF[a.d.style]||'taunt';a.state=W.t<110?'perf':'idle';a.perfT=W.t-40}if(W.t===62)W.pyro={t:0,at:'ann'};break;
     case 'redAisle':a.state='idle';a.x=220;aisle(b,W.songB,'red');break;
     case 'redIn':{if(W.t===1){b.walkShirt=null;b.hidden=false;b.x=760;b.z=-30;W.pyro={t:0,at:'cage'};sfx('slam');ann('red',`${b.nick}, 케이지에 들어섭니다! 두 선수가 같은 공간에 섰습니다`)}
       a.f=1;a.state=W.t%90<60?'perf':'idle';a.perfK='shadow';a.perfT=W.t%90;
       if(W.t<70)walkTo(b,470,-40,2.6);else if(W.t<130)walkTo(b,570,30,2.6);else if(W.t<150)walkTo(b,580,0,2);else if(W.t<210){b.f=-1;b.state='perf';b.perfK='taunt';b.perfT=W.t-150}else{b.f=-1;b.state='perf';b.perfK='shadow';b.perfT=W.t-210}
       if(W.t===150){sfx('crowd');say(`${b.nick}, 건너편 ${a.nick}를 노려봅니다`)}if(W.t===220){sfx('crowd');say('관중의 함성이 최고조로 올라갑니다!')}break}
-    case 'redAnn':walkTo(b,550,0,3);b.f=-1;a.f=1;a.state='idle';if(W.t===1){ann('red',annText(b,'레드'));if(!S.demo&&IC.Sound&&IC.Sound.music){IC.Sound.music(false);IC.Sound.music(true,W.songB)}}if(W.t===160){sfx('crowd');say(`야유와 환호가 뒤섞입니다! "${b.nick}"!`)}if(W.t===60)sfx('reveal');if(W.t>40){b.perfK=PERF[b.d.style]||'taunt';b.state=W.t<110?'perf':'idle';b.perfT=W.t-40}if(W.t===62)W.pyro={t:0,at:'ann'};break;
+    case 'redAnn':{const t0=st.off||0;b.f=-1;a.f=1;a.state='idle';if(W.t===t0+1){ann('red',annText(b,'레드'));if(!S.demo&&IC.Sound&&IC.Sound.music&&W.mus!==W.songB){IC.Sound.music(false);IC.Sound.music(true,W.songB);W.mus=W.songB}}}if(W.t===160){sfx('crowd');say(`야유와 환호가 뒤섞입니다! "${b.nick}"!`)}if(W.t===60)sfx('reveal');if(W.t>40){b.perfK=PERF[b.d.style]||'taunt';b.state=W.t<110?'perf':'idle';b.perfT=W.t-40}if(W.t===62)W.pyro={t:0,at:'ann'};break;
     case 'tape':{a.state=b.state='idle';walkTo(a,250,0,3);walkTo(b,550,0,3);a.f=1;b.f=-1;if(W.t===1){ann('main','테일 오브 더 테이프! 두 선수를 비교해 봅니다');sfx('reveal')}break}
     case 'rules':{a.f=1;b.f=-1;S.ref.state='start';if(W.t===1&&!S.demo&&IC.Sound&&IC.Sound.music)IC.Sound.music(false);
       if(W.t<70){walkTo(a,345,0,2.2);walkTo(b,455,0,2.2)}else{a.state=b.state='idle'}
@@ -1007,7 +1002,7 @@ function stepWalkout(){
       if(W.t===60)ann('ref',`레퍼리: "${b.nick}, 준비됐나?"`);if(W.t>=78&&W.t<108)b.state='block';
       if(W.t===120){ann('ref','레퍼리가 두 손을 모읍니다…');sfx('heart')}break}
   }
-  if(W.t>=st.d){W.i++;W.t=0;
+  if(W.t>=st.d){W.i++;W.t=(WK[W.i]&&WK[W.i].off)||0;
     if(W.i>=WK.length)endWalkout();else W.k=WK[W.i].k}
 }
 function endWalkout(){
