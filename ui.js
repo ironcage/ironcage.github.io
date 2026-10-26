@@ -965,6 +965,9 @@ let vpT=0;function vpDiag(){clearInterval(vpT);let el=document.getElementById('v
   const up=()=>{const v=window.visualViewport,r=cv.getBoundingClientRect(),g=game.getBoundingClientRect(),cs=getComputedStyle(document.documentElement);
     el.textContent=`inner ${innerWidth}x${innerHeight}  vv ${v?Math.round(v.width)+'x'+Math.round(v.height)+' top'+Math.round(v.offsetTop):'-'}\nscreen ${screen.width}x${screen.height}  app-h ${cs.getPropertyValue('--app-h')}  docH ${document.documentElement.clientHeight}\ngame ${Math.round(g.top)}+${Math.round(g.height)}  cv ${Math.round(r.top)}+${Math.round(r.height)}  imm ${immersive?1:0}\nstandalone ${navigator.standalone?1:0}/${matchMedia('(display-mode: standalone)').matches?1:0}  safe ${cs.getPropertyValue('--sab')||''}\n${(navigator.userAgent.match(/OS [\d_]+/)||[''])[0]}`};
   up();vpT=setInterval(up,600)}
+/* force WebKit to recompute the viewport: briefly drop viewport-fit=cover, restore on the next frame */
+function vfToggle(){try{const m=document.querySelector('meta[name=viewport]');if(!m)return;const c=m.getAttribute('content');if(!/viewport-fit=cover/.test(c))return;m.setAttribute('content',c.replace('viewport-fit=cover','viewport-fit=auto'));requestAnimationFrame(()=>{m.setAttribute('content',c);setTimeout(()=>{try{appHeight();fit()}catch(e){}},50)})}catch(e){}}
+addEventListener('orientationchange',()=>setTimeout(()=>{if(immersive){window.scrollTo(0,0);vfToggle()}},350));
 function remeasureVP(force){try{const standalone=navigator.standalone||matchMedia('(display-mode: standalone)').matches;if(!(standalone||/iPhone|iPod/.test(navigator.userAgent))||!screen||!screen.width)return;
   const land=matchMedia('(orientation: landscape)').matches,want=land?Math.min(screen.width,screen.height):Math.max(screen.width,screen.height);
   if(!force&&want-window.innerHeight<=4)return;window.scrollTo(0,0);
@@ -979,7 +982,7 @@ try{new ResizeObserver(()=>fit()).observe(cv)}catch(e){}
 let immersive=false,fsByUs=false;
 const landscapePhone=()=>window.matchMedia('(orientation: landscape) and (max-height: 540px)').matches;
 function setImmersive(on,auto){
-  if(on){[60,700].forEach(d=>setTimeout(()=>remeasureVP(true),d));vpDiag()}immersive=on;game.classList.toggle('immersive',on);document.body.classList.toggle('noscroll',on);
+  document.documentElement.classList.toggle('gameon',on);if(on){window.scrollTo(0,0);vfToggle();[60,700].forEach(d=>setTimeout(()=>remeasureVP(true),d));vpDiag()}immersive=on;game.classList.toggle('immersive',on);document.body.classList.toggle('noscroll',on);
   $('#fsBtn').textContent=on?'나가기':'전체화면';
   if(on&&!auto){const el=document.documentElement;try{const p=el.requestFullscreen&&el.requestFullscreen({navigationUI:'hide'});if(p&&p.then)p.then(()=>{fsByUs=true;try{const o=screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape');if(o&&o.catch)o.catch(()=>{})}catch(e){}}).catch(()=>{})}catch(e){}}
   if(!on&&fsByUs&&document.fullscreenElement){try{document.exitFullscreen()}catch(e){}fsByUs=false}
