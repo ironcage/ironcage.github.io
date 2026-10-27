@@ -258,7 +258,7 @@ function finish(Wn,method,detail){
   if(S.sub)S.subEnd=Object.assign({},S.sub,{prog:100,end:S.frame});S.mode='ko';S.phaseT=200;S.sub=null;S.koRefIn=0;
   const el=S.roundFrames-S.timer;
   S.result={winner:Wn.side,method,detail,round:S.round,time:fmt(el)};if(Wn===S.p||L===S.p)buzz(method==='서브미션'?[60,40,60]:[90,60,180,60,90]);
-  if(!S.gr){L.state='ko';L.koT=0;L.koK=pick(['back','face','crumple','fence','spin']);S.slow=90;S.cl=null}
+  S.texts=S.texts.filter(t=>t.t!=='막음');if(!S.gr){L.state='ko';L.koT=0;L.koK=pick(['back','face','crumple','fence','spin']);S.slow=90;S.cl=null}
   S.camFocus=L.side;S.winSide=Wn.side;
   banner(method==='서브미션'?'탭 아웃!':method==='TKO'?'TKO!':'K.O.!','#ffd75e',170);sfx('ko');
   say(method==='서브미션'?`${L.nick} 탭! ${Wn.nick}의 ${detail} 승리!`:method==='TKO'?`레퍼리가 막아섭니다! ${Wn.nick} TKO 승!`:`${Wn.nick}의 ${detail}! ${L.nick} 그대로 쓰러집니다!`);
