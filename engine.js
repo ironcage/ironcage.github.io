@@ -439,7 +439,7 @@ function upStand(F,O){
 }
 function separate(){
   const a=S.a,b=S.b;
-  const dx=b.x-a.x,dz=(b.z-a.z)*1.3,d=Math.hypot(dx,dz),min=68;
+  const dx=b.x-a.x,dz=(b.z-a.z)*1.3,d=Math.hypot(dx,dz),min=76;
   if(d<min){const ux=d>.01?dx/d:(a.f>0?1:-1),uz=d>.01?dz/d:0,push=(min-d)/2;a.x-=ux*push;b.x+=ux*push;a.z-=uz*push/1.3;b.z+=uz*push/1.3}
   for(const F of [a,b])inCage(F);
 }
@@ -1208,7 +1208,7 @@ function tick(n){
     if(S.mode==='between'||S.mode==='over')return;
     if(S.mode==='replay'){const r=S.rp;if(++r.sub%(r.hl?2:3)===0)r.i++;S.frame++;if(r.i>=r.frames.length){if(r.hl){const nx=S.hlQ&&S.hlQ.shift();if(nx){S.rp={frames:nx.frames,i:0,sub:0,hl:true,label:nx.label}}else{S.mode='over';S.rp=null;const cb=S.hlDone;S.hlDone=null;if(cb)cb();return}}else startOutro()}continue}
     if(S.hitstop>0&&S.mode==='fight'){S.hitstop--;S.frame++;continue}
-    if(S.slow>0){S.slow--;if((++slowTick)%3){S.frame++;continue}}
+    if(S.slow>0){S.slow--;if((++slowTick)%3){S.frame++;if(S.flashScr>0)S.flashScr--;continue}}
     step();
   }
 }

@@ -1507,7 +1507,7 @@ function drawFront(F,t,o2={}){
      sft(-12,chestY+20,13,8,'rgba(70,30,18,.16)');sft(12,chestY+20,13,8,'rgba(70,30,18,.16)');sft(-11,chestY+13,11,6,'rgba(255,240,225,.14)');sft(11,chestY+13,11,6,'rgba(255,240,225,.14)');
      for(const yy of [42,54,66])for(const xx of [-6,6])sft(xx,chestY+yy,5,4.2,'rgba(255,240,225,.12)');ctx.strokeStyle='rgba(70,30,18,.18)';ctx.lineWidth=.9;ctx.beginPath();ctx.moveTo(0,chestY+30);ctx.lineTo(0,hipY-12);ctx.stroke();
      if(L.tattoo){ctx.strokeStyle='rgba(30,35,55,.5)';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-24,chestY+8);ctx.quadraticCurveTo(-30,chestY+18,-22,chestY+26);ctx.stroke()}ctx.restore()}
-   else{ctx.fillStyle='rgba(255,255,255,.85)';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText('IRON CAGE',0,chestY+34);ctx.fillStyle=shade(base,.55);ctx.beginPath();ctx.moveTo(-8,chestY);ctx.lineTo(0,chestY+16);ctx.lineTo(8,chestY);ctx.fill()}}
+   else{ctx.fillStyle='rgba(255,255,255,.85)';ctx.font='bold 9px sans-serif';ctx.textAlign='center';if(!o2.nologo)ctx.fillText('IRON CAGE',0,chestY+34);ctx.fillStyle=shade(base,.55);ctx.beginPath();ctx.moveTo(-8,chestY);ctx.lineTo(0,chestY+16);ctx.lineTo(8,chestY);ctx.fill()}}
   /* arms */
   const arm=(side,swing)=>{const sh={x:side*(shW-3),y:chestY+8};let el={x:side*(shW+6),y:chestY+44-swing*4},hd={x:side*(shW+2)+swing*2*side,y:chestY+80-swing*8};
     if(perf==='taunt'||perf==='kicks'||perf==='shadow'||perf==='win'){const up=side>0||perf!=='taunt';if(up){el={x:side*(shW+12),y:chestY-10};hd={x:side*(shW+4),y:chestY-48+Math.sin(pt*.3+side)*4}}}
@@ -1980,7 +1980,7 @@ function renderOverlay(S0,c,cssW,cssH,o3d){
   for(const t of S.texts){if(t.num&&!OPT.nums)continue;const p=P(t.x,t.y,zOf(t.x));ctx.globalAlpha=Math.min(1,t.l/20);ctx.font=`${t.num?22:19}px "Black Han Sans",sans-serif`;ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.65)';ctx.strokeText(t.t,p.x,p.y);ctx.fillStyle=t.col;ctx.fillText(t.t,p.x,p.y)}
   ctx.globalAlpha=1;
   const vg=ctx.createRadialGradient(W/2,VH/2,Math.min(W,VH)*.4,W/2,VH/2,Math.max(W,VH)*.65);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.18)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,VH);
-  if(S0.flashScr>0){ctx.fillStyle=`rgba(255,255,255,${S0.flashScr/7*.2})`;ctx.fillRect(0,0,W,VH)}
+  if(S0.flashScr>0){ctx.fillStyle=`rgba(255,255,255,${S0.flashScr/7*.2*(S.replay?.35:1)})`;ctx.fillRect(0,0,W,VH)}
   if(S.slow>0||S.replay){ctx.fillStyle='rgba(255,215,140,.06)';ctx.fillRect(0,0,W,VH)}
   if(!S.walk||!/Aisle$/.test(S.walk.k||''))venueFX(S);
   HS=clamp(600/(cssW||800),1,1.75);WH=W/HS;HH=VH/HS;
@@ -2032,7 +2032,7 @@ function render_(S0,c,cssW,cssH,o3d){
   // screen fx
   const vg=ctx.createRadialGradient(W/2,VH/2,Math.min(W,VH)*.35,W/2,VH/2,Math.max(W,VH)*.62);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.3)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,VH);
   if(S.walk&&S.walk.tension>0){const hb=Math.max(0,Math.sin(S.frame*.137))**8,g=ctx.createRadialGradient(W/2,VH/2,VH*.25,W/2,VH/2,Math.max(W,VH)*.65);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,`rgba(110,0,0,${S.walk.tension*(.18+hb*.22)})`);ctx.fillStyle=g;ctx.fillRect(0,0,W,VH)}
-  if(S0.flashScr>0){ctx.fillStyle=`rgba(255,255,255,${S0.flashScr/7*.22})`;ctx.fillRect(0,0,W,VH)}
+  if(S0.flashScr>0){ctx.fillStyle=`rgba(255,255,255,${S0.flashScr/7*.22*(S.replay?.35:1)})`;ctx.fillRect(0,0,W,VH)}
   if(S.slow>0||S.replay){ctx.fillStyle='rgba(255,215,140,.07)';ctx.fillRect(0,0,W,VH)}
   if(!S.demo&&!S.replay&&S.p&&S.p.rocked>0&&S.mode==='fight'){const k=Math.min(1,S.p.rocked/120),off=6*k*Math.sin(S.frame*.09);
     try{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=.22*k;ctx.drawImage(c.canvas,off*3,off*1.5);ctx.restore()}catch(e){}
@@ -2446,13 +2446,18 @@ function cornerPOV(c,cw,ch,t,o){
     const tw=Math.sin(t*.4)*14;ctx.fillStyle='rgba(240,240,240,.85)';ctx.beginPath();ctx.ellipse(ox-30+tw,oy+10,12,6,tw*.03,0,7);ctx.fill();ctx.restore()}
   /* the coach: leaning in, talking, one hand pointing */
   const talk=o.talking?Math.abs(Math.sin(t*.55))*.8+.2:0,lean=Math.sin(t*.07)*4;
-  ctx.save();const cs=Math.min(3.1,VHw/118);ctx.translate(cx+30+lean,VHw*.4+207*cs);ctx.scale(cs,cs);drawFront(o.coach,t,{perf:'coach',pt:t,talk,bare:true});ctx.restore();
+  ctx.save();const cs=Math.min(3.1,VHw/118);ctx.translate(cx+30+lean,VHw*.4+207*cs);ctx.scale(cs,cs);drawFront(o.coach,t,{perf:'coach',pt:t,talk,bare:true,nologo:true});ctx.restore();
   /* cutman's hand with the enswell when cut, the bottle coming in from the left */
   const bt=(t%260)/260;if(bt<.35){const k=Math.sin(bt/.35*Math.PI);ctx.save();ctx.translate(-30+k*170,VHw*.62-k*30);ctx.rotate(.5-k*.3);const g=ctx.createLinearGradient(-14,0,14,0);g.addColorStop(0,'rgba(120,180,255,.5)');g.addColorStop(.5,'rgba(220,240,255,.75)');g.addColorStop(1,'rgba(120,180,255,.45)');ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(-16,-60,32,110,10);ctx.fill();ctx.fillStyle='#1d2430';ctx.fillRect(-9,-74,18,16);ctx.fillStyle='#e8b33a';ctx.fillRect(-16,-10,32,20);ctx.restore()}
   /* cutman working on your face: his hand presses the cold enswell over the cut (seen from your eyes: big, out of focus, top-left) */
   if((me.cuts||0)>=2){const k=.5+.5*Math.sin(t*.06),x=150+k*26,y=150+k*14;ctx.save();ctx.translate(x,y);ctx.rotate(.55);ctx.scale(1.25,1.25);
-    ctx.fillStyle='#6e4a32';ctx.beginPath();ctx.ellipse(-60,-40,70,46,.3,0,7);ctx.fill();
-    const g=ctx.createLinearGradient(-30,0,60,0);g.addColorStop(0,'#5d636e');g.addColorStop(.5,'#d9dee6');g.addColorStop(1,'#7a808b');ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(-20,-24,120,48,18);ctx.fill();ctx.restore()}
+    /* black latex glove gripping a small steel enswell (a flat rounded iron) */
+    ctx.globalAlpha*=.92;const gl=ctx.createLinearGradient(-110,-60,0,30);gl.addColorStop(0,'#2a2d33');gl.addColorStop(1,'#111317');ctx.fillStyle=gl;
+    ctx.beginPath();ctx.ellipse(-62,-14,46,30,.15,0,7);ctx.fill();ctx.beginPath();ctx.roundRect(-150,-34,90,44,18);ctx.fill();
+    const g=ctx.createLinearGradient(0,-26,0,26);g.addColorStop(0,'#eef1f5');g.addColorStop(.45,'#a9b0ba');g.addColorStop(1,'#5b616b');ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(18,0,46,26,0,0,7);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.55)';ctx.beginPath();ctx.ellipse(8,-11,26,6,-.08,0,7);ctx.fill();ctx.strokeStyle='rgba(30,34,40,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(18,0,46,26,0,0,7);ctx.stroke();
+    ctx.fillStyle=gl;for(let i=0;i<4;i++){ctx.beginPath();ctx.roundRect(-34+i*15,-34+Math.abs(i-1.5)*3,13,40,6);ctx.fill()}
+    ctx.fillStyle='rgba(255,255,255,.08)';for(let i=0;i<4;i++){ctx.fillRect(-31+i*15,-30+Math.abs(i-1.5)*3,4,26)}ctx.restore()}
   /* towel fanning you from below */
   {const f=Math.sin(t*.35),y=VHw-20+Math.abs(f)*-26;ctx.save();ctx.translate(400+f*90,y);ctx.rotate(f*.35);ctx.fillStyle='rgba(235,235,232,.92)';ctx.beginPath();ctx.moveTo(-110,10);ctx.quadraticCurveTo(0,-36-Math.abs(f)*14,110,10);ctx.lineTo(110,60);ctx.lineTo(-110,60);ctx.closePath();ctx.fill();
     ctx.strokeStyle='rgba(180,180,175,.6)';ctx.lineWidth=2;for(let i=-3;i<=3;i++){ctx.beginPath();ctx.moveTo(i*28,0);ctx.lineTo(i*30,58);ctx.stroke()}ctx.restore()}
