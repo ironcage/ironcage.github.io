@@ -1923,14 +1923,31 @@ function gradeBake(Wd,Hd){const sc=.25,cw=Math.max(8,Math.round(Wd*sc*2.4)),ch=M
   {const g=xm.createLinearGradient(0,0,0,Hd*.62);g.addColorStop(0,'rgba(0,0,6,.5)');g.addColorStop(1,'rgba(0,0,0,0)');xm.fillStyle=g;xm.fillRect(0,0,Wd,Hd*.62)}
   const cs=null;
   const [cg,xg]=mk();{xg.save();xg.translate(m.x,m.y+Hd*.12);xg.scale(1,.26);const g=xg.createRadialGradient(0,0,0,0,0,Wd*.42);g.addColorStop(0,'rgba(255,248,232,.16)');g.addColorStop(.6,'rgba(255,244,222,.05)');g.addColorStop(1,'rgba(255,244,222,0)');xg.fillStyle=g;xg.fillRect(-Wd*.5,-Wd*.5,Wd,Wd);xg.restore()}
-  /* light rig: truss, lamps and the soft beams */
-  const [cr,xr]=mk();const ty=Math.max(4,Hd*.035),n=9;xr.globalCompositeOperation='lighter';
-  const sv=ctx;ctx=xr;try{for(let i=0;i<n;i++){const x=Wd*(i+.5)/n;const lg=xr.createRadialGradient(x,ty,0,x,ty,16);lg.addColorStop(0,'rgba(255,250,235,.9)');lg.addColorStop(1,'rgba(255,250,235,0)');xr.fillStyle=lg;xr.fillRect(x-16,ty-16,32,32);
-    if(i%2===0)softBeam(x,ty,x+(m.x-x)*.35,Hd*.75,5,70,'255,244,220',.06,0,i+11,true)}}finally{ctx=sv}
+  /* light rig: a dark box truss with hanging stage fixtures — warm lens glow, a faint flare, soft beams into the haze */
+  const [cr,xr]=mk();const ty=Math.max(4,Hd*.03),th=Math.max(6,Hd*.026),n=7;
+  const sv=ctx;ctx=xr;try{
+    /* beams first (additive), so the hardware sits on top of them */
+    xr.globalCompositeOperation='lighter';
+    for(let i=0;i<n;i++){const x=Wd*(i+.5)/n,aim=m.x+(x-m.x)*.45;softBeam(x,ty+th+10,aim,Hd*.8,6,Wd*.07,i%3===1?'200,220,255':'255,240,214',.05,0,i+11,true)}
+    xr.globalCompositeOperation='source-over';
+    /* truss: top and bottom chords with a zig-zag web */
+    const ch=(y)=>{const g=xr.createLinearGradient(0,y-1.5,0,y+1.5);g.addColorStop(0,'#5a606b');g.addColorStop(.5,'#2a2e35');g.addColorStop(1,'#14161a');xr.fillStyle=g;xr.fillRect(0,y-1.5,Wd,3)};
+    xr.fillStyle='rgba(4,5,7,.92)';xr.fillRect(0,0,Wd,ty+th+2);
+    ch(ty);ch(ty+th);xr.strokeStyle='rgba(70,76,86,.9)';xr.lineWidth=1.1;xr.beginPath();for(let x=0,k=0;x<Wd+th;x+=th*1.1,k++){xr.moveTo(x,k%2?ty:ty+th);xr.lineTo(x+th*1.1,k%2?ty+th:ty)}xr.stroke();
+    /* fixtures: clamp, yoke and a can pointing down at the cage */
+    for(let i=0;i<n;i++){const x=Wd*(i+.5)/n,y=ty+th+1,cw=Math.max(7,th*1.15),chh=Math.max(9,th*1.5),tilt=(m.x-x)/Wd*.5;
+      xr.save();xr.translate(x,y);xr.fillStyle='#1b1e23';xr.fillRect(-2,-1,4,4);xr.rotate(tilt);
+      const bg=xr.createLinearGradient(-cw/2,0,cw/2,0);bg.addColorStop(0,'#0c0d10');bg.addColorStop(.45,'#3a3f48');bg.addColorStop(1,'#0c0d10');xr.fillStyle=bg;
+      xr.beginPath();xr.moveTo(-cw*.42,3);xr.lineTo(cw*.42,3);xr.lineTo(cw*.55,3+chh);xr.lineTo(-cw*.55,3+chh);xr.closePath();xr.fill();
+      xr.fillStyle='#08090b';xr.beginPath();xr.ellipse(0,3+chh,cw*.55,cw*.18,0,0,7);xr.fill();
+      xr.globalCompositeOperation='lighter';const lg=xr.createRadialGradient(0,3+chh,0,0,3+chh,cw*1.6);lg.addColorStop(0,i%3===1?'rgba(225,235,255,.85)':'rgba(255,238,205,.85)');lg.addColorStop(.25,'rgba(255,230,190,.25)');lg.addColorStop(1,'rgba(255,230,190,0)');xr.fillStyle=lg;xr.fillRect(-cw*1.6,3+chh-cw*1.6,cw*3.2,cw*3.2);
+      const fl=xr.createLinearGradient(-cw*3,0,cw*3,0);fl.addColorStop(0,'rgba(255,240,215,0)');fl.addColorStop(.5,'rgba(255,240,215,.18)');fl.addColorStop(1,'rgba(255,240,215,0)');xr.fillStyle=fl;xr.fillRect(-cw*3,3+chh-.8,cw*6,1.6);
+      xr.restore()}
+  }finally{ctx=sv}
   return{key:Wd+'x'+Hd,cm,cs,cg,cr,ty}}
 function broadcastGrade(S){const tf=ctx.getTransform(),cv=ctx.canvas,key=W+'x'+VH+'@'+cv.width+'x'+cv.height+'@'+tf.a.toFixed(4);
   if(!GRADE||GRADE.key!==key){const L=gradeBake(W,VH);const c=document.createElement('canvas');c.width=cv.width;c.height=cv.height;const x=c.getContext('2d');x.setTransform(tf.a,0,0,tf.d,0,0);
-    x.drawImage(L.cm,0,0,W,VH);x.drawImage(L.cg,0,0,W,VH);x.fillStyle='rgba(6,7,9,.85)';x.fillRect(0,0,W,L.ty+6);x.fillStyle='rgba(40,44,52,.9)';x.fillRect(0,L.ty+3,W,2);x.globalCompositeOperation='lighter';x.drawImage(L.cr,0,0,W,VH);
+    x.drawImage(L.cm,0,0,W,VH);x.drawImage(L.cg,0,0,W,VH);x.drawImage(L.cr,0,0,W,VH);
     GRADE={key,c}}
   /* one pixel-exact copy per frame: the cheapest way to lay the whole broadcast look over the scene */
   ctx.save();ctx.setTransform(1,0,0,1,Math.round(tf.e),Math.round(tf.f));ctx.drawImage(GRADE.c,0,0);ctx.restore()}
