@@ -14,15 +14,19 @@ function rgba(h,a){const [r,g,b]=rgbOf(h);return `rgba(${r},${g},${b},${a})`}
 const V2=(x,y)=>({x,y}),vadd=(a,b)=>({x:a.x+b.x,y:a.y+b.y}),vsub=(a,b)=>({x:a.x-b.x,y:a.y-b.y}),vmul=(a,k)=>({x:a.x*k,y:a.y*k}),vlen=a=>Math.hypot(a.x,a.y),vn=a=>{const l=vlen(a)||1;return{x:a.x/l,y:a.y/l}},vl=(a,b,t)=>({x:lerp(a.x,b.x,t),y:lerp(a.y,b.y,t)});
 
 /* two-bone IK */
-function ik(a,b,l1,l2,pref,f){
+function ik(a,b,l1,l2,pref,f,prev){
   let dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy);
   const mx=l1+l2-.5;
   if(d>mx){const k=mx/d;b={x:a.x+dx*k,y:a.y+dy*k};dx*=k;dy*=k;d=mx}
   d=Math.max(d,Math.abs(l1-l2)+1);
   const ang=Math.atan2(dy,dx),t=Math.acos(clamp((l1*l1+d*d-l2*l2)/(2*l1*d),-1,1));
   const j1={x:a.x+Math.cos(ang+t)*l1,y:a.y+Math.sin(ang+t)*l1},j2={x:a.x+Math.cos(ang-t)*l1,y:a.y+Math.sin(ang-t)*l1};
-  let j;
-  if(pref&&typeof pref==='object'){j=Math.hypot(j1.x-pref.x,j1.y-pref.y)<Math.hypot(j2.x-pref.x,j2.y-pref.y)?j1:j2}else switch(pref){case 'up':j=j1.y<j2.y?j1:j2;break;case 'fwd':j=j1.x*f>j2.x*f?j1:j2;break;case 'back':j=j1.x*f<j2.x*f?j1:j2;break;default:j=j1.y>j2.y?j1:j2}
+  let j,m;
+  if(pref&&typeof pref==='object'){const d1=Math.hypot(j1.x-pref.x,j1.y-pref.y),d2=Math.hypot(j2.x-pref.x,j2.y-pref.y);j=d1<d2?j1:j2;m=Math.abs(d1-d2)}else switch(pref){case 'up':j=j1.y<j2.y?j1:j2;m=Math.abs(j1.y-j2.y);break;case 'fwd':j=j1.x*f>j2.x*f?j1:j2;m=Math.abs(j1.x-j2.x);break;case 'back':j=j1.x*f<j2.x*f?j1:j2;m=Math.abs(j1.x-j2.x);break;default:j=j1.y>j2.y?j1:j2;m=Math.abs(j1.y-j2.y)}
+  /* when both bends are almost equally good, keep the side the joint was on last frame (stops the elbow flipping over) */
+  if(prev&&m<22){const o=j===j1?j2:j1;if(Math.hypot(o.x-prev.x,o.y-prev.y)<Math.hypot(j.x-prev.x,j.y-prev.y))j=o}
+  /* a joint that still has to jump far swings over a few frames instead of popping in one */
+  if(prev){const dj=Math.hypot(j.x-prev.x,j.y-prev.y);if(dj>16){const k=Math.max(.35,16/dj);j={x:prev.x+(j.x-prev.x)*k,y:prev.y+(j.y-prev.y)*k}}}
   return{j,end:b};
 }
 /* tapered, shaded limb */
@@ -424,8 +428,10 @@ function drawBody0_(F,J){
   const shN=sw?shR:shL,shF=sw?shL:shR,hipN=sw?hpR:hpL,hipF=sw?hpL:hpR;
   const head=J.head||vadd(vadd(vadd(J.chest,vmul(sd,21)),vmul(fwd,3)),J._hd?{x:J._hd.x*.5,y:J._hd.y*.5}:{x:0,y:0});
   const hAng=Math.atan2(sd.y,sd.x)+Math.PI/2+(J.tilt||0)*f;
-  const legF=ik(hipF,J.farFoot,46,44,J.kneeF||'fwd',f),legN=ik(hipN,J.nearFoot,46,44,J.kneeN||'fwd',f);
-  const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
+    const PE=F.kind!=='ref'&&F._pe&&F._pe.sw===sw&&F._t!=null&&F._t-F._pe.fr>=0&&F._t-F._pe.fr<=2?F._pe:null;
+  const legF=ik(hipF,J.farFoot,46,44,J.kneeF||'fwd',f,PE&&PE.kF),legN=ik(hipN,J.nearFoot,46,44,J.kneeN||'fwd',f,PE&&PE.kN);
+  const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f,PE&&PE.eF),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f,PE&&PE.eN);
+  if(F.kind!=='ref'&&F._t!=null)F._pe={fr:F._t,sw,eF:armF.j,eN:armN.j,kF:legF.j,kN:legN.j};
   const pants=o.pants,legCol=pants?'#3b3f47':null;
   if(J._only==='legN'){limb(hipN,legN.j,legN.end,PROF.leg,1,legCol||skin,{flat:!!legCol,sheen:o.sweat*.25,bellies:[[.45,.16],[1.3,.14]]});foot(legN.end,J.footN||f,skin,o);shortsLeg(hipN,legN.j,o,false,legN.end);return{head}}
   if(J._only==='armN'){limb(shN,armN.j,armN.end,PROF.arm,1,skin,{sheen:o.sweat*.25,bellies:[[.42,.2],[1.25,.14]]});glove(armN.end,Math.atan2(armN.end.y-armN.j.y,armN.end.x-armN.j.x),o,false);return{head}}
@@ -581,8 +587,9 @@ function poseStand(F,O,S){
   const hip={x:x+lean*.25,y:300+bob-lift+drop*.55};
   const chest={x:x+lean+f*2+f*(an==='shoot'?drop*.75:0),y:234+bob-lift+drop*(an==='shoot'?.9:1)};
   const mv=st==='walk'||st==='stroll',wk=mv?F.walk:0,w=mv?Math.sin(wk)*(st==='stroll'?13:10):0;
-  let front={x:x+f*(30+(an==='shoot'?drop*.6:0))+w,y:GY-lift*1.3-(mv?Math.max(0,Math.sin(wk))*6:0)};
-  let back={x:x-f*27-w,y:GY-lift*.6-(mv?Math.max(0,-Math.sin(wk))*6:0)};
+  /* walking: feet aim at their stance spots and plantFeet() turns the body's travel into real steps */
+  let front={x:x+f*(30+(an==='shoot'?drop*.6:0)),y:GY-lift*1.3};
+  let back={x:x-f*27,y:GY-lift*.6};
   let kneeN='fwd',kneeF='fwd',footF=null;
   if(st==='attack'){
     if(an==='jab'||an==='superman'){front={x:front.x+f*12*e,y:front.y-4*Math.sin(Math.min(1,e)*Math.PI)}}
@@ -610,7 +617,7 @@ function poseStand(F,O,S){
         elbN=e>.05||sw>.1?{x:near.x-f*(14-arc*4),y:near.y-14-sw*4}:'down';far={x:x+f*14+lean*.5,y:198};break}
       case 'upper':far={x:x+f*(22+e*44)+lean,y:E<0?250:246-e*40};break;
       case 'bodyshot':far={x:x+f*(16+e*66)+lean,y:214+drop+e*22};break;
-      case 'lowkick':case 'midkick':case 'highkick':{const K=kickPath(F,A,x,f,an),sw=K.ext;near={x:x+f*(26-sw*2)+lean*.6,y:208-sw*2};far={x:x-f*(6+sw*(an==='lowkick'?14:24)),y:226+sw*(an==='lowkick'?6:24)};elbN='down';elbF='down';break}
+      case 'lowkick':case 'midkick':case 'highkick':{const K=kickPath(F,A,x,f,an),sw=K.ext;near={x:x+f*(26-sw*2)+lean*.6,y:208-sw*2};far={x:x-f*(6+sw*(an==='lowkick'?14:24)),y:226+sw*(an==='lowkick'?6:24)};elbN={x:near.x-f*6,y:near.y+30};elbF={x:far.x+f*4,y:far.y+34};break}
       case 'spinkick':case 'qmark':case 'tornado':near={x:x+f*24,y:214};far={x:x-f*24,y:252};break;
       case 'superman':far={x:x+f*(14+e*94)+lean,y:204-lift};near={x:x-f*2,y:226-lift};break;
       case 'spinfist':far={x:x+f*(E<0?-30:10+e*72)+lean,y:206};elbF='up';break;
@@ -1037,11 +1044,40 @@ function smoothPose(F,J){
   F._pj={f:J.f,tilt:J.tilt||0,twist:J.twist||0,hipTwist:J.hipTwist||0};for(const q of keys)F._pj[q]={x:J[q].x,y:J[q].y};
   return J;
 }
+/* planted feet: while standing, walking or guarding, a foot stays put on the mat until the body has moved
+   too far from it, then it takes a quick step (lift, swing, set down) to its new spot. One foot steps at a time,
+   so footwork reads as real steps instead of the feet gliding along with the body. */
+const PLANT_ST={idle:1,walk:1,block:1,stroll:1,hit:1,slip:1},PLANT_ATK={jab:1,cross:1,hook:1,upper:1,bodyshot:1,overhand:1};
+function plantFeet(F,J,S){const fr=S.frame,on=(PLANT_ST[F.state]||F.state==='attack'&&F.A&&PLANT_ATK[F.A.anim])&&!(F.swT>0)&&!F.hidden&&!(F.rocked>0&&F.state==='hit'&&F.stun>30);
+  let P=F._ft;const fresh=!P||P.f!==J.f||fr-P.fr>3||fr<P.fr||Math.abs(P.nearFoot.x-J.nearFoot.x)>70||Math.abs(P.farFoot.x-J.farFoot.x)>70;
+  if(!on||fresh){F._ft={f:J.f,fr,nearFoot:{x:J.nearFoot.x,st:-1},farFoot:{x:J.farFoot.x,st:-1}};return J}
+  const str=F.state==='stroll',TH=str?20:6,DUR=str?11:5,LIFT=str?9:5,dt=Math.max(1,fr-P.fr);
+  /* body speed: a moving fighter places the stepping foot a little ahead of where it should be, like a real step */
+  const v=fr!==P.fr&&P.hx!=null?clamp((J.hip.x-P.hx)/dt,-6,6):(P.v||0);
+  if(fr!==P.fr){P.v=v;const lag={};
+    for(const q of ['nearFoot','farFoot']){const c=P[q],T=J[q].x;if(c.st>=0&&fr-c.st>=DUR){c.x=T+c.lead;c.st=-1;P.last=q}lag[q]=Math.abs(c.x-T)}
+    /* feet take turns: the foot that did not step last goes next, the other waits until it has landed */
+    const busy=P.nearFoot.st>=0||P.farFoot.st>=0,want=['nearFoot','farFoot'].filter(q=>P[q].st<0&&lag[q]>TH).sort((a,b)=>(a===P.last)-(b===P.last)||lag[b]-lag[a]);
+    for(const q of want){if(busy&&lag[q]<TH*2.6)continue;const c=P[q];c.st=fr;c.fx=c.x;c.lead=clamp(v*DUR*.85,-30,30);break}
+    P.fr=fr;P.hx=J.hip.x}
+  const o={...J};let bob=0;
+  for(const q of ['nearFoot','farFoot']){const c=P[q],T=J[q];
+    if(c.st>=0){const p=clamp((fr-c.st)/DUR,0,1),e=p*p*(3-2*p),arc=Math.sin(p*Math.PI);o[q]={x:lerp(c.fx,T.x+c.lead,e),y:Math.min(T.y,GY)-LIFT*arc};bob=Math.max(bob,arc)}
+    else o[q]={x:c.x,y:T.y}}
+  /* never let the feet cross: the lead foot stays in front of the rear foot */
+  const gap=J.f*(o.nearFoot.x-o.farFoot.x);if(gap<20){const q=P.nearFoot.st>=0?'nearFoot':'farFoot',d=(20-gap)*J.f*(q==='nearFoot'?1:-1);o[q]={x:o[q].x+d,y:o[q].y}}
+  /* the body rises a touch as a foot leaves the mat and settles back as it lands */
+  if(bob>0){o.hip={x:J.hip.x,y:J.hip.y-1.6*bob};o.chest={x:J.chest.x,y:J.chest.y-1.2*bob}}
+  return o}
 function drawStandingFighter(F,O,S){
   F._t=S.frame;
   ctx.save();depth(F.x,F.z||0);
   shadowAt(F.x,52);
-  let J=smoothPose(F,poseStand(F,O,S));if(F.state==='ko'){J=koPose(F,J,S.frame);F._pj=null}
+  let J=plantFeet(F,smoothPose(F,poseStand(F,O,S)),S);if(F.state==='ko'){J=koPose(F,J,S.frame);F._pj=null}F._Jf=J;
+  /* contact shadows: a small dark patch under each foot that fades as the foot leaves the mat, so the feet sit ON the floor */
+  if(F.state!=='ko')for(const q of ['nearFoot','farFoot']){const p=J[q];if(!p)continue;const h=clamp((GY-p.y)/40,0,1);if(h>=1)continue;
+    const r=15*(1-h*.5),a=.42*(1-h),g=ctx.createRadialGradient(p.x+F.f*4,GY+3,0,p.x+F.f*4,GY+3,r);g.addColorStop(0,`rgba(0,0,0,${a})`);g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.save();ctx.translate(0,GY+3);ctx.scale(1,.28);ctx.translate(0,-(GY+3));ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x+F.f*4,GY+3,r,0,7);ctx.fill();ctx.restore()}
   if(F.stance&&F.state!=='ko')J.swapD=(F.f===1)===(F.stance==='south');
   if(F.swT>0){const k=1-F.swT/16;ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=`rgba(127,227,255,${(1-k)*.8})`;ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(F.x,GY+2,30+k*46,7+k*9,0,0,7);ctx.stroke();ctx.restore()}
   ctx.save();
@@ -2686,8 +2722,10 @@ function solve(J){
   const shB=vadd(J.chest,vmul(sd,-5));
   const head=J.head||vadd(vadd(vadd(J.chest,vmul(sd,21)),vmul(fwd,3)),J._hd?{x:J._hd.x*.5,y:J._hd.y*.5}:{x:0,y:0});
   const shN=vadd(shB,vmul(fwd,4)),shF=vadd(shB,vmul(fwd,-5)),hipN=vadd(J.hip,vmul(fwd,3)),hipF=vadd(J.hip,vmul(fwd,-3));
-  const legF=ik(hipF,J.farFoot,46,44,J.kneeF||'fwd',f),legN=ik(hipN,J.nearFoot,46,44,J.kneeN||'fwd',f);
-  const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f);
+    const PE=F.kind!=='ref'&&F._pe&&F._pe.sw===sw&&F._t!=null&&F._t-F._pe.fr>=0&&F._t-F._pe.fr<=2?F._pe:null;
+  const legF=ik(hipF,J.farFoot,46,44,J.kneeF||'fwd',f,PE&&PE.kF),legN=ik(hipN,J.nearFoot,46,44,J.kneeN||'fwd',f,PE&&PE.kN);
+  const armF=ik(shF,J.farHand,27,26,J.elbF||'down',f,PE&&PE.eF),armN=ik(shN,J.nearHand,27,26,J.elbN||'down',f,PE&&PE.eN);
+  if(F.kind!=='ref'&&F._t!=null)F._pe={fr:F._t,sw,eF:armF.j,eN:armN.j,kF:legF.j,kN:legN.j};
   return{f,hip:J.hip,chest:J.chest,head,hAng:Math.atan2(sd.y,sd.x)+Math.PI/2+(J.tilt||0)*f,shN,shF,hipN,hipF,kneeN:legN.j,kneeF:legF.j,footN:legN.end,footF:legF.end,elbN:armN.j,elbF:armF.j,handN:armN.end,handF:armF.end,footDirN:J.footN||f,footDirF:J.footF||f,mood:J.mood};
 }
 IC.Draw={_body:(c,F,J)=>{ctx=c;drawBody(F,J)},_ko:(c,F)=>{ctx=c;ctx.strokeStyle="#888";ctx.beginPath();ctx.moveTo(200,GY);ctx.lineTo(600,GY);ctx.stroke();drawBody(F,koPose(F,poseStand(F,F,{frame:0,cl:null}),0))},_cmp:(c,F,mood)=>{ctx=c;ctx.save();ctx.translate(60,60);ctx.scale(2.6,2.6);const o=fighterLook(F,{mood});drawHead(F,{x:0,y:0},0,1,o);ctx.restore();ctx.save();ctx.translate(170,62);ctx.scale(2.1,2.1);ctx.translate(0,212);drawFront(F,0,{noBuild:true,dmg:{head:F.head,cuts:F.cuts,mood},t:0,sweat:o.sweat});ctx.restore()},cornerPOV,cornerUFC,roundBreak,_ground:(c,S)=>{ctx=c;drawGround(S)},render,portrait,hubScene,weighin,beltScene,koScene,KOI,gateScene,GATE,tauntScene,BELT,WI,WTRASH,cam,rig:{solve,poseStand,poseRef,groundJ,ext}};
